@@ -1,5 +1,4 @@
 import type { Card } from './cards';
-import { teamOf } from './shared';
 
 export const MAX_CAPTURE_VALUE = 14;
 
@@ -83,15 +82,13 @@ export function pairsRankOf(card: Card, items: TableItem[]): number | null {
   return captureValues(card).find((value) => canSplitIntoTargets(items, value, 2)) ?? null;
 }
 
-export function mixesRivalBuild(items: TableItem[], seat: number): boolean {
-  return (
-    items.length > 1 &&
-    items.some((item) => item.owner !== null && teamOf(item.owner) !== teamOf(seat))
-  );
-}
-
-export function isLegalCapture(card: Card, items: TableItem[], seat: number): boolean {
-  return isValidCapture(card, items) && !mixesRivalBuild(items, seat);
+/**
+ * Cualquier jugador puede llevarse cualquier grupo de la mesa (también un par o una sumatoria
+ * ajena), solo o junto con otros grupos, siempre que se pueda repartir en subconjuntos del valor
+ * de su carta. `_seat` se conserva para no cambiar la firma que usan la interfaz y el bot.
+ */
+export function isLegalCapture(card: Card, items: TableItem[], _seat: number): boolean {
+  return isValidCapture(card, items);
 }
 
 export function captureOptions(card: Card, items: TableItem[], seat: number): TableItem[][] {
@@ -193,8 +190,14 @@ export function expansionValue(
   looseCards: Card[],
   handAfter: Card[],
 ): number | null {
-  if (build.kind === 'pairs' || looseCards.length === 0) return null;
-  return possibleTotals([card, ...looseCards]).map((value) => build.value + value).find(
+  if (looseCards.length === 0) return null;
+  const totals = possibleTotals([card, ...looseCards]);
+  if (build.kind === 'pairs') {
+    // Apilar sobre un par: tu carta y las sueltas deben sumar justo el valor del par
+    // (2 + 3 sobre un par de 5). El valor del par no cambia.
+    return totals.includes(build.value) && handCanCapture(handAfter, build.value) ? build.value : null;
+  }
+  return totals.map((value) => build.value + value).find(
     (value) => value <= MAX_CAPTURE_VALUE && handCanCapture(handAfter, value),
   ) ?? null;
 }
