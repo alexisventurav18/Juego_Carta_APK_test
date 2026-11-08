@@ -73,6 +73,7 @@ export default function CasinoTable({ state, seat, onMove }: CasinoTableProps) {
     return {
       label: `Equipo ${team === 0 ? 'A' : 'B'}`,
       score: state.scores[team],
+      goal: CASINO_TARGET,
       captured,
       viraos: state.viraos[team],
     };
@@ -236,6 +237,14 @@ export default function CasinoTable({ state, seat, onMove }: CasinoTableProps) {
     return 'Deja tu carta en la mesa o une cartas sueltas para formar una combinación.';
   })();
 
+  // En móvil el jugador activo ya se ve resaltado en su tarjeta: la pista no repite su nombre.
+  const hintMobile = (() => {
+    if (state.phase !== 'playing') return '';
+    if (deal.dealing) return typeof deal.dealingTo === 'number' ? 'Repartiendo cartas...' : hint;
+    if (!myTurn) return 'Esperando jugada...';
+    return hint;
+  })();
+
   return (
     <div className="casino-arena space-y-3 sm:space-y-6">
       {dealerOpen && (
@@ -298,10 +307,10 @@ export default function CasinoTable({ state, seat, onMove }: CasinoTableProps) {
           </div>
           <div className="casino-table-content">
             {state.table.length === 0 && state.builds.length === 0 && !deal.dealing && (
-              <p className="col-span-6 text-center text-sm text-emerald-100/70">La mesa está vacía.</p>
+              <p className="col-span-6 w-full text-center text-sm text-emerald-100/70">La mesa está vacía.</p>
             )}
             {state.table.map((c, i) =>
-              <div key={c.id} className="col-span-1 flex min-w-0 justify-center md:col-span-2">
+              <div key={c.id} className="casino-slot col-span-1 flex min-w-0 justify-center md:col-span-2">
                   {deal.isTableDealt(i) ? (
                     <DealFlight origin={deckRef} animate={deal.dealing}>
                       <div className={c.id === pointCardId ? 'relative animate-point-drop' : ''}>
@@ -325,7 +334,7 @@ export default function CasinoTable({ state, seat, onMove }: CasinoTableProps) {
               </div>,
             )}
             {state.builds.map((b) => (
-              <div key={b.id} className="col-span-2 flex min-w-0 justify-center md:col-span-3">
+              <div key={b.id} className="casino-slot casino-slot-build col-span-2 flex min-w-0 justify-center md:col-span-3">
                 <TableBuild
                   build={b}
                   selected={tableIds.includes(b.id)}
@@ -397,7 +406,10 @@ export default function CasinoTable({ state, seat, onMove }: CasinoTableProps) {
             )}
           </div>
           <div className="casino-action-panel sticky bottom-2 z-20 flex flex-col items-center gap-2 rounded-2xl border border-stone-200 bg-stone-100/95 p-2 shadow-lg backdrop-blur sm:static sm:gap-3 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
-            <p className="min-h-4 text-center text-xs leading-snug text-stone-600 sm:min-h-5 sm:text-sm">{hint}</p>
+            <p className="min-h-4 text-center text-xs leading-snug text-stone-600 sm:min-h-5 sm:text-sm">
+              <span className="sm:hidden">{hintMobile}</span>
+              <span className="hidden sm:inline">{hint}</span>
+            </p>
             <div className="casino-actions-grid grid w-full grid-cols-4 gap-1 sm:flex sm:w-auto sm:flex-wrap sm:justify-center sm:gap-3">
               <button
                 type="button"

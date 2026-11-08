@@ -121,7 +121,7 @@ export default function PlayingCard({
 export function CardBack({ size = 'sm' }: { size?: CardSize }) {
   return (
     <div
-      className={`shrink-0 border-2 border-emerald-200/60 bg-emerald-700 shadow-sm ${SIZE_CLASS[size]}`}
+      className={`casino-card-back shrink-0 border-2 border-emerald-200/60 bg-emerald-700 shadow-sm ${SIZE_CLASS[size]}`}
       style={{
         backgroundImage:
           'repeating-linear-gradient(45deg, rgba(255,255,255,0.12) 0 4px, transparent 4px 10px)',

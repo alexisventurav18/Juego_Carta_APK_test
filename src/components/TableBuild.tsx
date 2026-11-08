@@ -11,6 +11,17 @@ interface TableBuildProps {
 
 const STEP_X = 8;
 const STEP_Y = 5;
+/** Tiempo que se muestra el nombre completo antes de pasar a la insignia compacta. */
+const FULL_LABEL_MS = 1600;
+
+function PairsIcon() {
+  return (
+    <svg viewBox="0 0 12 14" aria-hidden>
+      <rect x="3" y="1" width="8" height="10" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="1" y="3" width="8" height="10" rx="1.6" fill="currentColor" />
+    </svg>
+  );
+}
 
 export default function TableBuild({ build, selected, disabled, onSelect }: TableBuildProps) {
   const depth = build.cards.length - 1;
@@ -39,7 +50,7 @@ export default function TableBuild({ build, selected, disabled, onSelect }: Tabl
 
   useEffect(() => {
     setShowFullLabel(true);
-    const timer = window.setTimeout(() => setShowFullLabel(false), 1200);
+    const timer = window.setTimeout(() => setShowFullLabel(false), FULL_LABEL_MS);
     return () => window.clearTimeout(timer);
   }, [build.id, build.kind, build.value, build.cards.length]);
 
@@ -51,54 +62,60 @@ export default function TableBuild({ build, selected, disabled, onSelect }: Tabl
     }
   };
 
+  const kindLabel = build.kind === 'pairs' ? 'Pares de' : 'Sumatoria de';
+
   return (
     <div
       role="button"
       tabIndex={disabled ? -1 : 0}
       aria-pressed={selected}
       aria-disabled={disabled}
-      aria-label={`${build.kind === 'pairs' ? 'Pares de' : 'Sumatoria de'} ${build.value}`}
+      aria-label={`${kindLabel} ${build.value}`}
       onClick={() => {
         if (!disabled) onSelect();
       }}
       onKeyDown={onKeyDown}
-      className={`casino-build relative flex shrink-0 cursor-pointer flex-col items-center gap-0 rounded-2xl p-0 transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
-        selected ? 'bg-amber-300/25 ring-2 ring-amber-400' : disabled ? '' : 'hover:-translate-y-1'
-      } ${disabled ? 'cursor-not-allowed opacity-80' : ''} ${celebrating ? 'animate-pairs-combo' : ''}`}
+      className={`casino-build relative flex shrink-0 cursor-pointer flex-col items-center transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
+        disabled ? 'cursor-not-allowed opacity-80' : 'hover:-translate-y-1'
+      } ${celebrating ? 'animate-pairs-combo' : ''}`}
     >
       <span
-        className={`casino-build-label casino-build-label-full absolute -top-1 z-20 rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-bold text-stone-900 shadow-sm sm:text-xs ${
+        aria-hidden
+        className={`casino-build-label casino-build-label-full ${
           showFullLabel ? 'casino-build-label-visible animate-combo-label' : 'casino-build-label-hidden'
         }`}
       >
-        {build.kind === 'pairs' ? 'Pares de' : 'Sumatoria de'} {build.value}
+        {kindLabel} {build.value}
       </span>
-      <span
-        className={`casino-build-label casino-build-label-compact absolute -top-1 z-20 grid h-5 w-5 place-items-center rounded-full bg-amber-300 text-[11px] font-black text-stone-900 shadow-sm ${
-          showFullLabel ? 'casino-build-label-hidden' : 'casino-build-label-visible'
-        }`}
-        aria-hidden={showFullLabel}
-      >
-        {build.kind === 'pairs' ? '≋' : 'Σ'}
-      </span>
-      {celebrating && (
-        <span className="absolute -top-3 rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
-          ¡Pares!
+      <div className={`casino-build-stack ${selected ? 'bg-amber-300/25 ring-2 ring-amber-400' : ''}`}>
+        <span
+          aria-hidden
+          className={`casino-build-label casino-build-label-compact ${
+            showFullLabel ? 'casino-build-label-hidden' : 'casino-build-label-visible'
+          }`}
+        >
+          {build.kind === 'pairs' ? <PairsIcon /> : <span>Σ</span>}
+          {build.value}
         </span>
-      )}
-      <div className="grid pt-2" style={{ marginRight: depth * STEP_X, marginBottom: depth * STEP_Y }}>
-        {build.cards.map((card, i) => (
-          <div
-            key={card.id}
-            style={{
-              gridArea: '1 / 1',
-              transform: `translate(${i * STEP_X}px, ${i * STEP_Y}px)`,
-              zIndex: i + 1,
-            }}
-          >
-            <PlayingCard card={card} size="table" />
-          </div>
-        ))}
+        {celebrating && (
+          <span className="absolute inset-x-0 -top-3 z-30 mx-auto w-max rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
+            ¡Pares!
+          </span>
+        )}
+        <div className="grid pt-2" style={{ marginRight: depth * STEP_X, marginBottom: depth * STEP_Y }}>
+          {build.cards.map((card, i) => (
+            <div
+              key={card.id}
+              style={{
+                gridArea: '1 / 1',
+                transform: `translate(${i * STEP_X}px, ${i * STEP_Y}px)`,
+                zIndex: i + 1,
+              }}
+            >
+              <PlayingCard card={card} size="table" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
