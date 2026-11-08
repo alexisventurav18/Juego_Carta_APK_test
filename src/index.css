@@ -492,13 +492,11 @@ button,
 /* Nombre completo: nunca se recorta con "..."; si no cabe en una línea, baja a otra. */
 .casino-build-label-full {
   top: -0.1rem;
-  right: 0;
-  left: 0;
+  left: 50%;
   width: max-content;
-  max-width: 100%;
-  margin-inline: auto;
+  max-width: min(12rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
   padding: 0.2rem 0.6rem;
-  font-size: 0.7rem;
   text-align: center;
   text-wrap: balance;
   white-space: normal;
@@ -512,7 +510,6 @@ button,
   gap: 0.15rem;
   padding: 0.08rem 0.38rem;
   background: rgb(252 211 77 / 0.94);
-  font-size: 0.62rem;
   white-space: nowrap;
 }
 
@@ -529,15 +526,15 @@ button,
 @keyframes combo-label-pop {
   0% {
     opacity: 0;
-    transform: translateY(4px) scale(0.82);
+    transform: translateX(-50%) translateY(4px) scale(0.82);
   }
   45% {
     opacity: 1;
-    transform: translateY(-2px) scale(1.05);
+    transform: translateX(-50%) translateY(-2px) scale(1.05);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateX(-50%) translateY(0) scale(1);
   }
 }
 
@@ -674,7 +671,6 @@ button,
   .casino-build-label-full {
     visibility: visible;
     opacity: 1;
-    font-size: 0.75rem;
     white-space: nowrap;
   }
 
@@ -703,66 +699,24 @@ button,
   }
 
   /*
-   * Mesa en móvil: hasta 4 cartas por fila. Es flex (y no grid) porque así la
-   * última fila, si queda incompleta, se centra sola aunque haya combinaciones
-   * (que ocupan 2 espacios) mezcladas con cartas sueltas.
+   * Mesa en móvil: los grupos fluyen en filas centradas (flex-wrap). Las cartas miden 11dvh de alto
+   * con proporción 2.5 : 3.5 (ver SIZE_CLASS.table en PlayingCard), así que en un teléfono caben
+   * 4 o más por fila, el espaciado es uniforme y la última fila, si queda incompleta, se centra sola.
    */
   .casino-table-content {
-    --cols: 4;
-    --gap: 0.4rem;
-    --card-max: 4.75rem;
-    --slot-w: calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols));
-    container-type: inline-size;
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
     justify-content: center;
-    gap: var(--gap);
+    gap: 0.5rem 0.4rem;
     width: 100%;
-    max-width: calc(var(--cols) * var(--card-max) + (var(--cols) - 1) * var(--gap));
-    margin-inline: auto;
+    min-width: 0;
   }
 
   .casino-slot {
     flex: 0 0 auto;
-    width: var(--slot-w);
     min-width: 0;
-  }
-
-  .casino-slot-build {
-    width: calc(2 * var(--slot-w) + var(--gap));
-  }
-
-  .casino-build {
-    width: 100%;
-  }
-
-  /* Cartas fluidas: el ancho sale del espacio disponible y la proporción 2:3 se mantiene. */
-  .casino-table-content .casino-card-face,
-  .casino-table-content .casino-card-back {
-    box-sizing: border-box;
-    width: clamp(2.7rem, 17vw, 4rem);
-    height: auto;
-    aspect-ratio: 2 / 3;
-  }
-
-  .casino-table-content .casino-card-face .text-4xl {
-    font-size: clamp(1.5rem, 8vw, 2.25rem);
-  }
-
-  @supports (width: 1cqw) {
-    .casino-table-content {
-      --card-w: calc((100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols));
-    }
-
-    .casino-table-content .casino-card-face,
-    .casino-table-content .casino-card-back {
-      width: var(--card-w);
-    }
-
-    .casino-table-content .casino-card-face .text-4xl {
-      font-size: calc(var(--card-w) * 0.5);
-    }
+    max-width: 100%;
   }
 
   .casino-seat-card {
