@@ -20,7 +20,8 @@ interface PlayingCardProps {
 export const SIZE_CLASS: Record<CardSize, string> = {
   sm: 'h-16 w-12 rounded-md sm:h-20 sm:w-14',
   hand: 'h-24 w-16 rounded-lg sm:h-36 sm:w-24',
-  table: 'h-24 w-16 rounded-lg sm:h-52 sm:w-36',
+  // Mesa: alto relativo al viewport y proporción fija, sin ancho en px.
+  table: 'h-[11dvh] sm:h-[14dvh] max-h-32 aspect-[2.5/3.5] rounded-lg',
   deck: 'h-16 w-12 rounded-lg sm:h-52 sm:w-36',
   md: 'h-32 w-24 rounded-xl sm:h-40 sm:w-28',
   lg: 'h-32 w-24 rounded-xl sm:h-52 sm:w-36',
@@ -30,7 +31,7 @@ export const SIZE_CLASS: Record<CardSize, string> = {
 const RANK_CLASS: Record<CardSize, string> = {
   sm: 'text-sm',
   hand: 'text-sm sm:text-base',
-  table: 'text-sm sm:text-base',
+  table: 'text-xs sm:text-base',
   deck: 'text-xs sm:text-lg',
   md: 'text-base',
   lg: 'text-lg',
@@ -40,7 +41,7 @@ const RANK_CLASS: Record<CardSize, string> = {
 const SUIT_CLASS: Record<CardSize, string> = {
   sm: 'text-xl leading-none',
   hand: 'text-3xl leading-none sm:text-4xl',
-  table: 'text-4xl leading-none sm:text-5xl',
+  table: 'text-3xl leading-none sm:text-5xl',
   deck: 'text-3xl leading-none sm:text-5xl',
   md: 'text-3xl leading-none',
   lg: 'text-5xl leading-none',
@@ -97,7 +98,7 @@ export default function PlayingCard({
   const stateClass = selected
     ? '-translate-y-3 ring-2 ring-amber-400 shadow-lg'
     : highlighted
-      ? 'ring-2 ring-emerald-400 hover:-translate-y-1'
+      ? 'ring-2 ring-emerald-400 sm:hover:-translate-y-1'
       : '';
 
   if (!onClick) {
@@ -110,7 +111,7 @@ export default function PlayingCard({
       onClick={onClick}
       disabled={disabled}
       className={`min-h-11 shrink-0 touch-manipulation transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-60 ${
-        disabled ? '' : 'hover:-translate-y-1'
+        disabled ? '' : 'active:scale-95 sm:hover:-translate-y-1'
       } ${stateClass}`}
     >
       {face}

@@ -9,8 +9,11 @@ interface TableBuildProps {
   onSelect: () => void;
 }
 
-const STEP_X = 8;
-const STEP_Y = 5;
+/**
+ * Desplazamiento entre cartas apiladas. Va en variables CSS para que sea responsivo:
+ * 4px / 3px en móvil y 8px / 5px desde 640px (ver las clases de la rejilla más abajo).
+ */
+const MAX_VISIBLE_STEPS = 5;
 /** Tiempo que se muestra el nombre completo antes de pasar a la insignia compacta. */
 const FULL_LABEL_MS = 1600;
 
@@ -24,7 +27,8 @@ function PairsIcon() {
 }
 
 export default function TableBuild({ build, selected, disabled, onSelect }: TableBuildProps) {
-  const depth = build.cards.length - 1;
+  // Con muchas cartas el bloque deja de crecer: a partir de la 6.ª comparten el último desplazamiento.
+  const visibleDepth = Math.min(build.cards.length - 1, MAX_VISIBLE_STEPS);
   const previousSize = useRef(build.cards.length);
   const previousKind = useRef(build.kind);
   const [celebrating, setCelebrating] = useState(false);
@@ -75,13 +79,13 @@ export default function TableBuild({ build, selected, disabled, onSelect }: Tabl
         if (!disabled) onSelect();
       }}
       onKeyDown={onKeyDown}
-      className={`casino-build relative flex shrink-0 cursor-pointer flex-col items-center transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
-        disabled ? 'cursor-not-allowed opacity-80' : 'hover:-translate-y-1'
+      className={`casino-build relative flex shrink-0 cursor-pointer touch-manipulation flex-col items-center transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
+        disabled ? 'cursor-not-allowed opacity-80' : 'active:scale-95 sm:hover:-translate-y-1'
       } ${celebrating ? 'animate-pairs-combo' : ''}`}
     >
       <span
         aria-hidden
-        className={`casino-build-label casino-build-label-full ${
+        className={`casino-build-label casino-build-label-full text-[10px] sm:text-xs ${
           showFullLabel ? 'casino-build-label-visible animate-combo-label' : 'casino-build-label-hidden'
         }`}
       >
@@ -90,7 +94,7 @@ export default function TableBuild({ build, selected, disabled, onSelect }: Tabl
       <div className={`casino-build-stack ${selected ? 'bg-amber-300/25 ring-2 ring-amber-400' : ''}`}>
         <span
           aria-hidden
-          className={`casino-build-label casino-build-label-compact ${
+          className={`casino-build-label casino-build-label-compact text-[10px] sm:text-xs ${
             showFullLabel ? 'casino-build-label-hidden' : 'casino-build-label-visible'
           }`}
         >
@@ -102,19 +106,28 @@ export default function TableBuild({ build, selected, disabled, onSelect }: Tabl
             ¡Pares!
           </span>
         )}
-        <div className="grid pt-2" style={{ marginRight: depth * STEP_X, marginBottom: depth * STEP_Y }}>
-          {build.cards.map((card, i) => (
-            <div
-              key={card.id}
-              style={{
-                gridArea: '1 / 1',
-                transform: `translate(${i * STEP_X}px, ${i * STEP_Y}px)`,
-                zIndex: i + 1,
-              }}
-            >
-              <PlayingCard card={card} size="table" />
-            </div>
-          ))}
+        <div
+          className="grid pt-2 [--step-x:4px] [--step-y:3px] sm:[--step-x:8px] sm:[--step-y:5px]"
+          style={{
+            marginRight: `calc(var(--step-x) * ${visibleDepth})`,
+            marginBottom: `calc(var(--step-y) * ${visibleDepth})`,
+          }}
+        >
+          {build.cards.map((card, i) => {
+            const step = Math.min(i, MAX_VISIBLE_STEPS);
+            return (
+              <div
+                key={card.id}
+                style={{
+                  gridArea: '1 / 1',
+                  transform: `translate(calc(var(--step-x) * ${step}), calc(var(--step-y) * ${step}))`,
+                  zIndex: i + 1,
+                }}
+              >
+                <PlayingCard card={card} size="table" />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

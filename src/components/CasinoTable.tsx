@@ -216,7 +216,11 @@ export default function CasinoTable({ state, seat, onMove }: CasinoTableProps) {
       ? 'Tienes una jugada para llevarte cartas: elige una carta que pueda capturar.'
       : 'Elige una carta de tu mano.';
     if (captureReady) return 'Listo: te llevas las cartas seleccionadas.';
-    if (expandedValue !== null) return `Puedes ampliar la combinación a ${expandedValue} con tu carta y las cartas sueltas.`;
+    if (expandedValue !== null) {
+      return expandTarget?.kind === 'pairs'
+        ? `Puedes apilar tu carta y las cartas sueltas sobre el par de ${expandedValue}.`
+        : `Puedes ampliar la combinación a ${expandedValue} con tu carta y las cartas sueltas.`;
+    }
     if (raisedValue !== null) return `Puedes subir la combinación a ${raisedValue} con tu carta.`;
     if (convertedValue !== null) {
       return raiseTarget?.kind === 'pairs'
@@ -334,7 +338,7 @@ export default function CasinoTable({ state, seat, onMove }: CasinoTableProps) {
               </div>,
             )}
             {state.builds.map((b) => (
-              <div key={b.id} className="casino-slot casino-slot-build col-span-2 flex min-w-0 justify-center md:col-span-3">
+              <div key={b.id} className="casino-slot col-span-2 flex min-w-0 justify-center md:col-span-3">
                 <TableBuild
                   build={b}
                   selected={tableIds.includes(b.id)}
