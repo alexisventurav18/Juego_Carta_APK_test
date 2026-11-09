@@ -11,7 +11,7 @@ interface LobbyProps {
   onStartOffline: (mode: OfflineBotMode, playerName: string) => void;
 }
 
-const GAME_ORDER: GameId[] = ['casino', 'cinquillo', 'burako'];
+const GAME_ORDER: GameId[] = ['casino', 'tresydos', 'burako'];
 
 export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
   const [name, setName] = useState(getStoredName);

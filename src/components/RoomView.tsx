@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, LoaderCircle, RotateCcw, Wifi, WifiOff } from 'lucide-react';
 import { canStartGame, GAMES, isGameFinished } from '@/games';
 import type { CasinoMove } from '@/games/casino';
-import type { CinquilloMove } from '@/games/cinquillo';
+import type { TresYDosMove } from '@/games/tresYDos';
 import type { BurakoMove } from '@/games/burako';
 import { botTickDelay } from '@/games/bots';
 import { isBotPlayer } from '@/games/shared';
@@ -10,7 +10,7 @@ import { getPlayerId } from '@/lib/identity';
 import { botTick, fetchRoom, requestStart, type RoomConnectionStatus, type RoomRow, sendMove, subscribeToRoom } from '@/lib/rooms';
 import WaitingRoom from './WaitingRoom';
 import CasinoTable from './CasinoTable';
-import CinquilloTable from './CinquilloTable';
+import TresYDosTable from './TresYDosTable';
 import BurakoTable from './BurakoTable';
 import CoinToss from './CoinToss';
 
@@ -159,31 +159,41 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const state = room.state;
   const info = GAMES[room.game];
 
-  // El Casino ocupa toda la pantalla: sale, estado de conexión y avisos van dentro de su barra superior.
-  if (state !== null && state.game === 'casino' && room.status !== 'waiting') {
+  // El Casino y el Tres y Dos ocupan toda la pantalla: sale, estado de conexión y avisos van dentro de su barra superior.
+  if (state !== null && (state.game === 'casino' || state.game === 'tresydos') && room.status !== 'waiting') {
+    const tableProps = {
+      seat,
+      onLeave,
+      roomLabel: `${info.name} · Sala ${room.code}`,
+      connection,
+      notice,
+      resultFooter:
+        isGameFinished(state) && seat === 0 ? (
+          <button
+            type="button"
+            onClick={startGame}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white active:scale-95"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Jugar otra partida
+          </button>
+        ) : undefined,
+    };
     return (
       <div className={`transition ${saving ? 'pointer-events-none opacity-80' : ''}`}>
-        <CasinoTable
-          state={state}
-          seat={seat}
-          onMove={(move: CasinoMove) => void run(() => sendMove(room.id, move))}
-          onLeave={onLeave}
-          roomLabel={`${info.name} · Sala ${room.code}`}
-          connection={connection}
-          notice={notice}
-          resultFooter={
-            isGameFinished(state) && seat === 0 ? (
-              <button
-                type="button"
-                onClick={startGame}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white active:scale-95"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Jugar otra partida
-              </button>
-            ) : undefined
-          }
-        />
+        {state.game === 'casino' ? (
+          <CasinoTable
+            state={state}
+            {...tableProps}
+            onMove={(move: CasinoMove) => void run(() => sendMove(room.id, move))}
+          />
+        ) : (
+          <TresYDosTable
+            state={state}
+            {...tableProps}
+            onMove={(move: TresYDosMove) => void run(() => sendMove(room.id, move))}
+          />
+        )}
       </div>
     );
   }
@@ -234,9 +244,6 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         <WaitingRoom room={room} myId={playerId} busy={saving} onStart={startGame} />
       ) : (
         <div className={`transition ${saving ? 'pointer-events-none opacity-80' : ''}`}>
-          {state.game === 'cinquillo' && (
-            <CinquilloTable state={state} seat={seat} onMove={(move: CinquilloMove) => void run(() => sendMove(room.id, move))} />
-          )}
           {state.game === 'burako' && (
             <BurakoTable state={state} seat={seat} onMove={(move: BurakoMove) => void run(() => sendMove(room.id, move))} />
           )}
