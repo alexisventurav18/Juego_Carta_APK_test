@@ -159,6 +159,35 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const state = room.state;
   const info = GAMES[room.game];
 
+  // El Casino ocupa toda la pantalla: sale, estado de conexión y avisos van dentro de su barra superior.
+  if (state !== null && state.game === 'casino' && room.status !== 'waiting') {
+    return (
+      <div className={`transition ${saving ? 'pointer-events-none opacity-80' : ''}`}>
+        <CasinoTable
+          state={state}
+          seat={seat}
+          onMove={(move: CasinoMove) => void run(() => sendMove(room.id, move))}
+          onLeave={onLeave}
+          roomLabel={`${info.name} · Sala ${room.code}`}
+          connection={connection}
+          notice={notice}
+          resultFooter={
+            isGameFinished(state) && seat === 0 ? (
+              <button
+                type="button"
+                onClick={startGame}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white active:scale-95"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Jugar otra partida
+              </button>
+            ) : undefined
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl px-3 py-3 sm:px-6 sm:py-8">
       <header className="mb-3 flex items-center justify-between gap-3 sm:mb-6 sm:gap-4">
@@ -205,9 +234,6 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         <WaitingRoom room={room} myId={playerId} busy={saving} onStart={startGame} />
       ) : (
         <div className={`transition ${saving ? 'pointer-events-none opacity-80' : ''}`}>
-          {state.game === 'casino' && (
-            <CasinoTable state={state} seat={seat} onMove={(move: CasinoMove) => void run(() => sendMove(room.id, move))} />
-          )}
           {state.game === 'cinquillo' && (
             <CinquilloTable state={state} seat={seat} onMove={(move: CinquilloMove) => void run(() => sendMove(room.id, move))} />
           )}
