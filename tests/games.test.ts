@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { botStep, burakoBotMove, cinquilloBotMove } from '../src/games/bots';
+import { botStep, burakoBotMove, tresYDosBotMove } from '../src/games/bots';
 import { americanDeck, americanDoubleDeck, shuffle } from '../src/games/cards';
 import { applyBurakoMove, type BurakoState, createBurakoGame, isValidMeld } from '../src/games/burako';
-import { applyCinquilloMove, type CinquilloState, createCinquilloGame, isPlayable } from '../src/games/cinquillo';
+import { applyTresYDosMove, createTresYDosGame, type TresYDosState } from '../src/games/tresYDos';
 import type { Player } from '../src/games/shared';
 
 const players = (n: number): Player[] => Array.from({ length: n }, (_, i) => ({ id: `bot-${i}`, name: `B${i}` }));
@@ -19,27 +19,32 @@ describe('cartas', () => {
   });
 });
 
-describe('Cinquillo', () => {
-  for (const n of [3, 4, 5, 6]) {
+describe('Tres y Dos', () => {
+  for (const n of [2, 3, 4]) {
     it(`${n} jugadores: el bot termina la partida con jugadas válidas`, () => {
-      for (let g = 0; g < 30; g++) {
-        let state: CinquilloState = createCinquilloGame(players(n));
+      for (let g = 0; g < 8; g++) {
+        let state: TresYDosState = createTresYDosGame(players(n));
         let guard = 0;
-        while (state.phase !== 'finished') {
-          assert.ok(++guard < 2000, 'partida sin fin');
-          const res = cinquilloBotMove(state);
+        while (state.phase !== 'gameOver') {
+          assert.ok(++guard < 6000, 'partida sin fin');
+          if (state.phase === 'roundEnd') {
+            const res = applyTresYDosMove(state, (state.dealer + 1) % n, { type: 'nextRound' });
+            assert.ok('state' in res, 'error' in res ? res.error : '');
+            state = res.state;
+            continue;
+          }
+          const res = tresYDosBotMove(state);
           assert.ok('state' in res, 'error' in res ? res.error : '');
           state = res.state;
         }
-        assert.ok(state.winners.length > 0);
+        assert.ok(state.winnerSeat !== null);
       }
     });
   }
-  it('no deja pasar si hay carta jugable', () => {
-    const state = createCinquilloGame(players(3));
+  it('no deja botar antes de robar', () => {
+    const state = createTresYDosGame(players(3));
     const seat = state.turn;
-    assert.ok(state.hands[seat].some((c) => isPlayable(c, state.board)));
-    assert.ok('error' in applyCinquilloMove(state, seat, { type: 'pass' }));
+    assert.ok('error' in applyTresYDosMove(state, seat, { type: 'discard', cardId: state.hands[seat][0].id }));
   });
 });
 
@@ -74,7 +79,7 @@ describe('Burako', () => {
 
 describe('botStep', () => {
   it('no actúa si le toca a un humano', () => {
-    const state = createCinquilloGame([{ id: 'humano', name: 'Yo' }, ...players(2)]);
+    const state = createTresYDosGame([{ id: 'humano', name: 'Yo' }, ...players(2)], 2);
     state.turn = 0;
     assert.equal(botStep(state), null);
   });
