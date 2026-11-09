@@ -1,6 +1,6 @@
 # Juego de Cartas Dominicanos
 
-React + TypeScript + Vite + Tailwind, con Supabase para salas y multijugador. Juegos: Casino, Cinquillo y Burako.
+React + TypeScript + Vite + Tailwind, con Supabase para salas y multijugador. Juegos: Casino, Tres y Dos y Burako.
 
 ## Comandos
 
@@ -9,7 +9,7 @@ npm install
 npm run dev        # desarrollo
 npm run typecheck  # tipos
 npm test           # pruebas de reglas y bots (tsx + node:test)
-npm run simulate -- casino 600   # bot nuevo vs bot original (casino | cinquillo | burako)
+npm run simulate -- casino 600   # bot nuevo vs bot original (casino | tresydos | burako)
 ```
 
 ## Casino: regla de cierre obligatorio (17 puntos)
@@ -36,7 +36,7 @@ Decisiones donde el reglamento no decía nada:
 ## Bots
 
 - **Casino** (`src/games/casinoBot.ts`): evalúa cada jugada legal por ganancia inmediata, potencial de combinaciones propias y pérdida esperada por lo que el rival podría llevarse (probabilidades con las cartas no vistas). Conoce la regla de cierre. Solo usa información pública: nunca mira la mano de los demás.
-- **Cinquillo y Burako** (`src/games/bots.ts`): heurísticas más simples.
+- **Tres y Dos** (`src/games/tresYDos.ts`): el bot calcula qué cartas desconocidas completarían su 3 y 2 y roba y bota para maximizarlas. **Burako** (`src/games/bots.ts`): heurísticas más simples.
 
 ## Arquitectura de las partidas (servidor autoritativo)
 
