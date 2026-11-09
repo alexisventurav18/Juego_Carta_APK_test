@@ -1,7 +1,7 @@
-import { AMERICAN_RANKS, type Card } from './cards';
+import type { Card } from './cards';
 import { applyCasinoMove, nextDealerSeat } from './casino';
 import { casinoBotMove } from './casinoBot';
-import { applyCinquilloMove, type CinquilloState, isPlayable } from './cinquillo';
+import { applyTresYDosMove, chooseTresYDosMove, nextDealerSeat as nextTresYDosDealer, type TresYDosState } from './tresYDos';
 import { applyBurakoMove, type BurakoState, cardPoints, isValidMeld, isWild, type Meld } from './burako';
 import type { GameState } from './index';
 import { isBotPlayer, type MoveResult, teamOf } from './shared';
@@ -23,8 +23,10 @@ function isBotTurn(state: GameState): boolean {
  * Solo usa datos públicos, así que funciona con la vista de cualquier jugador.
  */
 export function botTickDelay(state: GameState): number | null {
-  if (state.game === 'cinquillo') return isBotTurn(state) ? BOT_MOVE_MS : null;
   if (state.phase === 'roundEnd') {
+    if (state.game === 'tresydos') {
+      return isBotPlayer(state.players[nextTresYDosDealer(state)]) ? ROUND_PAUSE_MS : null;
+    }
     if (state.game === 'casino') {
       return isBotPlayer(state.players[nextDealerSeat(state)]) ? ROUND_PAUSE_MS : null;
     }
@@ -34,11 +36,12 @@ export function botTickDelay(state: GameState): number | null {
 }
 
 export function botStep(state: GameState): BotStep | null {
-  if (state.game === 'cinquillo') {
-    if (!isBotTurn(state)) return null;
-    return { result: cinquilloBotMove(state), delayMs: BOT_MOVE_MS };
-  }
   if (state.phase === 'roundEnd') {
+    if (state.game === 'tresydos') {
+      const dealerSeat = nextTresYDosDealer(state);
+      if (!isBotPlayer(state.players[dealerSeat])) return null;
+      return { result: applyTresYDosMove(state, dealerSeat, { type: 'nextRound' }), delayMs: ROUND_PAUSE_MS };
+    }
     if (state.game === 'casino') {
       const dealerSeat = nextDealerSeat(state);
       if (!isBotPlayer(state.players[dealerSeat])) return null;
@@ -48,58 +51,17 @@ export function botStep(state: GameState): BotStep | null {
     return { result, delayMs: state.summary ? ROUND_PAUSE_MS : BOT_MOVE_MS };
   }
   if (!isBotTurn(state)) return null;
-  const result = state.game === 'casino' ? casinoBotMove(state) : burakoBotMove(state);
+  const result =
+    state.game === 'casino'
+      ? casinoBotMove(state)
+      : state.game === 'tresydos'
+        ? tresYDosBotMove(state)
+        : burakoBotMove(state);
   return { result, delayMs: BOT_MOVE_MS };
 }
 
-function rankIndex(card: Card): number {
-  return AMERICAN_RANKS.indexOf(card.rank);
-}
-
-/** Cuántas cartas de mi mano encadenan seguidas desde `start` en la dirección `step`. */
-function chainLength(hand: Card[], suit: Card['suit'], start: number, step: 1 | -1): number {
-  let length = 0;
-  for (let i = start; i >= 0 && i < AMERICAN_RANKS.length; i += step) {
-    if (!hand.some((c) => c.suit === suit && rankIndex(c) === i)) break;
-    length += 1;
-  }
-  return length;
-}
-
-/**
- * Puntúa una carta jugable en Cinquillo:
- *  - prefiere las que dejan jugables otras cartas mías de la misma escalera (cadena propia),
- *  - evita abrirle la siguiente carta a los rivales si yo no la tengo,
- *  - los 5 abren una fila nueva: casi siempre conviene, sobre todo si tengo vecinas.
- * Ajustado con scripts/simulate.ts; en Cinquillo pesa mucho la suerte del reparto,
- * así que la ventaja realista es de pocos puntos porcentuales.
- */
-function cinquilloScore(card: Card, hand: Card[], board: Card[]): number {
-  const idx = rankIndex(card);
-  if (card.rank === 5) {
-    const up = chainLength(hand, card.suit, idx + 1, 1);
-    const down = chainLength(hand, card.suit, idx - 1, -1);
-    return 4 + (up + down) * 1.5;
-  }
-  const row = board.filter((c) => c.suit === card.suit).map(rankIndex);
-  const goingDown = idx === Math.min(...row) - 1;
-  const step: 1 | -1 = goingDown ? -1 : 1;
-  const nextIdx = idx + step;
-  const atEnd = nextIdx < 0 || nextIdx >= AMERICAN_RANKS.length;
-  const chain = atEnd ? 0 : chainLength(hand, card.suit, nextIdx, step);
-  const opensForRivals = !atEnd && chain === 0 ? 1 : 0;
-  return chain * 2.5 - opensForRivals * 1.0;
-}
-
-export function cinquilloBotMove(state: CinquilloState): MoveResult<CinquilloState> {
-  const seat = state.turn;
-  const hand = state.hands[seat];
-  const playable = hand.filter((c) => isPlayable(c, state.board));
-  if (playable.length === 0) return applyCinquilloMove(state, seat, { type: 'pass' });
-  const card = playable.reduce((a, b) =>
-    cinquilloScore(b, hand, state.board) > cinquilloScore(a, hand, state.board) ? b : a,
-  );
-  return applyCinquilloMove(state, seat, { type: 'play', cardId: card.id });
+export function tresYDosBotMove(state: TresYDosState): MoveResult<TresYDosState> {
+  return applyTresYDosMove(state, state.turn, chooseTresYDosMove(state));
 }
 
 function subsetsUpTo<T>(items: T[], maxSize: number): T[][] {

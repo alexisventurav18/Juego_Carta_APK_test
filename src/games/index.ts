@@ -1,10 +1,10 @@
 import { type CasinoState, createCasinoGame } from './casino';
-import { type CinquilloState, createCinquilloGame } from './cinquillo';
+import { createTresYDosGame, TARGET_WINS, type TresYDosState } from './tresYDos';
 import { type BurakoState, createBurakoGame } from './burako';
 import { randomInt } from './cards';
 import type { GameId, Player } from './shared';
 
-export type GameState = CasinoState | CinquilloState | BurakoState;
+export type GameState = CasinoState | TresYDosState | BurakoState;
 
 export interface GameInfo {
   id: GameId;
@@ -50,20 +50,28 @@ export const GAMES: Record<GameId, GameInfo> = {
       'Si los dos equipos completan sus 21 en la misma ronda, gana el que tenga más puntos y, de empatar, el que más puntos hizo en esa ronda.',
     ],
   },
-  cinquillo: {
-    id: 'cinquillo',
-    name: 'Cinquillo',
-    tagline: 'Monta escaleras desde el 5 y sé el primero en quedarte sin cartas.',
-    playerCounts: [3, 4, 5, 6],
-    playerCountLabel: 'De 3 a 6 jugadores',
-    maxPlayers: 6,
+  tresydos: {
+    id: 'tresydos',
+    name: 'Tres y Dos',
+    tagline: 'Roba, bota y canta el 3 y 2: una tercia y un par en tu mano.',
+    playerCounts: [2, 3, 4],
+    playerCountLabel: 'De 2 a 4 jugadores',
+    maxPlayers: 4,
     soloPlayerCount: 3,
+    quickRules: [
+      'Cada turno robas una carta (del Monte o del Pozo) y botas otra al Pozo: siempre te quedas con 5.',
+      'Cantas 3 y 2 cuando tu mano es una tercia y un par, como K-K-K-8-8.',
+      'Si robas del Pozo, no puedes botar esa misma carta en ese turno.',
+      `Gana la partida quien primero cante ${TARGET_WINS} rondas.`,
+    ],
     rules: [
-      'Se reparte toda la baraja americana de 52 cartas entre los jugadores.',
-      'Empieza quien tiene el 5 de diamantes.',
-      'Coloca cartas en escalera subiendo o bajando desde el 5 del mismo palo. El As va antes del 2 y el Rey después de la Dama. Los demás 5 abren su propia fila cuando sale el de diamantes.',
-      'Si no tienes una carta que encaje, pasas el turno.',
-      'Gana quien se quede primero sin cartas. Si todos pasan seguidos, gana quien tenga menos cartas en la mano.',
+      'Se usa la baraja americana de 52 cartas. Pueden jugar de 2 a 4 personas, cada una por su cuenta.',
+      'Cada ronda reparte 5 cartas a cada jugador y pone una boca arriba para empezar el Pozo. El resto forma el Monte, boca abajo. Empieza el jugador que está después del que reparte, y el reparto rota en cada ronda.',
+      'En tu turno primero robas: la carta de arriba del Monte o la de arriba del Pozo. Con 6 cartas en la mano, botas una al Pozo. Mientras no hayas robado no puedes botar.',
+      'Si tomaste la carta del Pozo, no puedes botar esa misma carta en ese turno. Si la robaste del Monte, puedes botar cualquiera de tus 6.',
+      'Ganas la ronda cuando, al botar, te quedan 5 cartas que forman una tercia y un par (tres iguales y dos iguales): eso es cantar el 3 y 2. Cuatro iguales más una distinta no cuenta.',
+      'Si el Monte se acaba, las cartas del Pozo (menos la de arriba) se barajan y forman un Monte nuevo.',
+      `Cada 3 y 2 vale una ronda ganada. Gana la partida el primero que llegue a ${TARGET_WINS} rondas. Entre rondas, solo el que reparte la siguiente puede iniciarla; si es un bot, la inicia sola tras una pausa.`,
     ],
   },
   burako: {
@@ -87,7 +95,7 @@ export const GAMES: Record<GameId, GameInfo> = {
 
 export function createGameState(game: GameId, players: Player[], dealer?: number): GameState {
   if (game === 'casino') return createCasinoGame(players, dealer);
-  if (game === 'cinquillo') return createCinquilloGame(players);
+  if (game === 'tresydos') return createTresYDosGame(players, dealer);
   return createBurakoGame(players);
 }
 
@@ -116,6 +124,5 @@ export function canStartGame(game: GameId, playerCount: number): boolean {
 }
 
 export function isGameFinished(state: GameState): boolean {
-  if (state.game === 'cinquillo') return state.phase === 'finished';
   return state.phase === 'gameOver';
 }
