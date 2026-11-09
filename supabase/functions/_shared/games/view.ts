@@ -13,7 +13,17 @@ function faceDown(tag: string, count: number): Card[] {
  */
 export function projectState(state: GameState, seat: number): GameState {
   const hands = state.hands.map((hand, s) => (s === seat ? hand : faceDown(`hand${s}`, hand.length)));
-  if (state.game === 'cinquillo') return { ...state, hands };
+  if (state.game === 'tresydos') {
+    // Al terminar la ronda todos muestran sus 5 cartas. Mientras se juega, solo se ve la propia mano.
+    const revealed = state.phase !== 'playing';
+    return {
+      ...state,
+      hands: revealed ? state.hands : hands,
+      deck: faceDown('deck', state.deck.length),
+      // La carta robada del Monte es secreta para los demás; la del Pozo ya la vio toda la mesa.
+      drawnCardId: state.drawnFrom === 'deck' && seat !== state.turn ? null : state.drawnCardId,
+    };
+  }
   if (state.game === 'casino') return { ...state, hands, deck: faceDown('deck', state.deck.length) };
   return {
     ...state,

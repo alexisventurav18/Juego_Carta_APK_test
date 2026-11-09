@@ -1,6 +1,6 @@
 import { applyBurakoMove, type BurakoMove } from './burako.ts';
 import { applyCasinoMove, type CasinoMove } from './casino.ts';
-import { applyCinquilloMove, type CinquilloMove } from './cinquillo.ts';
+import { applyTresYDosMove, type TresYDosMove } from './tresYDos.ts';
 import type { GameState } from './index.ts';
 import type { MoveResult } from './shared.ts';
 
@@ -11,7 +11,7 @@ export function applyGameMove(state: GameState, seat: number, move: unknown): Mo
   }
   try {
     if (state.game === 'casino') return applyCasinoMove(state, seat, move as CasinoMove);
-    if (state.game === 'cinquillo') return applyCinquilloMove(state, seat, move as CinquilloMove);
+    if (state.game === 'tresydos') return applyTresYDosMove(state, seat, move as TresYDosMove);
     return applyBurakoMove(state, seat, move as BurakoMove);
   } catch {
     return { error: 'Jugada no válida.' };

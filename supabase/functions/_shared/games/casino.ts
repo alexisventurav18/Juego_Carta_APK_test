@@ -10,8 +10,8 @@ import {
   formationValue,
   isValidCapture,
   MAX_CAPTURE_VALUE,
+  handCanCapture,
   MAX_TABLE_SUM,
-  mixesRivalBuild,
   pairsRankOf,
   raiseValue,
   tableItems,
@@ -359,9 +359,6 @@ function playCard(
   if (!isValidCapture(card, selected)) {
     return { error: 'Esas cartas no coinciden ni suman el valor de tu carta.' };
   }
-  if (mixesRivalBuild(selected, seat)) {
-    return { error: 'No puedes llevarte una combinación del rival junto con cartas sueltas.' };
-  }
   const table = state.table.filter((c) => !captureIds.includes(c.id));
   const builds = state.builds.filter((build) => !captureIds.includes(build.id));
   const taken = selected.flatMap((item) => item.cards);
@@ -549,6 +546,29 @@ export function isCaptureForced(state: CasinoState, seat: number): boolean {
   return takesOthers || formationMoves(state, seat).length === 0;
 }
 
+/**
+ * Compromiso: si tienes en la mesa una combinación tuya y en la mano la carta que la cierra, no
+ * puedes quedarte sin esa carta al tirar o al armar otra cosa. Llevarte cartas, o reforzar la propia
+ * combinación (subir, convertir, ampliar), sí está permitido. Solo bloquea cuando la jugada te
+ * QUITARÍA la última carta de cierre; si ya no la tenías, no te deja sin jugadas.
+ */
+function commitmentError(state: CasinoState, seat: number, card: Card, move: CasinoMove): string | null {
+  if (move.type === 'nextRound' || (move.type === 'play' && move.captureIds.length > 0)) return null;
+  const reinforced = move.type === 'raise' || move.type === 'convert' || move.type === 'expand' ? move.buildId : null;
+  const handBefore = state.hands[seat];
+  const handAfter = handBefore.filter((c) => c.id !== card.id);
+  const stranded = state.builds.find(
+    (build) =>
+      build.owner === seat &&
+      build.id !== reinforced &&
+      handCanCapture(handBefore, build.value) &&
+      !handCanCapture(handAfter, build.value),
+  );
+  if (!stranded) return null;
+  const what = stranded.kind === 'pairs' ? 'par' : 'sumatoria';
+  return `Tu ${what} de ${stranded.value} sigue en la mesa y esta es tu última carta para cerrarla: llévatela o refuérzala antes de usarla.`;
+}
+
 export function applyCasinoMove(
   state: CasinoState,
   seat: number,
@@ -567,6 +587,9 @@ export function applyCasinoMove(
   if (!card) return { error: 'Esa carta no está en tu mano.' };
 
   const forced = isCaptureForced(state, seat);
+  const isDrop = move.type === 'play' && move.captureIds.length === 0;
+  const commitment = commitmentError(state, seat, card, move);
+  if (commitment && !(isDrop && forced)) return { error: commitment };
   const hands = state.hands.map((hand, i) => (i === seat ? hand.filter((c) => c.id !== card.id) : hand));
   const next: CasinoState = { ...state, hands, lastCapture: null };
 

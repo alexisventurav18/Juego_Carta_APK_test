@@ -1,4 +1,4 @@
-export type GameId = 'casino' | 'cinquillo' | 'burako';
+export type GameId = 'casino' | 'tresydos' | 'burako';
 
 export interface Player {
   id: string;
