@@ -218,7 +218,7 @@ button,
   }
   45% {
     opacity: 1;
-    transform: translateY(-2px) scale(1.08);
+    transform: translateY(-2px) scale(1.03);
   }
   100% {
     opacity: 1;
@@ -254,4 +254,25 @@ button,
 
 .animate-deck-count {
   animation: deck-count-pulse 220ms ease-out;
+}
+
+/*
+ * Abanico de cartas solapadas en una sola fila (la mano de El Cagao). Cada carta se corre lo justo
+ * para que todas quepan en el ancho de la pantalla, sin pasar de un solape mínimo legible (12px) ni
+ * separarse más de 6px cuando sobra espacio. Variables: --fan-h (alto de carta), --fan-n (cantidad).
+ */
+.fan {
+  --h: var(--fan-h);
+}
+
+@media (min-width: 640px) {
+  .fan {
+    --h: var(--fan-h-sm, var(--fan-h));
+  }
+}
+
+.fan > * + * {
+  margin-left: calc(
+    var(--h) * -0.714 + clamp(12px, (100vw - 16px - var(--h) * 0.714) / (var(--fan-n) - 1), var(--h) * 0.714 + 6px)
+  );
 }
