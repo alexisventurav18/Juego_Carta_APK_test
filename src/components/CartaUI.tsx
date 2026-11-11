@@ -16,7 +16,8 @@ interface CartaUIProps {
 
 /** Alturas relativas al viewport (sin tamaños fijos en px) y proporción de carta de póker. */
 export const CARTA_ALTURA: Record<CartaUISize, string> = {
-  mano: 'h-[15dvh] sm:h-[18dvh] max-h-40',
+  // --mano-h / --mano-h-sm los baja la mano cuando hay muchas cartas (El Cagao).
+  mano: 'h-[var(--mano-h,15dvh)] sm:h-[var(--mano-h-sm,18dvh)] max-h-40',
   // --mesa-h / --mesa-h-sm los baja la mesa cuando hay muchos grupos para que todo siga visible.
   mesa: 'h-[var(--mesa-h,12dvh)] sm:h-[var(--mesa-h-sm,15dvh)] max-h-36',
 };

@@ -3,7 +3,7 @@ import { ArrowLeft, LoaderCircle, RotateCcw, Wifi, WifiOff } from 'lucide-react'
 import { canStartGame, GAMES, isGameFinished } from '@/games';
 import type { CasinoMove } from '@/games/casino';
 import type { TresYDosMove } from '@/games/tresYDos';
-import type { BurakoMove } from '@/games/burako';
+import type { CagaoMove } from '@/games/cagao';
 import { botTickDelay } from '@/games/bots';
 import { isBotPlayer } from '@/games/shared';
 import { getPlayerId } from '@/lib/identity';
@@ -11,7 +11,7 @@ import { botTick, fetchRoom, requestStart, type RoomConnectionStatus, type RoomR
 import WaitingRoom from './WaitingRoom';
 import CasinoTable from './CasinoTable';
 import TresYDosTable from './TresYDosTable';
-import BurakoTable from './BurakoTable';
+import CagaoTable from './CagaoTable';
 import CoinToss from './CoinToss';
 
 interface RoomViewProps {
@@ -159,8 +159,8 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const state = room.state;
   const info = GAMES[room.game];
 
-  // El Casino y el Tres y Dos ocupan toda la pantalla: sale, estado de conexión y avisos van dentro de su barra superior.
-  if (state !== null && (state.game === 'casino' || state.game === 'tresydos') && room.status !== 'waiting') {
+  // Los tres juegos ocupan toda la pantalla: sale, estado de conexión y avisos van dentro de su barra superior.
+  if (state !== null && room.status !== 'waiting') {
     const tableProps = {
       seat,
       onLeave,
@@ -187,11 +187,17 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
             {...tableProps}
             onMove={(move: CasinoMove) => void run(() => sendMove(room.id, move))}
           />
-        ) : (
+        ) : state.game === 'tresydos' ? (
           <TresYDosTable
             state={state}
             {...tableProps}
             onMove={(move: TresYDosMove) => void run(() => sendMove(room.id, move))}
+          />
+        ) : (
+          <CagaoTable
+            state={state}
+            {...tableProps}
+            onMove={(move: CagaoMove) => void run(() => sendMove(room.id, move))}
           />
         )}
       </div>
@@ -240,27 +246,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
 
       {coinOpen && <CoinToss onDone={startSoloGame} />}
 
-      {state === null || room.status === 'waiting' ? (
-        <WaitingRoom room={room} myId={playerId} busy={saving} onStart={startGame} />
-      ) : (
-        <div className={`transition ${saving ? 'pointer-events-none opacity-80' : ''}`}>
-          {state.game === 'burako' && (
-            <BurakoTable state={state} seat={seat} onMove={(move: BurakoMove) => void run(() => sendMove(room.id, move))} />
-          )}
-          {isGameFinished(state) && seat === 0 && (
-            <div className="mt-8 flex justify-center">
-              <button
-                type="button"
-                onClick={startGame}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 font-medium text-white shadow-sm transition hover:bg-emerald-800"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Jugar otra partida
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      <WaitingRoom room={room} myId={playerId} busy={saving} onStart={startGame} />
     </div>
   );
 }

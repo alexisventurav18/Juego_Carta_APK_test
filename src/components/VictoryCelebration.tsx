@@ -2,6 +2,10 @@ import { useState } from 'react';
 
 interface VictoryCelebrationProps {
   onContinue: () => void;
+  /** Textos opcionales: por defecto son los del Casino (partida por equipos a 21). */
+  title?: string;
+  message?: string;
+  continueLabel?: string;
 }
 
 const COLORS = ['bg-amber-400', 'bg-emerald-400', 'bg-sky-400', 'bg-rose-400', 'bg-orange-300'];
@@ -18,7 +22,12 @@ function makePieces() {
   }));
 }
 
-export default function VictoryCelebration({ onContinue }: VictoryCelebrationProps) {
+export default function VictoryCelebration({
+  onContinue,
+  title = '¡GANASTE!',
+  message = 'Tu equipo se llevó la partida. Revisa el desglose de puntos.',
+  continueLabel = 'Ver el desglose',
+}: VictoryCelebrationProps) {
   const [pieces] = useState(makePieces);
 
   return (
@@ -38,18 +47,18 @@ export default function VictoryCelebration({ onContinue }: VictoryCelebrationPro
       ))}
       <div className="relative w-full max-w-md space-y-8 text-center">
         <h2
-          className="text-6xl font-black tracking-tight text-amber-300 drop-shadow-[0_4px_24px_rgba(252,211,77,0.6)] sm:text-7xl"
+          className="text-[clamp(2.25rem,13vw,4.5rem)] font-black tracking-tight text-amber-300 drop-shadow-[0_4px_24px_rgba(252,211,77,0.6)] "
           style={{ animation: 'victory-pop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both' }}
         >
-          ¡GANASTE!
+          {title}
         </h2>
-        <p className="text-base text-stone-100">Tu equipo se llevó la partida. Revisa el desglose de puntos.</p>
+        <p className="text-base text-stone-100">{message}</p>
         <button
           type="button"
           onClick={onContinue}
           className="rounded-xl bg-amber-400 px-6 py-3 text-sm font-semibold text-stone-900 shadow-lg transition hover:bg-amber-300"
         >
-          Ver el desglose
+          {continueLabel}
         </button>
       </div>
     </div>

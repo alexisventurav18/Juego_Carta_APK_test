@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Trophy } from 'lucide-react';
-import { HAND_SIZE, nextDealerSeat, type TresYDosMove, type TresYDosState, winningDiscardIds } from '@/games/tresYDos';
+import { HAND_SIZE, nextDealerSeat, TARGET_WINS, type TresYDosMove, type TresYDosState, winningDiscardIds } from '@/games/tresYDos';
 import { isBotPlayer } from '@/games/shared';
 import CartaUI, { CARTA_ALTURA, DorsoUI } from './CartaUI';
 import DealerReveal from './DealerReveal';
@@ -136,9 +136,18 @@ export default function TresYDosTable({
       )}
       {showEndNotice &&
         (iWon ? (
-          <VictoryCelebration onContinue={() => setEndNoticeDismissedRound(state.roundNo)} />
+          <VictoryCelebration
+            title="¡CANTASTE!"
+            message={`Llegaste a ${TARGET_WINS} rondas ganadas y te llevaste la partida.`}
+            continueLabel="Continuar"
+            onContinue={() => setEndNoticeDismissedRound(state.roundNo)}
+          />
         ) : (
-          <DefeatNotice onContinue={() => setEndNoticeDismissedRound(state.roundNo)} />
+          <DefeatNotice
+            message={`${winnerName} llegó primero a ${TARGET_WINS} rondas ganadas.`}
+            continueLabel="Continuar"
+            onContinue={() => setEndNoticeDismissedRound(state.roundNo)}
+          />
         ))}
 
       {/* 1. HUD: ronda, turno y manos de los rivales */}
