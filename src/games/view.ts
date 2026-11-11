@@ -24,14 +24,20 @@ export function projectState(state: GameState, seat: number): GameState {
       drawnCardId: state.drawnFrom === 'deck' && seat !== state.turn ? null : state.drawnCardId,
     };
   }
-  if (state.game === 'casino') return { ...state, hands, deck: faceDown('deck', state.deck.length) };
-  return {
-    ...state,
-    hands,
-    deck: faceDown('deck', state.deck.length),
-    muertos: [
-      state.muertos[0] ? faceDown('muerto0', state.muertos[0].length) : null,
-      state.muertos[1] ? faceDown('muerto1', state.muertos[1].length) : null,
-    ],
-  };
+  if (state.game === 'cagao') {
+    // Mientras se juega solo ves tu mano. Al terminar se muestra quién se quedó con El Cagao.
+    const event = state.lastEvent;
+    return {
+      ...state,
+      hands: state.phase === 'gameOver' ? state.hands : hands,
+      lastEvent: event
+        ? {
+            ...event,
+            // La carta robada es secreta, salvo que sea El Cagao o haya formado un par (ambos son públicos).
+            drawnCardId: event.cagao || seat === event.by ? event.drawnCardId : null,
+          }
+        : null,
+    };
+  }
+  return { ...state, hands, deck: faceDown('deck', state.deck.length) };
 }
