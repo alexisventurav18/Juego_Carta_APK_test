@@ -1,4 +1,4 @@
-import { applyBurakoMove, type BurakoMove } from './burako.ts';
+import { applyCagaoMove, type CagaoMove } from './cagao.ts';
 import { applyCasinoMove, type CasinoMove } from './casino.ts';
 import { applyTresYDosMove, type TresYDosMove } from './tresYDos.ts';
 import type { GameState } from './index.ts';
@@ -12,7 +12,7 @@ export function applyGameMove(state: GameState, seat: number, move: unknown): Mo
   try {
     if (state.game === 'casino') return applyCasinoMove(state, seat, move as CasinoMove);
     if (state.game === 'tresydos') return applyTresYDosMove(state, seat, move as TresYDosMove);
-    return applyBurakoMove(state, seat, move as BurakoMove);
+    return applyCagaoMove(state, seat, move as CagaoMove);
   } catch {
     return { error: 'Jugada no válida.' };
   }

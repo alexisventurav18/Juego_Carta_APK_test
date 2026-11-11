@@ -1,10 +1,10 @@
 import { type CasinoState, createCasinoGame } from './casino.ts';
 import { createTresYDosGame, TARGET_WINS, type TresYDosState } from './tresYDos.ts';
-import { type BurakoState, createBurakoGame } from './burako.ts';
+import { type CagaoState, createCagaoGame } from './cagao.ts';
 import { randomInt } from './cards.ts';
 import type { GameId, Player } from './shared.ts';
 
-export type GameState = CasinoState | TresYDosState | BurakoState;
+export type GameState = CasinoState | TresYDosState | CagaoState;
 
 export interface GameInfo {
   id: GameId;
@@ -74,21 +74,28 @@ export const GAMES: Record<GameId, GameInfo> = {
       `Cada 3 y 2 vale una ronda ganada. Gana la partida el primero que llegue a ${TARGET_WINS} rondas. Entre rondas, solo el que reparte la siguiente puede iniciarla; si es un bot, la inicia sola tras una pausa.`,
     ],
   },
-  burako: {
-    id: 'burako',
-    name: 'Burako',
-    tagline: 'Forma juegos y canastas en parejas y llega primero a 3.000 puntos.',
-    playerCounts: [2, 4],
-    playerCountLabel: '2 o 4 jugadores (en parejas)',
-    maxPlayers: 4,
+  cagao: {
+    id: 'cagao',
+    name: 'El Cagao',
+    tagline: 'Empareja todas tus cartas y no te quedes con el A♠: ese es El Cagao.',
+    playerCounts: [2, 3, 4, 5, 6],
+    playerCountLabel: 'De 2 a 6 jugadores',
+    maxPlayers: 6,
     soloPlayerCount: 4,
+    quickRules: [
+      'Se juega con 49 cartas: la baraja sin tres de los Ases. El A♠ no tiene pareja: es El Cagao.',
+      'Al empezar, todos bajan sus pares (dos cartas del mismo número).',
+      'En tu turno le robas una carta, a ciegas, al jugador siguiente. Si hace par con una tuya, bajas las dos.',
+      'Te salvas cuando te quedas sin cartas. Pierde el último que se queda con El Cagao.',
+    ],
     rules: [
-      'Se juega con dos barajas americanas y 4 comodines. Cada jugador recibe 11 cartas y cada pareja tiene un muerto de 11 cartas.',
-      'En tu turno roba una carta o levanta el pozo usando su carta de arriba. Puedes bajar juegos y luego descartas una carta.',
-      'Juegos: tríos del mismo número o escaleras del mismo palo de 3 o más cartas. Los 2 y los comodines sirven de carta libre.',
-      'Canastas de 7 o más cartas: limpias si no tienen comodines, sucias si los tienen. Para cerrar, la pareja necesita al menos una de cada tipo.',
-      'Cuando te quedas sin cartas tomas el muerto. Si tu pareja ya cumple las canastas, cierras la ronda.',
-      'Puntos: juegos bajados, canastas (limpia 200, sucia 100), 100 por cierre, menos las cartas que quedan en mano. Gana la pareja que llegue a 3.000.',
+      'Se usa la baraja americana de 52 cartas sin los Ases de corazones, diamantes y tréboles: quedan 49 cartas. El único As que queda, el A♠, no tiene pareja y es El Cagao. Pueden jugar de 2 a 6 personas.',
+      'Se reparte todo el mazo, una carta a la vez. Algunos jugadores se quedan con una carta más, y eso es normal.',
+      'Antes de empezar, todos bajan los pares que tengan: dos cartas del mismo número, sin importar el palo. Si tienes tres iguales, bajas dos y te quedas con la otra.',
+      'Empieza el jugador que está después del que reparte. En tu turno miras las cartas boca abajo del jugador siguiente (el próximo que todavía tenga cartas) y jalas una sin saber cuál es.',
+      'Si la carta que robaste hace par con una de tu mano, bajas las dos al momento. Si no, se queda en tu mano. Cuando te roban a ti, tu mano se baraja sola para que nadie sepa dónde quedó cada carta.',
+      'Quien se queda sin cartas se salva y sale del juego: ya no roba ni le roban.',
+      'La partida termina cuando solo queda un jugador con cartas. Esa persona tiene El Cagao (el A♠) y pierde.',
     ],
   },
 };
@@ -96,7 +103,7 @@ export const GAMES: Record<GameId, GameInfo> = {
 export function createGameState(game: GameId, players: Player[], dealer?: number): GameState {
   if (game === 'casino') return createCasinoGame(players, dealer);
   if (game === 'tresydos') return createTresYDosGame(players, dealer);
-  return createBurakoGame(players);
+  return createCagaoGame(players, dealer);
 }
 
 export function createSoloPlayers(game: GameId, human: Player, playerCount = GAMES[game].soloPlayerCount): Player[] {
