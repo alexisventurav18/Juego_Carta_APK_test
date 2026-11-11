@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { botStep, burakoBotMove, tresYDosBotMove } from '../src/games/bots';
+import { botStep, cagaoBotMove, tresYDosBotMove } from '../src/games/bots';
 import { americanDeck, americanDoubleDeck, shuffle } from '../src/games/cards';
-import { applyBurakoMove, type BurakoState, createBurakoGame, isValidMeld } from '../src/games/burako';
+import { type CagaoState, createCagaoGame } from '../src/games/cagao';
 import { applyTresYDosMove, createTresYDosGame, type TresYDosState } from '../src/games/tresYDos';
 import type { Player } from '../src/games/shared';
 
@@ -48,33 +48,24 @@ describe('Tres y Dos', () => {
   });
 });
 
-describe('Burako', () => {
-  for (const n of [2, 4]) {
+describe('El Cagao', () => {
+  for (const n of [2, 3, 4, 6]) {
     it(`${n} jugadores: el bot termina la partida con jugadas válidas`, () => {
-      for (let g = 0; g < 6; g++) {
-        let state: BurakoState = createBurakoGame(players(n));
+      for (let g = 0; g < 8; g++) {
+        let state: CagaoState = createCagaoGame(players(n));
         let guard = 0;
         while (state.phase !== 'gameOver') {
-          assert.ok(++guard < 20000, 'partida sin fin');
-          if (state.phase === 'roundEnd') {
-            const res = applyBurakoMove(state, 0, { type: 'nextRound' });
-            assert.ok('state' in res);
-            state = res.state;
-            continue;
-          }
-          const res = burakoBotMove(state);
+          assert.ok(++guard < 1000, 'partida sin fin');
+          const res = cagaoBotMove(state);
           assert.ok('state' in res, 'error' in res ? res.error : '');
           state = res.state;
         }
+        assert.ok(state.loserSeat !== null);
+        assert.equal(state.hands[state.loserSeat!].length, 1);
+        assert.equal(state.hands[state.loserSeat!][0].id, 'picas-1');
       }
     });
   }
-  it('valida juegos: trío, escalera y comodines', () => {
-    const c = (suit: 'corazones' | 'picas', rank: number, i = 0) => ({ id: `${suit}-${rank}-${i}`, suit, rank });
-    assert.ok(isValidMeld([c('corazones', 7), c('picas', 7), c('corazones', 7, 1)]));
-    assert.ok(isValidMeld([c('corazones', 4), c('corazones', 5), c('corazones', 6)]));
-    assert.ok(!isValidMeld([c('corazones', 4), c('picas', 5), c('corazones', 6)]));
-  });
 });
 
 describe('botStep', () => {
