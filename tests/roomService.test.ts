@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { chooseCasinoMove } from '../src/games/casinoBot';
-import { chooseCagaoMove } from '../src/games/cagao';
+import { chooseCagaoMove, hasPair } from '../src/games/cagao';
 import { chooseTresYDosMove } from '../src/games/tresYDos';
 import {
   handleRequest,
@@ -292,7 +292,9 @@ describe('servidor de salas: solo contra bots', () => {
           if (real !== publicId) assert.ok(!json.includes(`"${real}"`), 'se filtró la mano de un bot');
         }
       }
-      if (full.phase === 'playing' && full.turn === 0) {
+      if (full.phase === 'pairing' && hasPair(full.hands[0])) {
+        view = await ok(store, { action: 'move', roomId: created.id, move: { type: 'pairAll' }, ...A });
+      } else if (full.phase === 'playing' && full.turn === 0) {
         view = await ok(store, { action: 'move', roomId: created.id, move: chooseCagaoMove(full), ...A });
       } else {
         view = await ok(store, { action: 'tick', roomId: created.id, expectedVersion: view.version, ...A });

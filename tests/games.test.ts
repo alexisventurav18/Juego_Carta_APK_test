@@ -56,6 +56,14 @@ describe('El Cagao', () => {
         let guard = 0;
         while (state.phase !== 'gameOver') {
           assert.ok(++guard < 1000, 'partida sin fin');
+          // Fase inicial: los bots bajan sus pares solos, uno tras otro.
+          const step = state.phase === 'pairing' ? botStep(state) : null;
+          if (state.phase === 'pairing') {
+            assert.ok(step, 'quedó la fase inicial atascada');
+            assert.ok('state' in step.result, 'error' in step.result ? step.result.error : '');
+            state = step.result.state as CagaoState;
+            continue;
+          }
           const res = cagaoBotMove(state);
           assert.ok('state' in res, 'error' in res ? res.error : '');
           state = res.state;

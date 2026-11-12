@@ -12,6 +12,8 @@ import {
   chooseCagaoMove,
   createCagaoGame,
   drawFromSeat,
+  hasPair,
+  seatsWithPairs,
   takePairs,
 } from '../src/games/cagao';
 
@@ -50,6 +52,13 @@ const rejected = (state: CagaoState, seat: number, move: CagaoMove): string => {
 };
 const ids = (cards: Card[]) => cards.map((x) => x.id).sort();
 
+/** Todos bajan sus pares con el botón "bajar todos": termina la fase inicial. */
+function settle(state: CagaoState): CagaoState {
+  let next = state;
+  for (const seat of seatsWithPairs(state)) next = play(next, seat, { type: 'pairAll' });
+  return next;
+}
+
 describe('El Cagao: baraja y reparto', () => {
   it('la baraja tiene 49 cartas y el A♠ es el único As', () => {
     const deck = cagaoDeck();
@@ -59,18 +68,23 @@ describe('El Cagao: baraja y reparto', () => {
   });
 
   for (const n of [2, 3, 4, 5, 6]) {
-    it(`${n} jugadores: se reparte todo el mazo y cada mano queda sin pares`, () => {
-      const state = createCagaoGame(players(n), 0);
+    it(`${n} jugadores: se reparte todo el mazo y, al bajar los pares, cada mano queda sin pares`, () => {
+      const dealt = createCagaoGame(players(n), 0);
+      assert.equal(dealt.hands.flat().length, 49, 'se reparten las 49 cartas');
+      assert.equal(dealt.pairs.length, 0, 'los pares se bajan después, no al repartir');
+      const sizes = dealt.hands.map((h) => h.length);
+      assert.ok(Math.max(...sizes) - Math.min(...sizes) <= 1, 'unos jugadores solo tienen una carta más');
+      assert.equal(dealt.phase, 'pairing');
+
+      const state = settle(dealt);
       const inHands = state.hands.flat();
       const inPairs = state.pairs.flatMap((p) => p.cards);
       assert.equal(inHands.length + inPairs.length, 49, 'no se pierde ninguna carta');
       assert.equal(new Set([...inHands, ...inPairs].map((x) => x.id)).size, 49);
-      for (const hand of state.hands) {
-        assert.equal(new Set(hand.map((x) => x.rank)).size, hand.length, 'quedó un par sin bajar');
-      }
+      for (const hand of state.hands) assert.ok(!hasPair(hand), 'quedó un par sin bajar');
       for (const p of state.pairs) assert.equal(p.cards[0].rank, p.cards[1].rank);
-      assert.ok(state.hands.flat().some((x) => x.id === CAGAO_CARD_ID), 'El Cagao está en alguna mano');
-      assert.equal(state.phase, 'playing');
+      assert.ok(inHands.some((x) => x.id === CAGAO_CARD_ID), 'El Cagao está en alguna mano');
+      assert.equal(state.phase === 'playing' || state.phase === 'gameOver', true);
     });
   }
 
@@ -79,9 +93,9 @@ describe('El Cagao: baraja y reparto', () => {
     assert.throws(() => createCagaoGame(players(7)));
   });
 
-  it('empieza el jugador que sigue al que reparte', () => {
-    const state = createCagaoGame(players(4), 1);
-    if (state.hands[2].length > 0) assert.equal(state.turn, 2);
+  it('empieza a robar el jugador que sigue al que reparte', () => {
+    const state = settle(createCagaoGame(players(4), 1));
+    if (state.phase === 'playing' && state.hands[2].length > 0) assert.equal(state.turn, 2);
   });
 
   it('de tres cartas iguales se baja un par y queda una; de cuatro, dos pares', () => {
@@ -92,6 +106,86 @@ describe('El Cagao: baraja y reparto', () => {
     const four = takePairs([c(7, 'corazones'), c(7, 'picas'), c(7, 'treboles'), c(7, 'diamantes'), ace]);
     assert.equal(four.pairs.length, 2);
     assert.deepEqual(four.hand.map((x) => x.id), [CAGAO_CARD_ID], 'el A♠ nunca hace par');
+  });
+});
+
+describe('El Cagao: fase inicial de pares', () => {
+  const pairing = (hands: Card[][]) => makeState({ hands, phase: 'pairing' });
+  const hands = () => [
+    [c(7, 'corazones'), c(7, 'picas'), c(9, 'treboles'), c(9, 'picas'), c(9, 'diamantes'), c(2, 'picas')],
+    [c(4, 'treboles'), c(5, 'treboles'), ace],
+    [c(11, 'picas'), c(11, 'treboles'), c(13, 'picas')],
+  ];
+
+  it('se baja un par concreto y los demás pueden seguir bajando en cualquier orden', () => {
+    const state = pairing(hands());
+    const next = play(state, 0, { type: 'pair', cardIds: ['corazones-7', 'picas-7'] });
+    assert.equal(next.phase, 'pairing', 'faltan pares por bajar (los 9 y los J)');
+    assert.deepEqual(ids(next.hands[0]), ['diamantes-9', 'picas-2', 'picas-9', 'treboles-9']);
+    assert.equal(next.pairs.length, 1);
+    assert.equal(next.pairs[0].seat, 0);
+    // Los turnos no cuentan en esta fase: el jugador 2 baja su par antes que el 0 termine.
+    const later = play(next, 2, { type: 'pair', cardIds: ['picas-11', 'treboles-11'] });
+    assert.equal(later.pairs.length, 2);
+  });
+
+  it('no deja bajar cartas que no son un par ni cartas que no son tuyas', () => {
+    const state = pairing(hands());
+    assert.match(rejected(state, 0, { type: 'pair', cardIds: ['corazones-7', 'treboles-9'] }), /mismo número/i);
+    assert.match(rejected(state, 0, { type: 'pair', cardIds: ['corazones-7', 'corazones-7'] }), /mano/i);
+    assert.match(rejected(state, 0, { type: 'pair', cardIds: ['corazones-7', 'treboles-11'] }), /mano/i);
+    assert.match(rejected(state, 1, { type: 'pairAll' }), /no tienes pares/i);
+  });
+
+  it('con tres cartas iguales solo baja un par; "bajar todos" baja cada par que haya', () => {
+    const next = play(pairing(hands()), 0, { type: 'pairAll' });
+    assert.equal(next.hands[0].length, 2);
+    assert.equal(next.hands[0].filter((x) => x.rank === 9).length, 1, 'de tres 9 queda uno');
+    assert.equal(next.pairs.length, 2);
+  });
+
+  it('cuando todos terminan de bajar pares empieza el robo por turnos', () => {
+    let state = pairing(hands());
+    state = play(state, 0, { type: 'pairAll' });
+    state = play(state, 2, { type: 'pairAll' });
+    assert.equal(state.phase, 'playing');
+    assert.equal(state.turn, 0, 'empieza el que sigue al que reparte (el asiento 2)');
+    assert.deepEqual(state.finishOrder, []);
+  });
+
+  it('no se roba hasta que todos bajen sus pares, ni se bajan pares a mano ya jugando', () => {
+    assert.match(rejected(pairing(hands()), 0, { type: 'draw', index: 0 }), /pares/i);
+    const playing = makeState({ hands: [[c(7, 'corazones')], [c(4, 'treboles'), ace]] });
+    assert.match(rejected(playing, 0, { type: 'pairAll' }), /solos/i);
+  });
+
+  it('quien se queda sin cartas al bajar sus pares sale antes de empezar', () => {
+    const state = pairing([
+      [c(7, 'corazones'), c(7, 'picas')],
+      [c(4, 'treboles'), c(9, 'picas'), ace],
+      [c(5, 'picas'), c(6, 'picas'), c(8, 'picas')],
+    ]);
+    const next = play(state, 0, { type: 'pairAll' });
+    assert.equal(next.phase, 'playing');
+    assert.deepEqual(next.finishOrder, [0]);
+    assert.notEqual(next.turn, 0);
+  });
+
+  it('si solo queda un jugador con cartas al terminar la fase, la partida acaba al instante', () => {
+    const state = pairing([
+      [c(7, 'corazones'), c(7, 'picas')],
+      [c(4, 'treboles'), c(4, 'picas'), ace],
+    ]);
+    let next = play(state, 0, { type: 'pairAll' });
+    assert.equal(next.phase, 'pairing');
+    next = play(next, 1, { type: 'pairAll' });
+    assert.equal(next.phase, 'gameOver');
+    assert.equal(next.loserSeat, 1);
+  });
+
+  it('el botón "bajar todos" de los bots resuelve la fase sin dejar pares', () => {
+    const state = settle(createCagaoGame(players(4), 3));
+    for (const hand of state.hands) assert.ok(!hasPair(hand));
   });
 });
 
@@ -270,7 +364,7 @@ describe('El Cagao: el bot', () => {
 
   it('en una partida completa conserva las 49 cartas y siempre termina con el A♠ en la última mano', () => {
     for (let g = 0; g < 10; g++) {
-      let state = createCagaoGame(players(2 + (g % 5)));
+      let state = settle(createCagaoGame(players(2 + (g % 5))));
       let guard = 0;
       while (state.phase === 'playing') {
         assert.ok(++guard < 1000);
