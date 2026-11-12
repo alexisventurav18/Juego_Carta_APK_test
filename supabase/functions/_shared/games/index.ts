@@ -91,7 +91,7 @@ export const GAMES: Record<GameId, GameInfo> = {
     rules: [
       'Se usa la baraja americana de 52 cartas sin los Ases de corazones, diamantes y tréboles: quedan 49 cartas. El único As que queda, el A♠, no tiene pareja y es El Cagao. Pueden jugar de 2 a 6 personas.',
       'Se reparte todo el mazo, una carta a la vez. Algunos jugadores se quedan con una carta más, y eso es normal.',
-      'Antes de empezar, todos bajan los pares que tengan: dos cartas del mismo número, sin importar el palo. Si tienes tres iguales, bajas dos y te quedas con la otra.',
+      'Antes de empezar, todos bajan los pares que tengan: dos cartas del mismo número, sin importar el palo. Tú los bajas tocando una carta que tenga pareja o arrastrándola al centro de la mesa (también está el botón para bajar todos de una vez); los bots lo hacen solos. Si tienes tres iguales, bajas dos y te quedas con la otra. Nadie roba hasta que todos terminen.',
       'Empieza el jugador que está después del que reparte. En tu turno miras las cartas boca abajo del jugador siguiente (el próximo que todavía tenga cartas) y jalas una sin saber cuál es.',
       'Si la carta que robaste hace par con una de tu mano, bajas las dos al momento. Si no, se queda en tu mano. Cuando te roban a ti, tu mano se baraja sola para que nadie sepa dónde quedó cada carta.',
       'Quien se queda sin cartas se salva y sale del juego: ya no roba ni le roban.',
