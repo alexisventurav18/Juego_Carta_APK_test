@@ -4,7 +4,8 @@ import type { MoveResult, Player } from './shared';
 /**
  * El Cagao (el Old Maid dominicano). Baraja de 49 cartas: la inglesa sin tres de los cuatro Ases.
  * El A♠ no tiene pareja y es "El Cagao". Todas las cartas se reparten, cada jugador baja sus pares
- * y después, por turnos, cada uno le roba una carta a ciegas al jugador siguiente. Se salva quien
+ * con una fase inicial en la que cada uno baja sus pares (los humanos a mano, los bots solos) y
+ * después, por turnos, cada uno le roba una carta a ciegas al jugador siguiente. Se salva quien
  * se queda sin cartas; pierde el último que queda, que siempre es quien tiene el A♠.
  *
  * El motor es puro: cada jugada devuelve un estado nuevo y nunca modifica el anterior.
@@ -43,7 +44,8 @@ export interface CagaoEvent {
 
 export interface CagaoState {
   game: 'cagao';
-  phase: 'playing' | 'gameOver';
+  /** 'pairing': todos bajan sus pares iniciales (sin turnos). 'playing': se roba por turnos. */
+  phase: 'pairing' | 'playing' | 'gameOver';
   players: Player[];
   hands: Card[][];
   /** Todos los pares bajados, en orden. */
@@ -59,7 +61,12 @@ export interface CagaoState {
   lastEvent: CagaoEvent | null;
 }
 
-export type CagaoMove = { type: 'draw'; index: number };
+export type CagaoMove =
+  | { type: 'draw'; index: number }
+  /** Baja un par concreto de tu mano (solo en la fase inicial). */
+  | { type: 'pair'; cardIds: [string, string] }
+  /** Baja todos los pares de tu mano de una vez (solo en la fase inicial). */
+  | { type: 'pairAll' };
 
 /** La baraja de El Cagao: 49 cartas, solo queda el A♠ de los Ases. */
 export function cagaoDeck(): Card[] {
@@ -114,40 +121,85 @@ export function createCagaoGame(players: Player[], dealer?: number): CagaoState 
   const dealerSeat = dealer ?? randomInt(seats);
 
   // Se reparte todo el mazo, una carta a la vez: unos jugadores quedan con una carta más.
-  const dealt: Card[][] = Array.from({ length: seats }, () => []);
-  shuffle(cagaoDeck()).forEach((card, i) => dealt[i % seats].push(card));
+  const hands: Card[][] = Array.from({ length: seats }, () => []);
+  shuffle(cagaoDeck()).forEach((card, i) => hands[i % seats].push(card));
 
-  // Fase 1: todos bajan los pares de su mano inicial.
-  const pairs: CagaoPair[] = [];
-  const hands = dealt.map((hand, seat) => {
-    const split = takePairs(hand);
-    for (const cards of split.pairs) pairs.push({ seat, cards });
-    return split.hand;
-  });
-
-  const finishOrder = activeSeats(hands).length === seats ? [] : hands.flatMap((h, s) => (h.length === 0 ? [s] : []));
-  const active = activeSeats(hands);
-  const base: CagaoState = {
+  // Fase 1: cada uno baja los pares de su mano inicial (a mano o con el botón; los bots, solos).
+  return settlePairing({
     game: 'cagao',
-    phase: active.length <= 1 ? 'gameOver' : 'playing',
+    phase: 'pairing',
     players,
     hands,
-    pairs,
-    // Empieza el jugador que sigue al que reparte (entre los que todavía tienen cartas).
-    turn: nextActiveSeat(hands, dealerSeat),
+    pairs: [],
+    // Empieza el jugador que sigue al que reparte (entre los que todavía tengan cartas).
+    turn: (dealerSeat + 1) % seats,
     dealer: dealerSeat,
     roundNo: 1,
-    finishOrder,
-    loserSeat: active.length === 1 ? active[0] : null,
+    finishOrder: [],
+    loserSeat: null,
     lastEvent: null,
+  });
+}
+
+/** True si la mano tiene al menos dos cartas del mismo número. */
+export function hasPair(hand: Card[]): boolean {
+  return takePairs(hand).pairs.length > 0;
+}
+
+/** Asientos que todavía tienen pares por bajar (solo tiene sentido en la fase inicial). */
+export function seatsWithPairs(state: CagaoState): number[] {
+  return state.hands.flatMap((hand, seat) => (hasPair(hand) ? [seat] : []));
+}
+
+/**
+ * Cuando nadie tiene pares por bajar, la fase inicial termina: se anota quién ya quedó sin cartas
+ * y empieza el robo por turnos. Si no hay pares pendientes en todo el reparto, sigue de largo.
+ */
+function settlePairing(state: CagaoState): CagaoState {
+  if (state.phase !== 'pairing' || seatsWithPairs(state).length > 0) return state;
+  const out = state.hands.flatMap((hand, seat) => (hand.length === 0 ? [seat] : []));
+  const active = activeSeats(state.hands);
+  const next: CagaoState = {
+    ...state,
+    phase: active.length <= 1 ? 'gameOver' : 'playing',
+    finishOrder: out,
+    loserSeat: active.length === 1 ? active[0] : null,
+    turn: nextActiveSeat(state.hands, state.dealer),
   };
-  return shuffleNextVictim(base);
+  return shuffleNextVictim(next);
+}
+
+function dropPairs(state: CagaoState, seat: number, bundles: [Card, Card][]): CagaoState {
+  const used = new Set(bundles.flatMap((cards) => cards.map((card) => card.id)));
+  return settlePairing({
+    ...state,
+    hands: state.hands.map((hand, s) => (s === seat ? hand.filter((card) => !used.has(card.id)) : hand)),
+    pairs: [...state.pairs, ...bundles.map((cards) => ({ seat, cards }))],
+  });
 }
 
 export function applyCagaoMove(state: CagaoState, seat: number, move: CagaoMove): MoveResult<CagaoState> {
-  if (state.phase !== 'playing') return { error: 'La partida ya terminó.' };
+  if (state.phase === 'gameOver') return { error: 'La partida ya terminó.' };
+
+  if (move.type === 'pair' || move.type === 'pairAll') {
+    if (state.phase !== 'pairing') return { error: 'Ya no se bajan pares a mano: al robar, los pares se bajan solos.' };
+    const hand = state.hands[seat];
+    if (!hand) return { error: 'Jugador desconocido.' };
+    if (move.type === 'pairAll') {
+      const { pairs } = takePairs(hand);
+      if (pairs.length === 0) return { error: 'No tienes pares que bajar.' };
+      return { state: dropPairs(state, seat, pairs) };
+    }
+    const [idA, idB] = move.cardIds;
+    const a = hand.find((card) => card.id === idA);
+    const b = hand.find((card) => card.id === idB);
+    if (idA === idB || !a || !b) return { error: 'Esas cartas no están en tu mano.' };
+    if (a.rank !== b.rank) return { error: 'Un par son dos cartas del mismo número.' };
+    return { state: dropPairs(state, seat, [[a, b]]) };
+  }
+
+  if (state.phase !== 'playing') return { error: 'Primero todos tienen que bajar sus pares.' };
   if (seat !== state.turn) return { error: 'No es tu turno.' };
-  if (move.type !== 'draw') return { error: 'Jugada no válida.' };
 
   const victim = drawFromSeat(state);
   if (victim < 0 || victim === seat) return { error: 'No hay a quién robarle.' };
