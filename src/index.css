@@ -276,3 +276,109 @@ button,
     var(--h) * -0.714 + clamp(12px, (100vw - 16px - var(--h) * 0.714) / (var(--fan-n) - 1), var(--h) * 0.714 + 6px)
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* El Cagao: mesa artesanal dominicana                                 */
+/* ------------------------------------------------------------------ */
+
+/* Riel del marco: madera oscura con veta. */
+.wood-rail {
+  background-color: #5b3416;
+  background-image:
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.18) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, rgb(255 210 150 / 0.07) 0 2px, transparent 2px 13px),
+    linear-gradient(180deg, #7a4a22, #4a2a10);
+  box-shadow: inset 0 0 0 1px rgb(255 214 140 / 0.25), 0 2px 6px rgb(0 0 0 / 0.5);
+}
+
+/* Bloque tallado (esquinas, medallones y placas de jugador). */
+.wood-block {
+  background: radial-gradient(circle at 30% 25%, #9a6230, #5a3416 72%);
+  box-shadow:
+    inset 0 0 0 2px rgb(255 214 140 / 0.35),
+    inset 0 -4px 8px rgb(0 0 0 / 0.45),
+    0 3px 8px rgb(0 0 0 / 0.5);
+}
+
+/* Tablero central: madera cálida con veta; el 3D lo pone la perspectiva del contenedor. */
+.cagao-board {
+  background-color: #8a5a2b;
+  background-image:
+    repeating-linear-gradient(92deg, rgb(60 30 10 / 0.2) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(88deg, rgb(255 225 170 / 0.09) 0 2px, transparent 2px 12px),
+    radial-gradient(ellipse at 50% 40%, #b57a3c 0%, #8a5a2b 55%, #6a4220 100%);
+  box-shadow:
+    0 18px 28px rgb(0 0 0 / 0.55),
+    inset 0 0 0 3px #5b3416,
+    inset 0 0 40px rgb(0 0 0 / 0.35);
+}
+
+/* Mientras arrastras un par, el tablero se enciende como zona de suelta. */
+.cagao-board-drop {
+  box-shadow:
+    0 18px 28px rgb(0 0 0 / 0.55),
+    inset 0 0 0 3px #f6c453,
+    inset 0 0 46px rgb(255 205 90 / 0.5);
+}
+
+/* Brillo dorado que late (solo opacity y transform). */
+.gold-glow {
+  background: radial-gradient(closest-side, rgb(255 214 90 / 0.85), rgb(255 214 90 / 0.45) 55%, rgb(255 214 90 / 0) 100%);
+  animation: glow-pulse 1.3s ease-in-out infinite;
+}
+
+.turn-glow {
+  box-shadow: 0 0 0 2px rgb(255 214 90 / 0.95), 0 0 14px 4px rgb(255 200 60 / 0.55);
+  animation: turn-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.97); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+@keyframes turn-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* Carta sin pareja que se toca en la fase de pares: se sacude un instante. */
+.card-wiggle {
+  animation: card-wiggle 320ms ease-in-out;
+}
+
+@keyframes card-wiggle {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  25% { transform: translateX(-4px) rotate(-3deg); }
+  75% { transform: translateX(4px) rotate(3deg); }
+}
+
+/* Un par recién bajado cae sobre la pila. */
+.pile-land {
+  animation: pile-land 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes pile-land {
+  0% { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.orientation-phone {
+  animation: phone-turn 2.6s ease-in-out infinite;
+}
+
+@keyframes phone-turn {
+  0%, 15% { transform: rotate(0deg); }
+  55%, 85% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gold-glow,
+  .turn-glow,
+  .card-wiggle,
+  .pile-land,
+  .orientation-phone {
+    animation: none;
+  }
+}
