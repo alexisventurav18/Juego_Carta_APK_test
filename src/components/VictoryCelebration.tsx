@@ -8,7 +8,7 @@ interface VictoryCelebrationProps {
   continueLabel?: string;
 }
 
-const COLORS = ['bg-amber-400', 'bg-emerald-400', 'bg-sky-400', 'bg-rose-400', 'bg-orange-300'];
+const COLORS = ['bg-amber-400', 'bg-lime-500', 'bg-orange-400', 'bg-rose-500', 'bg-yellow-200'];
 const PIECE_COUNT = 70;
 
 function makePieces() {
@@ -31,7 +31,7 @@ export default function VictoryCelebration({
   const [pieces] = useState(makePieces);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-stone-900/80 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/75 p-4 backdrop-blur-sm">
       {pieces.map((piece) => (
         <span
           key={piece.id}
@@ -52,11 +52,11 @@ export default function VictoryCelebration({
         >
           {title}
         </h2>
-        <p className="text-base text-stone-100">{message}</p>
+        <p className="text-base text-amber-50">{message}</p>
         <button
           type="button"
           onClick={onContinue}
-          className="rounded-xl bg-amber-400 px-6 py-3 text-sm font-semibold text-stone-900 shadow-lg transition hover:bg-amber-300"
+          className="btn-gold min-h-[44px] rounded-lg px-6 py-3 text-sm font-extrabold shadow-lg transition-transform active:scale-95"
         >
           {continueLabel}
         </button>

@@ -10,6 +10,8 @@ interface PlayingCardProps {
   faceDown?: boolean;
   /** Nombre de la variable CSS con el alto de la carta (p. ej. "--ch"). El ancho sale de la proporción 5:7. */
   heightVar: string;
+  /** Casino y Tres y Dos: el A♠ es un As normal, sin la ilustración de El Cagao. */
+  plain?: boolean;
   className?: string;
   style?: CSSProperties;
 }
@@ -18,7 +20,7 @@ interface PlayingCardProps {
  * Carta con la proporción de póker (2.5 : 3.5). Todo su tamaño sale de una sola variable CSS de alto,
  * así el texto, los palos y los adornos escalan con la pantalla sin tamaños fijos en px.
  */
-export default function PlayingCard({ card, faceDown, heightVar, className = '', style }: PlayingCardProps) {
+export default function PlayingCard({ card, faceDown, heightVar, plain = false, className = '', style }: PlayingCardProps) {
   const base: CSSProperties = {
     '--card-h': `var(${heightVar})`,
     height: 'var(--card-h)',
@@ -37,7 +39,7 @@ export default function PlayingCard({ card, faceDown, heightVar, className = '',
   const red = isAmericanSuit(card.suit) && isRedSuit(card.suit);
   const label = rankLabel(card);
   const isFigure = card.rank >= 11 && card.rank <= 13;
-  const isCagao = card.id === CAGAO_CARD_ID;
+  const isCagao = !plain && card.id === CAGAO_CARD_ID;
   const ink = red ? 'text-[#b3202a]' : 'text-[#1d1b2e]';
 
   return (

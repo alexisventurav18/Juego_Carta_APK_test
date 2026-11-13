@@ -31,6 +31,8 @@ import TableBuild from './TableBuild';
 import { useDealIntro } from './useDealIntro';
 import VictoryCelebration from './VictoryCelebration';
 import DefeatNotice from './DefeatNotice';
+import WoodShell from './wood/WoodShell';
+import { ACTION_DROP, ACTION_FORM, ACTION_MAIN, CHIP_BUTTON } from './wood/styles';
 
 interface CasinoTableProps {
   state: CasinoState;
@@ -124,14 +126,6 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
     const timer = window.setTimeout(() => setCaptureFlightKey(null), 950);
     return () => window.clearTimeout(timer);
   }, [currentCaptureKey]);
-
-  useEffect(() => {
-    const previous = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = 'hidden';
-    return () => {
-      document.documentElement.style.overflow = previous;
-    };
-  }, []);
 
   const reset = () => {
     setCardId(null);
@@ -267,14 +261,12 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
   const showRaise = raiseTarget !== null;
   const showExpand = expandTarget !== null;
   const showFormation = !showRaise && !showExpand;
-  const actionBase =
-    'min-h-[44px] min-w-0 flex-1 touch-manipulation rounded-lg px-1 py-2 text-[11px] font-bold leading-tight transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 min-[380px]:text-xs sm:flex-none sm:px-3 sm:text-sm';
-  const actionMain = `${actionBase} bg-emerald-500 text-white`;
-  const actionForm = `${actionBase} bg-sky-500 text-white`;
-  const actionDrop = `${actionBase} bg-stone-200 text-stone-900`;
+  const actionMain = ACTION_MAIN;
+  const actionForm = ACTION_FORM;
+  const actionDrop = ACTION_DROP;
 
   return (
-    <div className="fixed inset-0 z-30 flex h-dvh w-screen touch-manipulation select-none flex-col justify-between overflow-hidden overscroll-none bg-gradient-to-b from-emerald-950 via-teal-900 to-emerald-950 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-white">
+    <WoodShell>
       {dealerOpen && (
         <DealerReveal players={state.players} dealer={state.dealer} onDone={() => setDealerOpen(false)} />
       )}
@@ -289,7 +281,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
       )}
 
       {/* 1. HUD: marcador, turno, mazo y manos de los rivales */}
-      <div className="h-[16dvh] shrink-0">
+      <div className="h-[17dvh] shrink-0">
         <CasinoHud
           state={state}
           seat={seat}
@@ -304,13 +296,23 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
       </div>
 
       {/* 2. Mesa: los grupos se reacomodan solos sin desbordarse */}
-      <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2">
+      <main className="relative flex min-h-0 flex-1 items-stretch justify-center overflow-hidden py-1">
+        <div className="relative flex w-full max-w-5xl items-center justify-center [perspective:1100px]">
+          {/* Tablero de madera inclinado: solo el fondo se inclina, las cartas quedan planas para tocarlas bien. */}
+          <div
+            aria-hidden
+            className="wood-board-flat absolute inset-x-[1%] inset-y-0 rounded-[3%] [transform-origin:50%_100%] [transform:rotateX(6deg)]"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 aspect-square h-[min(70%,26dvh)] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-amber-200/25"
+          />
         <div
           style={mesaVars}
-          className="flex max-h-full w-full max-w-5xl flex-wrap items-center justify-center gap-2 sm:gap-4"
+          className="relative z-10 flex max-h-full w-full max-w-5xl flex-wrap items-center justify-center gap-2 px-3 py-2 sm:gap-4"
         >
           {state.table.length === 0 && state.builds.length === 0 && !deal.dealing && (
-            <p className="text-center text-sm text-emerald-100/70">La mesa está vacía.</p>
+            <p className="rounded-full bg-black/45 px-3 py-1 text-center text-sm text-amber-100/90">La mesa está vacía.</p>
           )}
           {state.table.map((c, i) =>
             deal.isTableDealt(i) ? (
@@ -324,7 +326,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
                     onClick={() => pickTableItem(c.id)}
                   />
                   {c.id === pointCardId && (
-                    <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-400 px-2 py-1 text-[10px] font-bold text-stone-900 shadow-md">
+                    <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap btn-gold rounded-full px-2 py-1 text-[10px] font-extrabold shadow-md">
                       Carta de puntos
                     </span>
                   )}
@@ -344,6 +346,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
             />
           ))}
         </div>
+        </div>
         {captureNotice && captureFlightKey === currentCaptureKey && (
           <CaptureFlight
             playerName={state.players[captureNotice.seat]?.name ?? 'Jugador'}
@@ -355,10 +358,10 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
       </main>
 
       {/* 3. Zona del jugador: acciones arriba y mano abajo */}
-      <section className="mx-auto flex h-[28dvh] w-full max-w-5xl shrink-0 flex-col justify-end pb-2 sm:h-[30dvh]">
+      <section className="relative z-20 mx-auto flex h-[28dvh] w-full max-w-5xl shrink-0 flex-col justify-end pb-2 sm:h-[30dvh] [@media(max-height:480px)]:h-[34dvh]">
         {state.phase === 'playing' && (
           <>
-            <p className="px-3 pb-1 text-center text-[11px] leading-tight text-emerald-50/90 sm:text-sm [@media(max-height:480px)]:hidden">
+            <p className="mx-auto mb-1 max-w-[96%] rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-sm [@media(max-height:480px)]:hidden">
               <span className="sm:hidden">{hintMobile}</span>
               <span className="hidden sm:inline">{hint}</span>
             </p>
@@ -426,25 +429,25 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
 
       {capturedOpen && (
         <div
-          className="fixed inset-0 z-40 flex items-end justify-center bg-stone-950/60 sm:items-center"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/65 sm:items-center"
           onClick={() => setCapturedOpen(false)}
         >
           <div
             role="dialog"
             aria-label="Cartas capturadas"
-            className="max-h-[85dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-4 text-stone-900 sm:rounded-2xl"
+            className="wood-panel max-h-[85dvh] w-full max-w-2xl overflow-y-auto rounded-b-none p-4 sm:rounded-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-sm font-semibold">Cartas capturadas</h2>
-                {roomLabel && <p className="text-xs text-stone-500">{roomLabel}</p>}
+                <h2 className="text-sm font-extrabold">Cartas capturadas</h2>
+                {roomLabel && <p className="text-xs text-amber-200/70">{roomLabel}</p>}
               </div>
               <button
                 type="button"
                 onClick={() => setCapturedOpen(false)}
                 aria-label="Cerrar"
-                className="grid h-10 w-10 place-items-center rounded-lg bg-stone-100 text-stone-700 active:scale-95"
+                className={CHIP_BUTTON}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -459,8 +462,8 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
       )}
 
       {state.summary && state.phase !== 'playing' && !showEndNotice && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center overflow-y-auto bg-stone-950/70 p-3">
-          <div className="max-h-full w-full max-w-2xl space-y-3 overflow-y-auto text-stone-900">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/65 p-3">
+          <div className="max-h-full w-full max-w-2xl space-y-3 overflow-y-auto">
             <RoundResultPanel
               title={state.phase === 'gameOver' && state.winnerTeam !== null
                 ? `Ganó ${teamName(state.players, state.winnerTeam)}`
@@ -474,7 +477,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
             {resultFooter && <div className="flex justify-center">{resultFooter}</div>}
             {onLeave && state.phase === 'gameOver' && (
               <div className="flex justify-center">
-                <button type="button" onClick={onLeave} className="min-h-[44px] rounded-lg bg-white/90 px-4 py-2 text-sm font-bold text-stone-800 active:scale-95">
+                <button type="button" onClick={onLeave} className="btn-wood min-h-[44px] rounded-lg px-5 py-2 text-sm font-bold active:scale-95">
                   Salir
                 </button>
               </div>
@@ -499,7 +502,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           {notice}
         </p>
       )}
-    </div>
+    </WoodShell>
   );
 }
 

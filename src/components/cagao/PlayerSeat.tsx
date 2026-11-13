@@ -12,34 +12,38 @@ interface SeatPlaqueProps {
   /** Se quedó sin cartas: se salvó. */
   out: boolean;
   isMe?: boolean;
+  /** Versión baja para barras superiores apretadas (Casino y Tres y Dos). */
+  compact?: boolean;
+  /** Etiqueta pequeña bajo el nombre (p. ej. "Compañero"). */
+  tag?: string;
 }
 
 /** Placa de madera con el avatar. Cuando es su turno se ilumina en dorado. */
-export function SeatPlaque({ name, count, isTurn, isVictim, out, isMe }: SeatPlaqueProps) {
+export function SeatPlaque({ name, count, isTurn, isVictim, out, isMe, compact = false, tag }: SeatPlaqueProps) {
   return (
     <div
-      className={`relative flex min-w-0 max-w-full items-center gap-1.5 rounded-xl px-1.5 py-1 wood-block ${
+      className={`relative flex min-w-0 max-w-full items-center ${compact ? 'gap-1 rounded-lg px-1 py-0.5' : 'gap-1.5 rounded-xl px-1.5 py-1'} wood-block ${
         out ? 'opacity-70' : ''
       }`}
     >
       {isTurn && <span aria-hidden className="turn-glow pointer-events-none absolute -inset-1 rounded-2xl" />}
       <span
-        className={`relative grid h-[clamp(22px,7dvh,40px)] w-[clamp(22px,7dvh,40px)] shrink-0 place-items-center rounded-full border-2 bg-gradient-to-br from-amber-100 to-amber-300 text-[clamp(11px,3.4dvh,18px)] font-extrabold text-amber-950 ${
+        className={`relative grid ${compact ? 'h-[clamp(18px,4.6dvh,26px)] w-[clamp(18px,4.6dvh,26px)] text-[clamp(10px,2.4dvh,13px)]' : 'h-[clamp(22px,7dvh,40px)] w-[clamp(22px,7dvh,40px)] text-[clamp(11px,3.4dvh,18px)]'} shrink-0 place-items-center rounded-full border-2 bg-gradient-to-br from-amber-100 to-amber-300 font-extrabold text-amber-950 ${
           isTurn ? 'border-yellow-300' : isVictim ? 'border-rose-300' : 'border-amber-900/70'
         }`}
       >
         {name.trim().slice(0, 1).toUpperCase()}
       </span>
       <span className="relative min-w-0 leading-tight">
-        <span className="block truncate text-[clamp(10px,2.8dvh,14px)] font-bold text-amber-50">{isMe ? 'Tú' : name}</span>
-        <span className="flex items-center gap-1 text-[clamp(9px,2.4dvh,12px)] font-semibold text-amber-200">
+        <span className={`block truncate font-bold text-amber-50 ${compact ? 'text-[clamp(9px,2.1dvh,12px)]' : 'text-[clamp(10px,2.8dvh,14px)]'}`}>{isMe ? 'Tú' : name}</span>
+        <span className={`flex items-center gap-1 whitespace-nowrap font-semibold text-amber-200 ${compact ? 'text-[clamp(8px,1.9dvh,10px)]' : 'text-[clamp(9px,2.4dvh,12px)]'}`}>
           {out ? (
             <>
               <Check className="h-3 w-3" aria-hidden />
               Salvó
             </>
           ) : (
-            `${count} ${count === 1 ? 'carta' : 'cartas'}`
+            `${tag ? `${tag} · ` : ''}${count} ${count === 1 ? 'carta' : 'cartas'}`
           )}
         </span>
       </span>

@@ -9,6 +9,8 @@ import DefeatNotice from './DefeatNotice';
 import TresYDosHud from './TresYDosHud';
 import { useDealIntro } from './useDealIntro';
 import VictoryCelebration from './VictoryCelebration';
+import WoodShell from './wood/WoodShell';
+import { ACTION_DROP, ACTION_FORM, ACTION_MAIN, ACTION_SING } from './wood/styles';
 
 interface TresYDosTableProps {
   state: TresYDosState;
@@ -72,14 +74,6 @@ export default function TresYDosTable({
     setCardId(null);
   }, [state.turn, state.turnStep, state.roundNo]);
 
-  useEffect(() => {
-    const previous = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = 'hidden';
-    return () => {
-      document.documentElement.style.overflow = previous;
-    };
-  }, []);
-
   const hint = (() => {
     if (!playing) return '';
     if (deal.dealing) return 'Repartiendo las cartas...';
@@ -113,12 +107,10 @@ export default function TresYDosTable({
     hand.length >= HAND_SIZE
       ? '-ml-[4.3dvh] first:ml-0 sm:-ml-[2.5dvh] sm:first:ml-0'
       : 'ml-1.5 first:ml-0 sm:ml-2 sm:first:ml-0';
-  const actionBase =
-    'min-h-[44px] min-w-0 flex-1 touch-manipulation rounded-lg px-1 py-2 text-[11px] font-bold leading-tight transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 min-[380px]:text-xs sm:flex-none sm:px-6 sm:text-sm';
-  const actionMain = `${actionBase} bg-emerald-500 text-white`;
-  const actionForm = `${actionBase} bg-sky-500 text-white`;
-  const actionDrop = `${actionBase} bg-stone-200 text-stone-900`;
-  const actionSing = `${actionBase} animate-pulse bg-amber-400 text-stone-900 ring-2 ring-yellow-200`;
+  const actionMain = ACTION_MAIN;
+  const actionForm = ACTION_FORM;
+  const actionDrop = ACTION_DROP;
+  const actionSing = ACTION_SING;
 
   // Al terminar la ronda se muestran las 5 cartas de cada jugador: se achican según cuántos son.
   const revealVars = (
@@ -130,7 +122,7 @@ export default function TresYDosTable({
   ) as CSSProperties;
 
   return (
-    <div className="fixed inset-0 z-30 flex h-dvh w-screen touch-manipulation select-none flex-col justify-between overflow-hidden overscroll-none bg-gradient-to-b from-emerald-950 via-teal-900 to-emerald-950 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-white">
+    <WoodShell>
       {dealerOpen && (
         <DealerReveal players={state.players} dealer={state.dealer} onDone={() => setDealerOpen(false)} />
       )}
@@ -151,7 +143,7 @@ export default function TresYDosTable({
         ))}
 
       {/* 1. HUD: ronda, turno y manos de los rivales */}
-      <div className="h-[16dvh] shrink-0">
+      <div className="h-[17dvh] shrink-0">
         <TresYDosHud
           state={state}
           seat={seat}
@@ -162,9 +154,12 @@ export default function TresYDosTable({
       </div>
 
       {/* 2. Mesa: el Monte y el Pozo (o las manos reveladas al cantar 3 y 2) */}
-      <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2">
+      <main className="relative flex min-h-0 flex-1 items-stretch justify-center overflow-hidden py-1">
+        <div className="pointer-events-none absolute inset-0 mx-auto w-full max-w-5xl [perspective:1100px]" aria-hidden>
+          <div className="wood-board-flat absolute inset-x-[1%] inset-y-0 rounded-[3%] [transform-origin:50%_100%] [transform:rotateX(6deg)]" />
+        </div>
         {playing || deal.dealing ? (
-          <div className="flex items-center justify-center gap-6 sm:gap-10">
+          <div className="relative z-10 m-auto flex items-center justify-center gap-6 sm:gap-10">
             <div className="flex flex-col items-center gap-1.5">
               <div ref={deckRef} className="relative">
                 <button
@@ -173,7 +168,7 @@ export default function TresYDosTable({
                   onClick={() => draw('deckDraw')}
                   aria-label={`Robar del Monte (${deckDisplayCount} cartas)`}
                   className={`relative block touch-manipulation rounded-lg transition-transform duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 ${
-                    canDrawDeck ? 'shadow-lg ring-2 ring-yellow-400' : ''
+                    canDrawDeck ? 'card-picked !translate-y-0 ring-yellow-400' : ''
                   }`}
                 >
                   {deckDisplayCount > 0 ? (
@@ -181,14 +176,14 @@ export default function TresYDosTable({
                       <DorsoUI />
                     </span>
                   ) : (
-                    <span className={`block aspect-[2.5/3.5] rounded-lg border-2 border-dashed border-white/30 ${CARTA_ALTURA.mesa}`} />
+                    <span className={`block aspect-[2.5/3.5] rounded-lg border-2 border-dashed border-amber-100/40 ${CARTA_ALTURA.mesa}`} />
                   )}
                 </button>
-                <span className="pointer-events-none absolute -right-2 -top-2 z-10 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-black shadow sm:text-xs">
+                <span className="pointer-events-none absolute -right-2 -top-2 z-10 btn-gold rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none shadow sm:text-xs">
                   {deckDisplayCount}
                 </span>
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-100/80 sm:text-xs">Monte</span>
+              <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold text-amber-100 sm:text-xs">Monte</span>
             </div>
 
             <div className="flex flex-col items-center gap-1.5">
@@ -204,7 +199,7 @@ export default function TresYDosTable({
                 ))}
                 {pileTop && deal.isTableDealt(0) ? (
                   <DealFlight origin={deckRef} animate={deal.dealing}>
-                    <div className={`relative rounded-lg ${canDrawDiscard ? 'shadow-lg ring-2 ring-yellow-400' : ''}`}>
+                    <div className={`relative rounded-lg ${canDrawDiscard ? 'card-picked !translate-y-0' : ''}`}>
                       <CartaUI
                         card={pileTop}
                         size="mesa"
@@ -213,22 +208,22 @@ export default function TresYDosTable({
                     </div>
                   </DealFlight>
                 ) : (
-                  <span className={`block aspect-[2.5/3.5] rounded-lg border-2 border-dashed border-white/30 ${CARTA_ALTURA.mesa}`} />
+                  <span className={`block aspect-[2.5/3.5] rounded-lg border-2 border-dashed border-amber-100/40 ${CARTA_ALTURA.mesa}`} />
                 )}
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-100/80 sm:text-xs">Pozo</span>
+              <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold text-amber-100 sm:text-xs">Pozo</span>
             </div>
           </div>
         ) : (
           <div
             style={revealVars}
-            className="flex max-h-full w-full max-w-3xl flex-col items-center justify-center gap-2 sm:gap-3"
+            className="relative z-10 m-auto flex max-h-full w-full max-w-3xl flex-col items-center justify-center gap-2 px-2 sm:gap-3"
           >
             {state.players.map((player, s) => (
               <div
                 key={player.id}
                 className={`flex w-full items-center gap-2 rounded-xl px-2 py-1 ${
-                  s === state.winnerSeat ? 'bg-amber-400/20 ring-1 ring-amber-300' : ''
+                  s === state.winnerSeat ? 'bg-amber-400/25 ring-1 ring-amber-300' : 'bg-black/20'
                 }`}
               >
                 <span className="flex w-20 shrink-0 items-center gap-1 text-xs font-semibold sm:w-32 sm:text-sm">
@@ -247,10 +242,10 @@ export default function TresYDosTable({
       </main>
 
       {/* 3. Zona del jugador: acciones arriba y mano abajo (o el resultado de la ronda) */}
-      <section className="mx-auto flex h-[28dvh] w-full max-w-5xl shrink-0 flex-col justify-end pb-2 sm:h-[30dvh]">
+      <section className="relative z-20 mx-auto flex h-[28dvh] w-full max-w-5xl shrink-0 flex-col justify-end pb-2 sm:h-[30dvh] [@media(max-height:480px)]:h-[34dvh]">
         {playing ? (
           <>
-            <p className="px-3 pb-1 text-center text-[11px] leading-tight text-emerald-50/90 sm:text-sm [@media(max-height:480px)]:hidden">
+            <p className="mx-auto mb-1 max-w-[96%] rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-sm [@media(max-height:480px)]:hidden">
               <span className="sm:hidden">{hintMobile}</span>
               <span className="hidden sm:inline">{hint}</span>
             </p>
@@ -296,7 +291,7 @@ export default function TresYDosTable({
                       <DorsoUI className={CARTA_ALTURA.mano} />
                     )}
                     {justTaken && (
-                      <span className="pointer-events-none absolute -top-3 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold leading-none text-stone-900 shadow">
+                      <span className="pointer-events-none absolute -top-3 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap btn-gold rounded-full px-1.5 py-0.5 text-[9px] font-extrabold leading-none shadow">
                         Recién tomada
                       </span>
                     )}
@@ -316,7 +311,7 @@ export default function TresYDosTable({
                   ? '¡Cantaste 3 y 2!'
                   : `¡${winnerName} cantó 3 y 2!`}
             </h2>
-            <p className="text-xs text-emerald-50/90 sm:text-sm">
+            <p className="text-xs text-amber-50/90 sm:text-sm">
               {state.players.map((p, s) => `${s === seat ? 'Tú' : p.name} ${state.wins[s]}`).join(' · ')}
             </p>
             {state.phase === 'roundEnd' &&
@@ -329,7 +324,7 @@ export default function TresYDosTable({
                   Repartir y seguir
                 </button>
               ) : (
-                <p className="text-xs text-emerald-50/80 sm:text-sm">
+                <p className="text-xs text-amber-50/80 sm:text-sm">
                   Esperando a {state.players[nextDealer].name} para repartir...
                 </p>
               ))}
@@ -364,6 +359,6 @@ export default function TresYDosTable({
         </p>
       )}
       {roomLabel && <span className="sr-only">{roomLabel}</span>}
-    </div>
+    </WoodShell>
   );
 }

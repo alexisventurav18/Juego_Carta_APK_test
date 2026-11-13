@@ -4,7 +4,7 @@
 
 html {
   min-width: 320px;
-  background: #f5f5f4;
+  background: #1e0e05;
 }
 
 body {
@@ -381,4 +381,100 @@ button,
   .orientation-phone {
     animation: none;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Tema madera compartido (Casino, Tres y Dos, lobby y salas)          */
+/* Misma paleta y mismos acabados que la mesa de El Cagao.             */
+/* ------------------------------------------------------------------ */
+
+/* Fondo de pantalla completa: madera muy oscura con viñeta cálida. */
+.wood-stage {
+  background-color: #2a160a;
+  background-image: radial-gradient(ellipse at 50% 35%, #4a2a12, #1e0e05 75%);
+  color: #fff7e6;
+}
+
+/* Panel oscuro para ventanas, resultados y avisos. */
+.wood-panel {
+  background: linear-gradient(180deg, #4a2a12, #2f1809);
+  color: #fff3dc;
+  border-radius: 1rem;
+  box-shadow:
+    0 0 0 2px rgb(255 214 140 / 0.4),
+    0 18px 40px rgb(0 0 0 / 0.6),
+    inset 0 0 30px rgb(0 0 0 / 0.35);
+}
+
+/* Fondo del tablero de madera (sin inclinar): el mismo que usa El Cagao, para mesas con contenido variable. */
+.wood-board-flat {
+  background-color: #8a5a2b;
+  background-image:
+    repeating-linear-gradient(92deg, rgb(60 30 10 / 0.2) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(88deg, rgb(255 225 170 / 0.09) 0 2px, transparent 2px 12px),
+    radial-gradient(ellipse at 50% 40%, #b57a3c 0%, #8a5a2b 55%, #6a4220 100%);
+  box-shadow:
+    0 14px 24px rgb(0 0 0 / 0.5),
+    inset 0 0 0 3px #5b3416,
+    inset 0 0 40px rgb(0 0 0 / 0.35);
+}
+
+/* Chips de la barra superior (salir, contadores, turno). */
+.wood-chip {
+  background: rgb(0 0 0 / 0.4);
+  color: #fff7e6;
+  box-shadow: inset 0 0 0 1px rgb(253 230 138 / 0.3);
+}
+
+.wood-chip-turn {
+  background: #fbbf24;
+  color: #1c1208;
+}
+
+/* Botones: dorado (acción principal), hoja de cacao (acciones de combinar) y madera (secundaria). */
+.btn-gold {
+  background-image: linear-gradient(180deg, #fcd34d, #f59e0b);
+  color: #1c1208;
+  box-shadow: 0 0 0 1px rgb(254 243 199 / 0.6), 0 2px 5px rgb(0 0 0 / 0.45);
+}
+
+.btn-leaf {
+  background-image: linear-gradient(180deg, #7bb544, #4a7a22);
+  color: #f6ffe8;
+  box-shadow: 0 0 0 1px rgb(190 242 100 / 0.4), 0 2px 5px rgb(0 0 0 / 0.45);
+}
+
+.btn-wood {
+  background: rgb(0 0 0 / 0.45);
+  color: #fff7e6;
+  box-shadow: 0 0 0 1px rgb(253 230 138 / 0.4), 0 2px 5px rgb(0 0 0 / 0.35);
+}
+
+/* Altura de las cartas de CartaUI (mano y mesa), con los mismos topes que antes. */
+.cu-mano {
+  --cu-h: min(var(--mano-h, 15dvh), 10rem);
+}
+
+.cu-mesa {
+  --cu-h: min(var(--mesa-h, 12dvh), 9rem);
+}
+
+@media (min-width: 640px) {
+  .cu-mano {
+    --cu-h: min(var(--mano-h-sm, 18dvh), 10rem);
+  }
+
+  .cu-mesa {
+    --cu-h: min(var(--mesa-h-sm, 15dvh), 9rem);
+  }
+}
+
+/* Carta elegida: se eleva con aro dorado, igual que al arrastrar en El Cagao. */
+.card-picked {
+  transform: translateY(-0.75rem);
+  box-shadow: 0 0 0 2px #facc15, 0 10px 16px rgb(0 0 0 / 0.55);
+}
+
+.card-playable {
+  box-shadow: 0 0 0 2px rgb(190 242 100 / 0.8), 0 0 10px rgb(190 242 100 / 0.45);
 }
