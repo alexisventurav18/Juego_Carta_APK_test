@@ -124,3 +124,20 @@ public class MainActivity extends BridgeActivity {
 `;
 fs.writeFileSync(path.join(javaDir, 'MainActivity.java'), mainActivity);
 console.log('[configureAndroid] MainActivity.java: modo inmersivo');
+
+/* 4. Verificación: si algo no quedó aplicado, la compilación falla en vez de producir un APK en vertical o con barras. */
+const problems = [];
+if (fs.existsSync(manifestPath) && !fs.readFileSync(manifestPath, 'utf8').includes('android:screenOrientation="sensorLandscape"')) {
+  problems.push('AndroidManifest.xml sin screenOrientation="sensorLandscape"');
+}
+if (!fs.readFileSync(path.join(javaDir, 'MainActivity.java'), 'utf8').includes('SCREEN_ORIENTATION_SENSOR_LANDSCAPE')) {
+  problems.push('MainActivity.java sin bloqueo horizontal');
+}
+if (fs.existsSync(stylesPath) && !fs.readFileSync(stylesPath, 'utf8').match(/NoActionBarLaunch"[^>]*>\s*<item name="android:windowFullscreen"/)) {
+  problems.push('styles.xml: el tema de arranque no es de pantalla completa');
+}
+if (problems.length > 0) {
+  console.error('[configureAndroid] ERROR:\n - ' + problems.join('\n - '));
+  process.exit(1);
+}
+console.log('[configureAndroid] Verificado: horizontal bloqueado y pantalla completa inmersiva.');
