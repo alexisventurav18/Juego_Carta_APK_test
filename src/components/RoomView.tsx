@@ -118,7 +118,11 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     );
   }
   if (!room) {
-    return <p className="wood-stage min-h-dvh py-20 text-center text-sm text-amber-100/80">Cargando sala...</p>;
+    return (
+      <div className="wood-stage safe-screen flex items-center justify-center">
+        <p className="text-center text-sm text-amber-100/80">Cargando sala...</p>
+      </div>
+    );
   }
 
   const seat = room.players.findIndex((p) => p.id === playerId);
@@ -205,7 +209,8 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   }
 
   return (
-    <div className="wood-stage min-h-dvh"><div className="mx-auto w-full max-w-6xl px-3 py-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] sm:px-6 sm:py-8">
+    <div className="wood-stage safe-screen overflow-y-auto">
+      <div className="mx-auto w-full max-w-6xl px-3 py-3 sm:px-6 sm:py-5">
       <header className="mb-3 flex items-center justify-between gap-3 sm:mb-6 sm:gap-4">
         <button
           type="button"
@@ -254,7 +259,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
 
 function StatusMessage({ message, onRetry, onLeave }: { message: string; onRetry?: () => void; onLeave: () => void }) {
   return (
-    <div className="wood-stage flex min-h-dvh flex-col items-center justify-center gap-4 px-4 py-20 text-center">
+    <div className="wood-stage safe-screen flex flex-col items-center justify-center gap-4 px-4 text-center">
       <p className="max-w-md text-amber-50">{message}</p>
       <div className="flex flex-wrap justify-center gap-3">
         {onRetry && (

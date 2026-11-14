@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
+import { useMuted } from '@/lib/soundPrefs';
 
 export type SoundEffect =
   | 'cardSlide' // Al robar o mover una carta
@@ -11,7 +12,8 @@ export type SoundEffect =
 /** Efectos de sonido sintetizados con Web Audio (no hay archivos de audio que cargar). */
 export function useGameSounds() {
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
+  // El silencio es global: lo comparten el menú principal y todas las mesas.
+  const { muted: isMuted, toggleMuted: toggleMute } = useMuted();
 
   // Inicializa o reactiva el AudioContext tras la primera interacción del usuario
   const getAudioContext = useCallback(() => {
@@ -137,10 +139,6 @@ export function useGameSounds() {
     },
     [isMuted, getAudioContext, playCardNoise, playTone],
   );
-
-  const toggleMute = useCallback(() => {
-    setIsMuted((prev) => !prev);
-  }, []);
 
   return { playSound, isMuted, toggleMute };
 }

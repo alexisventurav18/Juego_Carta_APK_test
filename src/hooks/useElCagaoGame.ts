@@ -1,16 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { drawFromSeat, type CagaoMove, type CagaoState } from '@/games/cagao';
 import { shuffle } from '@/games/cards';
-import type { Card, SeatLayout } from '@/components/cagao/types';
+import type { Card } from '@/components/cagao/types';
+import { seatLayout } from '@/components/table/seatLayout';
 import { useGameSounds } from './useGameSounds';
-
-/** Reparte a los rivales alrededor de la mesa: el siguiente en el orden de juego queda a tu izquierda. */
-export function seatLayout(total: number, me: number): SeatLayout {
-  const others = Array.from({ length: total - 1 }, (_, i) => (me + 1 + i) % total);
-  if (others.length <= 1) return { left: null, top: others, right: null };
-  if (others.length === 2) return { left: others[0], top: [], right: others[1] };
-  return { left: others[0], top: others.slice(1, -1), right: others[others.length - 1] };
-}
 
 interface Options {
   state: CagaoState;

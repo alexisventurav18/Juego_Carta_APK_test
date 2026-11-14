@@ -14,6 +14,8 @@ export interface Flight {
   durationMs?: number;
   /** Giro final en grados. */
   endRotate?: number;
+  /** Casino y Tres y Dos: el A♠ es un As normal. */
+  plain?: boolean;
 }
 
 function FlyingCard({ flight, onDone }: { flight: Flight; onDone: (id: number) => void }) {
@@ -47,7 +49,7 @@ function FlyingCard({ flight, onDone }: { flight: Flight; onDone: (id: number) =
 
   return (
     <div ref={ref} className="pointer-events-none fixed left-0 top-0 z-[55] will-change-transform" style={{ opacity: 0 }}>
-      <PlayingCard card={flight.card ?? undefined} faceDown={!flight.card} heightVar={flight.heightVar} />
+      <PlayingCard card={flight.card ?? undefined} faceDown={!flight.card} heightVar={flight.heightVar} plain={flight.plain} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
 import { fanMargin, fanPose } from './fanLayout';
 import PlayingCard from './PlayingCard';
-import type { Card } from './types';
+import type { Card, Point } from './types';
 
 /** Distancia (px) a partir de la cual un toque se considera arrastre y no un simple toque. */
 const DRAG_THRESHOLD = 10;
@@ -13,19 +13,33 @@ interface HandFanProps {
   heightVar: string;
   /** Largo máximo del abanico (longitud CSS). */
   avail: string;
-  /** Cartas con pareja (se marcan en dorado cuando se pueden bajar). */
-  pairableIds: Set<string>;
-  twinOf: (cardId: string) => Card | null;
+  /** Casino y Tres y Dos: el A♠ es un As normal, sin la ilustración de El Cagao. */
+  plain?: boolean;
+  /** Cartas marcadas con aro dorado (en El Cagao, las que tienen pareja). */
+  markedIds?: Set<string>;
+  /** Cartas que se pueden usar ahora mismo (aro verde suave). */
+  playableIds?: Set<string>;
+  /** Cartas elegidas: se quedan elevadas con aro amarillo. */
+  selectedIds?: Set<string>;
+  /** Cartas que no se pueden tocar ahora (se atenúan). */
+  disabledIds?: Set<string>;
+  /** Pareja de una carta (se eleva un poco al pasar sobre la otra). */
+  twinOf?: (cardId: string) => Card | null;
   /** Carta que acabas de robar. */
-  highlightId: string | null;
-  /** Se pueden bajar pares ahora (fase inicial). */
+  highlightId?: string | null;
+  highlightLabel?: string;
+  /** Se pueden tocar y arrastrar cartas ahora. */
   interactive: boolean;
-  /** Zona de la mesa donde se sueltan los pares arrastrados. */
+  /** Si esta carta se puede arrastrar hacia la mesa. */
+  canDrag: (card: Card) => boolean;
+  /** Zona de la mesa donde se sueltan las cartas arrastradas. */
   dropRef: RefObject<HTMLElement>;
-  /** Toque en una carta con pareja. */
-  onTap: (card: Card) => void;
-  /** Carta soltada sobre la mesa. Devuelve true si se aceptó. */
-  onDrop: (card: Card) => boolean;
+  /** Toque (o clic) en una carta. Devuelve false si no se pudo: la carta se sacude. */
+  onTap: (card: Card) => boolean | void;
+  /** Carta soltada sobre la mesa, con el punto exacto de la suelta. Devuelve true si se aceptó. */
+  onDrop: (card: Card, point: Point) => boolean | void;
+  /** Se empezó a arrastrar esta carta. */
+  onDragStart?: (card: Card) => void;
   onDraggingChange: (dragging: boolean) => void;
   containerRef?: (el: HTMLDivElement | null) => void;
 }
@@ -42,10 +56,10 @@ interface Press {
 }
 
 /**
- * Tu mano en abanico. Pointer Events para ratón y táctil por igual:
- * - Pasar el ratón o deslizar el dedo sobre una carta la eleva (y su pareja se eleva un poco).
- * - Tocar una carta con pareja baja el par.
- * - Arrastrar una carta con pareja hasta la mesa también lo baja; si la sueltas fuera, vuelve a su sitio.
+ * Tu mano en abanico, igual en los tres juegos. Pointer Events: ratón y táctil por igual.
+ * - Pasar el ratón o deslizar el dedo sobre una carta la eleva (y su pareja, si hay, se eleva un poco).
+ * - Tocar o hacer clic activa la carta (en El Cagao baja el par; en Casino y Tres y Dos la elige).
+ * - Arrastrar una carta hasta la mesa la juega; si la sueltas fuera, vuelve a su sitio.
  * Solo se animan `transform` y `opacity`; mientras arrastras, la posición se escribe directo en el DOM
  * (sin re-render por cada movimiento).
  */
@@ -53,13 +67,20 @@ export function HandFan({
   cards,
   heightVar,
   avail,
-  pairableIds,
+  plain = false,
+  markedIds,
+  playableIds,
+  selectedIds,
+  disabledIds,
   twinOf,
-  highlightId,
+  highlightId = null,
+  highlightLabel = 'Recién robada',
   interactive,
+  canDrag,
   dropRef,
   onTap,
   onDrop,
+  onDragStart,
   onDraggingChange,
   containerRef,
 }: HandFanProps) {
@@ -68,19 +89,22 @@ export function HandFan({
   const [wiggleId, setWiggleId] = useState<string | null>(null);
   const press = useRef<Press | null>(null);
   const n = cards.length;
-  const hoverTwinId = hoverId ? (twinOf(hoverId)?.id ?? null) : null;
+  const hoverTwinId = hoverId && twinOf ? (twinOf(hoverId)?.id ?? null) : null;
 
   const idUnder = (x: number, y: number): string | null =>
     document.elementFromPoint(x, y)?.closest('[data-hand-id]')?.getAttribute('data-hand-id') ?? null;
 
-  const activate = (card: Card) => {
-    if (interactive && pairableIds.has(card.id)) {
-      onTap(card);
-    } else if (interactive) {
-      setWiggleId(card.id);
-      window.setTimeout(() => setWiggleId((current) => (current === card.id ? null : current)), 320);
-    }
+  const wiggle = (id: string) => {
+    setWiggleId(id);
+    window.setTimeout(() => setWiggleId((current) => (current === id ? null : current)), 320);
   };
+
+  const activate = (card: Card) => {
+    if (!interactive || disabledIds?.has(card.id)) return;
+    if (onTap(card) === false) wiggle(card.id);
+  };
+
+  const draggable = (card: Card) => interactive && !disabledIds?.has(card.id) && canDrag(card);
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>, card: Card) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -103,10 +127,11 @@ export function HandFan({
         e.pointerType === 'mouse'
           ? Math.hypot(dx, dy) > DRAG_THRESHOLD
           : Math.hypot(dx, dy) > DRAG_THRESHOLD && Math.abs(dy) >= Math.abs(dx) * 0.8;
-      if (interactive && pairableIds.has(card.id) && wantsDrag) {
+      if (draggable(card) && wantsDrag) {
         p.dragging = true;
         setDragId(card.id);
         onDraggingChange(true);
+        onDragStart?.(card);
       } else if (e.pointerType !== 'mouse') {
         // Con el dedo, deslizar sobre las cartas va elevando la que tocas.
         const id = idUnder(e.clientX, e.clientY);
@@ -133,15 +158,17 @@ export function HandFan({
     if (p.raf !== null) cancelAnimationFrame(p.raf);
 
     if (p.dragging) {
+      let accepted = false;
       if (!cancelled) {
         const zone = dropRef.current?.getBoundingClientRect();
         const inside =
           zone && e.clientX >= zone.left && e.clientX <= zone.right && e.clientY >= zone.top && e.clientY <= zone.bottom;
-        if (inside) onDrop(card);
+        if (inside) accepted = onDrop(card, { x: e.clientX, y: e.clientY }) !== false;
       }
-      // Vuelve a su sitio (si el par se bajó, la carta desaparece y esto no se nota).
+      // Vuelve a su sitio (si la jugada se aceptó, la carta desaparece y esto no se nota).
       p.layer.style.transition = 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)';
       p.layer.style.transform = '';
+      if (!accepted && !cancelled) wiggle(card.id);
       setDragId(null);
       onDraggingChange(false);
     } else if (!cancelled) {
@@ -173,13 +200,25 @@ export function HandFan({
       {cards.map((card, i) => {
         const pose = fanPose(i, n, heightVar);
         const dragging = dragId === card.id;
-        const lifted = hoverId === card.id || dragging;
+        const selected = selectedIds?.has(card.id) ?? false;
+        const lifted = hoverId === card.id || dragging || selected;
         const twinLifted = !lifted && hoverTwinId === card.id;
-        const pairable = interactive && pairableIds.has(card.id);
+        const marked = interactive && (markedIds?.has(card.id) ?? false);
+        const playable = interactive && (playableIds?.has(card.id) ?? false);
+        const dimmed = disabledIds?.has(card.id) ?? false;
         const poseStyle = {
           transform: `translateY(${pose.drop}) rotate(${pose.rotate}deg)`,
           transformOrigin: '50% 130%',
         };
+        const ring = selected
+          ? 'ring-[3px] ring-yellow-300'
+          : marked
+            ? twinLifted || lifted
+              ? 'ring-[3px] ring-amber-300'
+              : 'ring-2 ring-amber-300/80'
+            : playable
+              ? 'ring-2 ring-lime-300/80'
+              : '';
         return (
           <div
             key={card.id}
@@ -199,7 +238,8 @@ export function HandFan({
             <div
               role="button"
               tabIndex={0}
-              aria-label={`${pairable ? 'Bajar el par con ' : ''}carta ${i + 1} de ${n}`}
+              aria-pressed={selected}
+              aria-label={`${marked ? 'Bajar el par con ' : ''}carta ${i + 1} de ${n}`}
               className="pointer-events-auto absolute inset-0 cursor-pointer rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
               style={{ ...poseStyle, zIndex: 1000 + i }}
               onKeyDown={(e) => onKeyDown(e, card)}
@@ -217,14 +257,14 @@ export function HandFan({
               <div data-drag-layer className="will-change-transform">
                 <div style={poseStyle}>
                   <div
-                    className={`${wiggleId === card.id ? 'card-wiggle ' : ''}relative rounded-[calc(var(${heightVar})*0.07)] transition-shadow ${
-                      pairable ? (twinLifted || lifted ? 'ring-[3px] ring-amber-300' : 'ring-2 ring-amber-300/80') : ''
-                    } ${highlightId === card.id ? 'ring-[3px] ring-yellow-300' : ''}`}
+                    className={`${wiggleId === card.id ? 'card-wiggle ' : ''}relative rounded-[calc(var(${heightVar})*0.07)] transition-shadow ${ring} ${
+                      highlightId === card.id && !selected ? 'ring-[3px] ring-yellow-300' : ''
+                    } ${dimmed ? 'opacity-60' : ''}`}
                   >
-                    <PlayingCard card={card} heightVar={heightVar} />
+                    <PlayingCard card={card} heightVar={heightVar} plain={plain} />
                     {highlightId === card.id && (
                       <span className="pointer-events-none absolute -top-3 right-0 z-20 whitespace-nowrap rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold leading-none text-stone-900 shadow">
-                        Recién robada
+                        {highlightLabel}
                       </span>
                     )}
                   </div>

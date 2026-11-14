@@ -2,15 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Márgenes seguros (notch, esquinas redondeadas, barra de gestos). En horizontal el notch cae a izquierda o
+   derecha, así que se usan los cuatro lados. `--safe-area-inset-*` lo inyecta Capacitor cuando existe. */
+:root {
+  --sat: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --sar: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+  --sab: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --sal: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
 html {
   min-width: 320px;
   background: #1e0e05;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
   min-width: 320px;
-  overflow-x: hidden;
+  overflow: hidden;
+  overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 button,
@@ -477,4 +504,11 @@ button,
 
 .card-playable {
   box-shadow: 0 0 0 2px rgb(190 242 100 / 0.8), 0 0 10px rgb(190 242 100 / 0.45);
+}
+
+/* Pantalla de menú o sala: ocupa todo el viewport respetando los márgenes seguros. */
+.safe-screen {
+  position: fixed;
+  inset: 0;
+  padding: var(--sat) var(--sar) var(--sab) var(--sal);
 }

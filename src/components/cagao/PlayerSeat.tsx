@@ -63,6 +63,8 @@ interface PlayerSeatProps {
   pickable: boolean;
   onPick: (seat: number, index: number) => void;
   registerAnchor: (seat: number, el: HTMLElement | null) => void;
+  /** Etiqueta pequeña bajo el nombre (p. ej. "Pareja"). */
+  tag?: string;
   children?: ReactNode;
 }
 
@@ -83,6 +85,7 @@ export default function PlayerSeat({
   pickable,
   onPick,
   registerAnchor,
+  tag,
 }: PlayerSeatProps) {
   const vertical = side !== 'top';
   const fan =
@@ -104,7 +107,7 @@ export default function PlayerSeat({
   if (!vertical) {
     return (
       <div className="flex min-w-0 items-center justify-center gap-2">
-        <SeatPlaque name={name} count={count} isTurn={isTurn} isVictim={isVictim} out={out} />
+        <SeatPlaque name={name} count={count} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} />
         <div className="flex h-[calc(var(--oh)+14px)] min-w-0 items-center justify-center px-2">{fan}</div>
       </div>
     );
@@ -112,7 +115,7 @@ export default function PlayerSeat({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col items-center justify-center gap-1">
-      <SeatPlaque name={name} count={count} isTurn={isTurn} isVictim={isVictim} out={out} />
+      <SeatPlaque name={name} count={count} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} />
       {/* El abanico se gira 90°: la caja reserva su largo como alto y el alto de carta como ancho. */}
       <div
         className="relative flex shrink-0 items-center justify-center"

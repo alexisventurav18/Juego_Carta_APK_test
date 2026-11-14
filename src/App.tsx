@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Lobby from '@/components/Lobby';
+import OrientationGuard from '@/components/OrientationGuard';
 import RoomView from '@/components/RoomView';
 import OfflineBotGame, { type OfflineSetup } from '@/components/OfflineBotGame';
 import { getStoredRoomId, storeRoomId } from '@/lib/identity';
@@ -25,17 +26,21 @@ export default function App() {
     setOfflineGame(setup);
   };
 
-  if (offlineGame) {
-    return <OfflineBotGame {...offlineGame} onLeave={() => setOfflineGame(null)} />;
-  }
-
   return (
-    <div className="wood-stage min-h-dvh antialiased">
-      {roomId ? (
-        <RoomView key={roomId} roomId={roomId} onLeave={leaveRoom} />
+    <>
+      {/* Toda la app es horizontal: en vertical (solo en el navegador) pide girar el dispositivo. */}
+      <OrientationGuard />
+      {offlineGame ? (
+        <OfflineBotGame {...offlineGame} onLeave={() => setOfflineGame(null)} />
       ) : (
-        <Lobby onEnter={enterRoom} onStartOffline={startOffline} />
+        <div className="wood-stage fixed inset-0 antialiased">
+          {roomId ? (
+            <RoomView key={roomId} roomId={roomId} onLeave={leaveRoom} />
+          ) : (
+            <Lobby onEnter={enterRoom} onStartOffline={startOffline} />
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }

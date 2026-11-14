@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { ArrowLeft, Check, Layers, Shuffle, Skull, Volume2, VolumeX, X } from 'lucide-react';
+import { Check, Layers, Shuffle, Skull, X } from 'lucide-react';
 import { rankLabel } from '@/games/cards';
 import type { CagaoMove, CagaoState } from '@/games/cagao';
 import { isBotPlayer } from '@/games/shared';
@@ -7,13 +7,14 @@ import { useElCagaoGame } from '@/hooks/useElCagaoGame';
 import DealerReveal from '../DealerReveal';
 import DefeatNotice from '../DefeatNotice';
 import VictoryCelebration from '../VictoryCelebration';
-import { WoodFrame } from './CardAssets';
 import FlightLayer, { type Flight } from './FlightLayer';
+import TableLayout from '../table/TableLayout';
+import { CORNER_CHIP, LeaveButton, TableNotices, TurnSound } from '../table/chips';
+import { centerOf, useFlights } from '../table/useFlights';
 import { HandFan } from './Fans';
-import OrientationGuard from './OrientationGuard';
 import PlayerSeat, { SeatPlaque } from './PlayerSeat';
 import PlayingCard from './PlayingCard';
-import type { Card, Point } from './types';
+import type { Card } from './types';
 
 export interface GameTableProps {
   state: CagaoState;
@@ -30,31 +31,12 @@ export interface GameTableProps {
   resultFooter?: ReactNode;
 }
 
-const ROOT_VARS = {
-  '--frame': 'clamp(10px, 2.6dvh, 24px)',
-  '--corner': 'clamp(28px, 9dvh, 60px)',
-  '--medal': 'clamp(26px, 8dvh, 56px)',
-  // Alto de cartas: tu mano, las de los rivales y las de la pila central. Todo sale de la altura de pantalla.
-  '--ch': 'clamp(52px, 21dvh, 140px)',
-  '--oh': 'clamp(30px, 11dvh, 74px)',
-  '--ph': 'clamp(40px, 16dvh, 96px)',
-} as CSSProperties;
-
 /** Giro estable (±14°) a partir del id de la carta, para que la pila de pares se vea natural. */
 function tilt(id: string): number {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
   return (Math.abs(h) % 29) - 14;
 }
-
-function centerOf(el: Element | null | undefined): Point | null {
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-}
-
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 export default function GameTable({
   state,
@@ -72,48 +54,23 @@ export default function GameTable({
   const [endNoticeDismissed, setEndNoticeDismissed] = useState(false);
   const [pairsOpen, setPairsOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [flights, setFlights] = useState<Flight[]>([]);
+  const { flights, spawn, endFlight, registerAnchor, anchorCenter } = useFlights();
 
   const boardRef = useRef<HTMLDivElement>(null);
   const pileRef = useRef<HTMLDivElement>(null);
   const handRef = useRef<HTMLDivElement>(null);
-  const anchors = useRef(new Map<number, HTMLElement>());
-  const flightSeq = useRef(0);
   const lastEventSeq = useRef(event?.seq ?? 0);
   const lastPairCount = useRef(state.pairs.length);
 
   const names = state.players.map((p, s) => (s === seat ? 'Tú' : p.name));
   const loserName = state.loserSeat !== null ? state.players[state.loserSeat].name : '';
 
-  const registerAnchor = useCallback((s: number, el: HTMLElement | null) => {
-    if (el) anchors.current.set(s, el);
-    else anchors.current.delete(s);
-  }, []);
-
-  const spawn = useCallback((items: Omit<Flight, 'id'>[]) => {
-    if (prefersReducedMotion()) return;
-    setFlights((current) => [...current, ...items.map((item) => ({ ...item, id: ++flightSeq.current }))]);
-  }, []);
-
-  const endFlight = useCallback((id: number) => {
-    setFlights((current) => current.filter((f) => f.id !== id));
-  }, []);
-
-  // El bloqueo de scroll de la página mientras la mesa ocupa toda la pantalla.
-  useEffect(() => {
-    const previous = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = 'hidden';
-    return () => {
-      document.documentElement.style.overflow = previous;
-    };
-  }, []);
-
   // Cada robo: una carta boca abajo vuela del rival a quien la jaló; si hace par, el par va a la pila.
   useEffect(() => {
     if (!event || event.seq === lastEventSeq.current) return;
     lastEventSeq.current = event.seq;
-    const from = centerOf(anchors.current.get(event.from)) ?? centerOf(handRef.current);
-    const to = centerOf(anchors.current.get(event.by)) ?? centerOf(handRef.current);
+    const from = anchorCenter(event.from) ?? centerOf(handRef.current);
+    const to = anchorCenter(event.by) ?? centerOf(handRef.current);
     const pile = centerOf(pileRef.current);
     const items: Omit<Flight, 'id'>[] = [];
     if (from && to) {
@@ -133,7 +90,7 @@ export default function GameTable({
       );
     }
     if (items.length > 0) spawn(items);
-  }, [event, spawn]);
+  }, [event, spawn, anchorCenter]);
 
   // Pares que bajan los rivales en la fase inicial: vuelan de su asiento al centro.
   useEffect(() => {
@@ -145,7 +102,7 @@ export default function GameTable({
     const fresh = state.pairs.slice(before).filter((p) => p.seat !== seat).slice(0, 4);
     const items: Omit<Flight, 'id'>[] = [];
     fresh.forEach((pair, k) => {
-      const from = centerOf(anchors.current.get(pair.seat));
+      const from = anchorCenter(pair.seat);
       if (!from) return;
       pair.cards.forEach((card, i) =>
         items.push({
@@ -160,7 +117,7 @@ export default function GameTable({
       );
     });
     if (items.length > 0) spawn(items);
-  }, [state.pairs, seat, spawn]);
+  }, [state.pairs, seat, spawn, anchorCenter]);
 
   /** Baja el par de una carta de tu mano y hace volar las dos hacia la pila central. */
   const pairWithFlight = useCallback(
@@ -230,86 +187,28 @@ export default function GameTable({
   );
 
   return (
-    <div
-      className="fixed inset-0 z-30 h-[100dvh] w-[100dvw] touch-none select-none overflow-hidden overscroll-none bg-[#2a160a] bg-[radial-gradient(ellipse_at_50%_35%,#4a2a12,#1e0e05_75%)] text-amber-50"
-      style={ROOT_VARS}
-    >
-      <OrientationGuard />
-      <WoodFrame />
-
-      {dealerOpen && (
-        <DealerReveal players={state.players} dealer={state.dealer} onDone={() => setDealerOpen(false)} />
-      )}
-      {game.gameOver &&
-        !endNoticeDismissed &&
-        (game.iLost ? (
-          <DefeatNotice
-            title="¡Eres El Cagao!"
-            message="Te quedaste con el A♠ y no pudiste emparejarlo. ¡Pide la revancha!"
-            continueLabel="Continuar"
-            onContinue={() => setEndNoticeDismissed(true)}
-          />
-        ) : (
-          <VictoryCelebration
-            title="¡TE SALVASTE!"
-            message={`${loserName} se quedó con El Cagao.`}
-            continueLabel="Continuar"
-            onContinue={() => setEndNoticeDismissed(true)}
-          />
-        ))}
-
-      {/* Rejilla de la mesa: rivales a izquierda, arriba y derecha; tú abajo; el tablero en el centro. */}
-      <div className="absolute inset-[calc(var(--frame)+4px)] grid grid-cols-[19%_minmax(0,1fr)_19%] grid-rows-[24%_minmax(0,1fr)_36%]">
-        {/* Esquinas superiores: salir y pares a la izquierda; turno y sonido a la derecha */}
-        <div className="z-30 flex items-start gap-1.5 p-1 pl-[calc(var(--corner)*0.8)]">
-          {onLeave && (
-            <button
-              type="button"
-              onClick={onLeave}
-              aria-label="Salir de la partida"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-black/40 text-amber-50 ring-1 ring-amber-200/30 active:scale-95"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-          )}
+    <TableLayout
+      topLeft={
+        <>
+          <LeaveButton onLeave={onLeave} />
           <button
             type="button"
             onClick={() => setPairsOpen(true)}
             aria-label={`Pares bajados: ${state.pairs.length}`}
-            className="flex h-10 shrink-0 items-center gap-1 rounded-lg bg-black/40 px-2 text-xs font-bold tabular-nums text-amber-50 ring-1 ring-amber-200/30 active:scale-95"
+            className={CORNER_CHIP}
           >
             <Layers className="h-4 w-4" aria-hidden />
             {state.pairs.length}
           </button>
-        </div>
-
-        <div className="flex min-w-0 items-center justify-evenly gap-2">{game.layout.top.map((s) => renderSeat(s, 'top'))}</div>
-
-        <div className="z-30 flex items-start justify-end gap-1.5 p-1 pr-[calc(var(--corner)*0.8)]">
-          <span
-            aria-live="polite"
-            className={`max-w-[7rem] truncate rounded-full px-2.5 py-1.5 text-[11px] font-bold leading-none ${
-              game.myTurn ? 'bg-amber-400 text-stone-900' : 'bg-black/40 text-amber-50 ring-1 ring-amber-200/30'
-            }`}
-          >
-            {turnLabel}
-          </span>
-          <button
-            type="button"
-            onClick={game.toggleMute}
-            aria-label={game.isMuted ? 'Activar sonido' : 'Silenciar'}
-            aria-pressed={game.isMuted}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-black/40 text-amber-50 ring-1 ring-amber-200/30 active:scale-95"
-          >
-            {game.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-        </div>
-
-        {/* Laterales */}
-        <div className="min-h-0 min-w-0">{game.layout.left !== null && renderSeat(game.layout.left, 'left')}</div>
-
-        {/* Centro: tablero de madera en perspectiva 2.5D. Los textos van fuera de la parte inclinada. */}
-        <div className="relative min-h-0 min-w-0">
+        </>
+      }
+      topCenter={game.layout.top.map((s) => renderSeat(s, 'top'))}
+      topRight={<TurnSound label={turnLabel} myTurn={game.myTurn} muted={game.isMuted} onToggleMute={game.toggleMute} />}
+      left={game.layout.left !== null && renderSeat(game.layout.left, 'left')}
+      right={game.layout.right !== null && renderSeat(game.layout.right, 'right')}
+      center={
+        <>
+          {/* Tablero de madera en perspectiva 2.5D. Los textos van fuera de la parte inclinada. */}
           <div className="absolute inset-0 [perspective:1100px]">
             <div
               ref={boardRef}
@@ -344,39 +243,39 @@ export default function GameTable({
           {/* Aviso de la última jugada */}
           {event && game.playing && (
             <div className="pointer-events-none absolute inset-x-0 top-1 z-30 flex justify-center px-1">
-            <div
-              key={event.seq}
-              role="status"
-              className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-1 text-center text-[11px] ring-1 sm:text-xs ${
-                event.cagao
-                  ? 'bg-rose-600/80 font-bold text-rose-50 ring-rose-200'
-                  : event.pair
-                    ? 'bg-amber-500/80 font-semibold text-stone-900 ring-amber-200'
-                    : 'bg-black/55 text-amber-50 ring-white/15'
-              }`}
-            >
-              {event.cagao && <Skull className="h-3.5 w-3.5 shrink-0" aria-hidden />}
-              <span>
-                {event.cagao
-                  ? event.by === seat
-                    ? `¡Robaste El Cagao (A♠) de ${names[event.from]}!`
-                    : event.from === seat
-                      ? `¡${names[event.by]} te quitó El Cagao!`
-                      : `¡${names[event.by]} le robó El Cagao a ${names[event.from]}!`
-                  : event.pair
+              <div
+                key={event.seq}
+                role="status"
+                className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-1 text-center text-[11px] ring-1 sm:text-xs ${
+                  event.cagao
+                    ? 'bg-rose-600/80 font-bold text-rose-50 ring-rose-200'
+                    : event.pair
+                      ? 'bg-amber-500/80 font-semibold text-stone-900 ring-amber-200'
+                      : 'bg-black/55 text-amber-50 ring-white/15'
+                }`}
+              >
+                {event.cagao && <Skull className="h-3.5 w-3.5 shrink-0" aria-hidden />}
+                <span>
+                  {event.cagao
                     ? event.by === seat
-                      ? `Robaste a ${names[event.from]} y bajaste par de ${rankLabel(event.pair[0])}.`
+                      ? `¡Robaste El Cagao (A♠) de ${names[event.from]}!`
                       : event.from === seat
-                        ? `${names[event.by]} te robó y bajó par de ${rankLabel(event.pair[0])}.`
-                        : `${names[event.by]} bajó par de ${rankLabel(event.pair[0])}.`
-                    : event.by === seat
-                      ? `Le robaste una carta a ${names[event.from]}.`
-                      : event.from === seat
-                        ? `${names[event.by]} te robó una carta.`
-                        : `${names[event.by]} le robó una carta a ${names[event.from]}.`}
-                {event.outSeats.length > 0 && ` ${event.outSeats.map((s) => names[s]).join(' y ')} se salvó.`}
-              </span>
-            </div>
+                        ? `¡${names[event.by]} te quitó El Cagao!`
+                        : `¡${names[event.by]} le robó El Cagao a ${names[event.from]}!`
+                    : event.pair
+                      ? event.by === seat
+                        ? `Robaste a ${names[event.from]} y bajaste par de ${rankLabel(event.pair[0])}.`
+                        : event.from === seat
+                          ? `${names[event.by]} te robó y bajó par de ${rankLabel(event.pair[0])}.`
+                          : `${names[event.by]} bajó par de ${rankLabel(event.pair[0])}.`
+                      : event.by === seat
+                        ? `Le robaste una carta a ${names[event.from]}.`
+                        : event.from === seat
+                          ? `${names[event.by]} te robó una carta.`
+                          : `${names[event.by]} le robó una carta a ${names[event.from]}.`}
+                  {event.outSeats.length > 0 && ` ${event.outSeats.map((s) => names[s]).join(' y ')} se salvó.`}
+                </span>
+              </div>
             </div>
           )}
 
@@ -385,49 +284,46 @@ export default function GameTable({
               {hint}
             </p>
           )}
-        </div>
-
-        <div className="min-h-0 min-w-0">{game.layout.right !== null && renderSeat(game.layout.right, 'right')}</div>
-
-        {/* Abajo: tu placa, tu mano en abanico y las acciones */}
-        <div className="z-30 flex items-end p-1 pl-[calc(var(--corner)*0.6)]">
-          <SeatPlaque
-            name={state.players[seat].name}
-            count={game.hand.length}
-            isTurn={game.myTurn}
-            out={game.iAmOut}
-            isMe
+        </>
+      }
+      bottomLeft={
+        <SeatPlaque
+          name={state.players[seat].name}
+          count={game.hand.length}
+          isTurn={game.myTurn}
+          out={game.iAmOut}
+          isMe
+        />
+      }
+      bottomCenter={
+        game.iAmOut ? (
+          <p className="flex items-center gap-2 pb-6 text-sm font-bold text-emerald-200">
+            <Check className="h-4 w-4" aria-hidden />
+            Sin cartas: ¡te salvaste!
+          </p>
+        ) : (
+          <HandFan
+            cards={game.shownHand}
+            heightVar="--ch"
+            avail="min(56dvw, 620px)"
+            markedIds={game.pairableIds}
+            twinOf={game.twinOf}
+            highlightId={game.newCardId}
+            interactive={game.pairing}
+            canDrag={(card) => game.pairableIds.has(card.id)}
+            dropRef={boardRef}
+            onTap={pairWithFlight}
+            onDrop={(card) => pairWithFlight(card)}
+            onDraggingChange={setDragging}
+            containerRef={(el) => {
+              (handRef as { current: HTMLDivElement | null }).current = el;
+              if (el) registerAnchor(seat, el);
+            }}
           />
-        </div>
-
-        <div className="relative flex min-h-0 min-w-0 items-end justify-center overflow-visible pb-[calc(var(--frame)*1.5)] pt-4">
-          {game.iAmOut ? (
-            <p className="flex items-center gap-2 pb-6 text-sm font-bold text-emerald-200">
-              <Check className="h-4 w-4" aria-hidden />
-              Sin cartas: ¡te salvaste!
-            </p>
-          ) : (
-            <HandFan
-              cards={game.shownHand}
-              heightVar="--ch"
-              avail="min(56dvw, 620px)"
-              pairableIds={game.pairableIds}
-              twinOf={game.twinOf}
-              highlightId={game.newCardId}
-              interactive={game.pairing}
-              dropRef={boardRef}
-              onTap={(card) => void pairWithFlight(card)}
-              onDrop={pairWithFlight}
-              onDraggingChange={setDragging}
-              containerRef={(el) => {
-                (handRef as { current: HTMLDivElement | null }).current = el;
-                if (el) anchors.current.set(seat, el);
-              }}
-            />
-          )}
-        </div>
-
-        <div className="z-30 flex flex-col items-end justify-end gap-1.5 p-1 pr-[calc(var(--corner)*0.6)]">
+        )
+      }
+      bottomRight={
+        <>
           {game.pairing && (
             <button
               type="button"
@@ -447,8 +343,30 @@ export default function GameTable({
             <Shuffle className="h-3.5 w-3.5" aria-hidden />
             Mezclar mano
           </button>
-        </div>
-      </div>
+        </>
+      }
+      overlays={
+        <>
+      {dealerOpen && (
+        <DealerReveal players={state.players} dealer={state.dealer} onDone={() => setDealerOpen(false)} />
+      )}
+      {game.gameOver &&
+        !endNoticeDismissed &&
+        (game.iLost ? (
+          <DefeatNotice
+            title="¡Eres El Cagao!"
+            message="Te quedaste con el A♠ y no pudiste emparejarlo. ¡Pide la revancha!"
+            continueLabel="Continuar"
+            onContinue={() => setEndNoticeDismissed(true)}
+          />
+        ) : (
+          <VictoryCelebration
+            title="¡TE SALVASTE!"
+            message={`${loserName} se quedó con El Cagao.`}
+            continueLabel="Continuar"
+            onContinue={() => setEndNoticeDismissed(true)}
+          />
+        ))}
 
       {game.gameOver && endNoticeDismissed && (
         <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 p-3">
@@ -545,24 +463,10 @@ export default function GameTable({
         </div>
       )}
 
-      <FlightLayer flights={flights} onDone={endFlight} />
-
-      {(connection === 'offline' || connection === 'connecting') && (
-        <p
-          role="status"
-          className="pointer-events-none absolute inset-x-3 top-[calc(env(safe-area-inset-top)+0.25rem)] z-50 mx-auto max-w-sm rounded-full bg-amber-500 px-3 py-1 text-center text-[11px] font-semibold text-stone-900 shadow-lg"
-        >
-          {connection === 'offline' ? 'Sin conexión. Reintentando...' : 'Conectando al servidor...'}
-        </p>
-      )}
-      {notice && (
-        <p
-          role="alert"
-          className="pointer-events-none absolute inset-x-3 top-[calc(env(safe-area-inset-top)+2rem)] z-50 mx-auto max-w-md rounded-xl bg-rose-600 px-3 py-2 text-center text-xs font-medium text-white shadow-lg"
-        >
-          {notice}
-        </p>
-      )}
-    </div>
+          <FlightLayer flights={flights} onDone={endFlight} />
+          <TableNotices connection={connection} notice={notice} />
+        </>
+      }
+    />
   );
 }
