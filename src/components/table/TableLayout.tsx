@@ -39,7 +39,7 @@ interface TableLayoutProps {
 /**
  * La mesa de El Cagao hecha componente: marco de madera tallada, rivales a izquierda, arriba y derecha,
  * tablero al centro y tú abajo (placa, mano y acciones). Los tres juegos usan este mismo esqueleto, así
- * se ven y se sienten igual. Respeta el notch y las barras del sistema en los cuatro lados.
+ * se ven y se sienten igual. El marco llega a los bordes de la pantalla; el contenido respeta el notch.
  */
 export default function TableLayout({
   topLeft,
@@ -69,47 +69,52 @@ export default function TableLayout({
 
   return (
     <div
-      className="fixed inset-0 z-30 h-[100dvh] w-[100dvw] touch-none select-none overflow-hidden overscroll-none bg-[#2a160a] bg-[radial-gradient(ellipse_at_50%_35%,#4a2a12,#1e0e05_75%)] text-amber-50"
+      className="fixed inset-0 z-30 touch-none select-none overflow-hidden overscroll-none bg-[#2a160a] bg-[radial-gradient(ellipse_at_50%_35%,#4a2a12,#1e0e05_75%)] text-amber-50"
       style={{ ...BASE_VARS, ...vars }}
     >
-      {/* Caja segura: el marco y la rejilla quedan dentro del notch y de las barras del sistema. */}
+      {/* Marco a sangre: la madera llega hasta los bordes físicos de la pantalla (sin franjas negras). */}
+      <WoodFrame />
+
+      {/* Rejilla de la mesa: el contenido se sangra hacia dentro lo justo para esquivar el notch y las esquinas. */}
       <div
-        className="absolute"
+        className="absolute grid"
+        style={{
+          top: 'calc(var(--frame) + 4px + var(--sat))',
+          right: 'calc(var(--frame) + 4px + var(--sar))',
+          bottom: 'calc(var(--frame) + 4px + var(--sab))',
+          left: 'calc(var(--frame) + 4px + var(--sal))',
+          gridTemplateColumns: `${sideCols} minmax(0,1fr) ${sideCols}`,
+          gridTemplateRows: rows.replace(/_/g, ' '),
+        }}
+      >
+        <div className="z-30 flex items-start gap-1.5 p-1 pl-[calc(var(--corner)*0.8)]">{topLeft}</div>
+        <div className="flex min-w-0 items-center justify-evenly gap-2">{topCenter}</div>
+        <div className="z-30 flex items-start justify-end gap-1.5 p-1 pr-[calc(var(--corner)*0.8)]">{topRight}</div>
+
+        <div className="min-h-0 min-w-0">{left}</div>
+        <div ref={centerRef} className="relative min-h-0 min-w-0">
+          {center}
+        </div>
+        <div className="min-h-0 min-w-0">{right}</div>
+
+        <div className="z-30 flex items-end p-1 pl-[calc(var(--corner)*0.6)]">{bottomLeft}</div>
+        <div
+          ref={bottomCenterRef}
+          className="relative flex min-h-0 min-w-0 items-end justify-center overflow-visible pb-[calc(var(--frame)*1.5)] pt-4"
+        >
+          {bottomCenter}
+        </div>
+        <div className="z-30 flex flex-col items-end justify-end gap-1.5 p-1 pr-[calc(var(--corner)*0.6)]">
+          {bottomRight}
+        </div>
+      </div>
+
+      {/* Ventanas y avisos: dentro de la zona segura para que el notch nunca los tape. */}
+      <div
+        className="pointer-events-none absolute"
         style={{ top: 'var(--sat)', right: 'var(--sar)', bottom: 'var(--sab)', left: 'var(--sal)' }}
       >
-        <WoodFrame />
-
-        {/* Rejilla de la mesa */}
-        <div
-          className="absolute inset-[calc(var(--frame)+4px)] grid"
-          style={{
-            gridTemplateColumns: `${sideCols} minmax(0,1fr) ${sideCols}`,
-            gridTemplateRows: rows.replace(/_/g, ' '),
-          }}
-        >
-          <div className="z-30 flex items-start gap-1.5 p-1 pl-[calc(var(--corner)*0.8)]">{topLeft}</div>
-          <div className="flex min-w-0 items-center justify-evenly gap-2">{topCenter}</div>
-          <div className="z-30 flex items-start justify-end gap-1.5 p-1 pr-[calc(var(--corner)*0.8)]">{topRight}</div>
-
-          <div className="min-h-0 min-w-0">{left}</div>
-          <div ref={centerRef} className="relative min-h-0 min-w-0">
-            {center}
-          </div>
-          <div className="min-h-0 min-w-0">{right}</div>
-
-          <div className="z-30 flex items-end p-1 pl-[calc(var(--corner)*0.6)]">{bottomLeft}</div>
-          <div
-            ref={bottomCenterRef}
-            className="relative flex min-h-0 min-w-0 items-end justify-center overflow-visible pb-[calc(var(--frame)*1.5)] pt-4"
-          >
-            {bottomCenter}
-          </div>
-          <div className="z-30 flex flex-col items-end justify-end gap-1.5 p-1 pr-[calc(var(--corner)*0.6)]">
-            {bottomRight}
-          </div>
-        </div>
-
-        {overlays}
+        <div className="pointer-events-auto contents">{overlays}</div>
       </div>
     </div>
   );

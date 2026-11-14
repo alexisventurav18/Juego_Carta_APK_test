@@ -9,6 +9,7 @@ import DefeatNotice from '../DefeatNotice';
 import VictoryCelebration from '../VictoryCelebration';
 import FlightLayer, { type Flight } from './FlightLayer';
 import TableLayout from '../table/TableLayout';
+import { useStartHint } from '../table/useStartHint';
 import { CORNER_CHIP, LeaveButton, TableNotices, TurnSound } from '../table/chips';
 import { centerOf, useFlights } from '../table/useFlights';
 import { HandFan } from './Fans';
@@ -154,6 +155,9 @@ export default function GameTable({
     if (game.myTurn && s === game.victimSeat) game.drawAt(index);
   };
 
+  // Los avisos de instrucciones salen solo al inicio de la partida (hasta que termina tu primer turno).
+  const showStartHint = useStartHint(game.myTurn, state.roundNo, game.gameOver || game.iAmOut);
+
   const hint = (() => {
     if (game.pairing) {
       if (game.pairableIds.size > 0) return 'Baja tus pares: toca una carta con pareja o arrástrala a la mesa.';
@@ -279,7 +283,7 @@ export default function GameTable({
             </div>
           )}
 
-          {hint && (
+          {showStartHint && hint && (
             <p className="pointer-events-none absolute bottom-0 left-1/2 z-30 max-w-[96%] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
               {hint}
             </p>

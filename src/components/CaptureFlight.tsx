@@ -1,27 +1,39 @@
 import type { Card } from '@/games/cards';
 import PlayingCard, { CardBack } from './PlayingCard';
+import type { TeamColor } from './table/teamColors';
 
 interface CaptureFlightProps {
   playerName: string;
   card: Card;
   capturedCount: number;
   virao: boolean;
+  /** Equipo que hizo la jugada: el aviso toma su color. */
+  team?: TeamColor;
 }
 
 /** Muestra la carta pública jugada y el resto de la captura como cartas ocultas. */
-export default function CaptureFlight({ playerName, card, capturedCount, virao }: CaptureFlightProps) {
+export default function CaptureFlight({ playerName, card, capturedCount, virao, team }: CaptureFlightProps) {
   const visibleBacks = Math.min(capturedCount, 5);
 
   return (
     <div className="pointer-events-none absolute inset-x-2 bottom-4 z-20 flex justify-center">
       <div
         className="animate-capture-flight wood-panel flex items-end gap-1.5 !rounded-2xl px-3 py-2 shadow-xl"
+        style={team ? { boxShadow: `0 0 0 3px ${team.main}, 0 0 18px 2px ${team.main}, 0 18px 40px rgb(0 0 0 / 0.6)` } : undefined}
         role="status"
         aria-live="polite"
       >
         <div className="flex flex-col items-center gap-1">
           <PlayingCard card={card} size="sm" />
           <span className="max-w-24 truncate text-[10px] font-medium">{playerName}</span>
+          {team && (
+            <span
+              className="rounded-full px-1.5 py-px text-[9px] font-extrabold leading-none"
+              style={{ backgroundColor: team.main, color: team.ink }}
+            >
+              {team.label}
+            </span>
+          )}
         </div>
         {visibleBacks > 0 && (
           <div className="flex -space-x-3 pb-4">

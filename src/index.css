@@ -390,22 +390,11 @@ button,
   100% { opacity: 1; transform: scale(1); }
 }
 
-.orientation-phone {
-  animation: phone-turn 2.6s ease-in-out infinite;
-}
-
-@keyframes phone-turn {
-  0%, 15% { transform: rotate(0deg); }
-  55%, 85% { transform: rotate(-90deg); }
-  100% { transform: rotate(0deg); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .gold-glow,
   .turn-glow,
   .card-wiggle,
-  .pile-land,
-  .orientation-phone {
+  .pile-land {
     animation: none;
   }
 }

@@ -16,6 +16,7 @@ import type { Card } from './cagao/types';
 import TableLayout from './table/TableLayout';
 import { CORNER_CHIP, LeaveButton, TableNotices, TurnSound } from './table/chips';
 import { seatLayout } from './table/seatLayout';
+import { useStartHint } from './table/useStartHint';
 import { TB_DROP, TB_FORM, TB_MAIN, TB_SING } from './table/styles';
 import { useDealFlights } from './table/useDealFlights';
 import { centerOf, useFlights } from './table/useFlights';
@@ -73,6 +74,8 @@ export default function TresYDosTable({
   const myTurn = playing && state.turn === seat && !deal.dealing;
   const drawStep = myTurn && state.turnStep === 'draw';
   const discardStep = myTurn && state.turnStep === 'discard';
+  // Los avisos de instrucciones salen solo al inicio de la partida (hasta que termina tu primer turno).
+  const showStartHint = useStartHint(myTurn, state.roundNo, state.phase === 'gameOver');
   const forbiddenId = state.drawnFrom === 'discard' ? state.drawnCardId : null;
   const winningIds = discardStep ? winningDiscardIds(hand, forbiddenId) : [];
   const selected = hand.find((c) => c.id === cardId) ?? null;
@@ -339,7 +342,7 @@ export default function TresYDosTable({
             </div>
           </div>
 
-          {playing && hint && (
+          {playing && showStartHint && hint && (
             <p className="pointer-events-none absolute bottom-0 left-1/2 z-30 max-w-[96%] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
               {hint}
             </p>

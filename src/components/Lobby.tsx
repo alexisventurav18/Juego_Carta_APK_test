@@ -1,8 +1,8 @@
 import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BookOpen, Bot, DoorOpen, Maximize2, Minimize2, RefreshCw, Spade, Users, Volume2, VolumeX, X } from 'lucide-react';
+import { BookOpen, Bot, DoorOpen, Maximize2, Minimize2, RefreshCw, Spade, Volume2, VolumeX, X } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId } from '@/games/shared';
-import { createRoom, createSoloRoom, joinRoom } from '@/lib/rooms';
+import { createRoom, joinRoom } from '@/lib/rooms';
 import { getPlayerId, getStoredName, resetPlayerIdentity, storeName } from '@/lib/identity';
 import { useFullscreen } from '@/lib/platform';
 import { useMuted } from '@/lib/soundPrefs';
@@ -50,7 +50,7 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
   const [game, setGame] = useState<GameId>('casino');
   const [code, setCode] = useState('');
   const [panel, setPanel] = useState<'rules' | 'join' | null>(null);
-  const [busy, setBusy] = useState<'create' | 'join' | 'solo' | null>(null);
+  const [busy, setBusy] = useState<'create' | 'join' | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Tamaño de mesa elegido para jugar sin conexión, por juego (si no se tocó, el recomendado).
   const [offlineCounts, setOfflineCounts] = useState<Partial<Record<GameId, number>>>({});
@@ -69,7 +69,7 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
     setError(null);
   };
 
-  const run = async (kind: 'create' | 'join' | 'solo', action: (player: { id: string; name: string }) => Promise<string>) => {
+  const run = async (kind: 'create' | 'join', action: (player: { id: string; name: string }) => Promise<string>) => {
     if (!trimmedName) {
       setError('Escribe tu nombre para continuar.');
       setPanel(null);
@@ -90,7 +90,6 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
   };
 
   const handleCreate = () => run('create', async (player) => (await createRoom(game, player)).id);
-  const handleSolo = () => run('solo', async (player) => (await createSoloRoom(game, player)).id);
 
   const handleJoin = (event: FormEvent) => {
     event.preventDefault();
@@ -120,10 +119,9 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
 
   return (
     <div className="wood-stage fixed inset-0 overflow-hidden" style={FRAME_VARS}>
-      {/* Caja segura: el marco y el contenido quedan dentro del notch y de las barras del sistema. */}
+      {/* Marco a sangre: llega a los bordes físicos de la pantalla; solo el contenido esquiva el notch. */}
+      <WoodFrame />
       <div className="absolute" style={{ top: 'var(--sat)', right: 'var(--sar)', bottom: 'var(--sab)', left: 'var(--sal)' }}>
-        <WoodFrame />
-
         <div className="absolute inset-[calc(var(--frame)+4px)] flex flex-col gap-[1.6dvh] px-[calc(var(--corner)*0.9)] pb-[calc(var(--corner)*0.25)] pt-[calc(var(--corner)*0.2)]">
           {/* Barra superior: perfil, título y ajustes */}
           <header className="flex shrink-0 items-center justify-between gap-3">
@@ -192,9 +190,9 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
           {/* Los modos de juego, lado a lado y todos a la vista */}
           <GameCards games={GAME_ORDER} selected={game} onSelect={selectGame} />
 
-          {/* Acciones del juego elegido */}
-          <footer className="flex shrink-0 flex-wrap items-center justify-center gap-[clamp(6px,1.4dvw,14px)]">
-            <div className="flex items-center gap-1.5" role="group" aria-label={game === 'casino' ? 'Tipo de partida' : 'Rivales'}>
+          {/* Acciones del juego elegido: una sola fila, repartida de forma pareja */}
+          <footer className="flex w-full shrink-0 items-stretch justify-center gap-[clamp(6px,1.4dvw,14px)]">
+            <div className="flex flex-none items-stretch gap-1.5" role="group" aria-label={game === 'casino' ? 'Tipo de partida' : 'Rivales'}>
               {options.map((option) => {
                 const active = option.count === offlineCount;
                 return (
@@ -203,34 +201,24 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
                     type="button"
                     aria-pressed={active}
                     onClick={() => setOfflineCounts((current) => ({ ...current, [game]: option.count }))}
-                    className={`${BTN} font-bold ${active ? 'btn-gold' : 'btn-wood'}`}
+                    className={`${BTN} min-w-[clamp(72px,13dvw,120px)] font-bold ${active ? 'btn-gold' : 'btn-wood'}`}
                   >
                     {option.label}
                   </button>
                 );
               })}
             </div>
-            <button type="button" onClick={startOffline} className={`${BTN} btn-gold font-extrabold`}>
-              <Bot className="h-4 w-4" />
-              Jugar {info.name}
+            <button type="button" onClick={startOffline} className={`${BTN} min-w-0 max-w-[16rem] flex-1 btn-gold font-extrabold`}>
+              <Bot className="h-4 w-4 shrink-0" />
+              <span className="truncate">Jugar {info.name}</span>
             </button>
-            <button type="button" onClick={handleCreate} disabled={busy !== null} className={`${BTN} btn-leaf font-bold`}>
-              <Spade className="h-4 w-4" />
-              {busy === 'create' ? 'Creando...' : 'Crear sala'}
+            <button type="button" onClick={handleCreate} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[12rem] flex-1 btn-leaf font-bold`}>
+              <Spade className="h-4 w-4 shrink-0" />
+              <span className="truncate">{busy === 'create' ? 'Creando...' : 'Crear sala'}</span>
             </button>
-            <button
-              type="button"
-              onClick={handleSolo}
-              disabled={busy !== null}
-              title="Sala en línea completada con bots. Requiere conexión."
-              className={`${BTN} btn-wood font-bold`}
-            >
-              <Users className="h-4 w-4" />
-              {busy === 'solo' ? 'Preparando...' : 'En línea con bots'}
-            </button>
-            <button type="button" onClick={() => setPanel('join')} disabled={busy !== null} className={`${BTN} btn-wood font-bold`}>
-              <DoorOpen className="h-4 w-4" />
-              Unirse
+            <button type="button" onClick={() => setPanel('join')} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[12rem] flex-1 btn-wood font-bold`}>
+              <DoorOpen className="h-4 w-4 shrink-0" />
+              <span className="truncate">Unirse</span>
             </button>
           </footer>
         </div>

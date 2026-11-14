@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { Check } from 'lucide-react';
 import { OpponentFan } from './Fans';
+import type { TeamColor } from '../table/teamColors';
 import type { SeatSide } from './types';
 
 interface SeatPlaqueProps {
@@ -16,12 +17,18 @@ interface SeatPlaqueProps {
   compact?: boolean;
   /** Etiqueta pequeña bajo el nombre (p. ej. "Compañero"). */
   tag?: string;
+  /** Color del equipo del jugador (solo en partidas por equipos): aro en la placa y en el avatar. */
+  team?: TeamColor;
 }
 
 /** Placa de madera con el avatar. Cuando es su turno se ilumina en dorado. */
-export function SeatPlaque({ name, count, isTurn, isVictim, out, isMe, compact = false, tag }: SeatPlaqueProps) {
+export function SeatPlaque({ name, count, isTurn, isVictim, out, isMe, compact = false, tag, team }: SeatPlaqueProps) {
+  const plaqueStyle: CSSProperties | undefined = team
+    ? { boxShadow: `inset 0 0 0 2px ${team.main}, inset 0 -4px 8px rgb(0 0 0 / 0.45), 0 3px 8px rgb(0 0 0 / 0.5)` }
+    : undefined;
   return (
     <div
+      style={plaqueStyle}
       className={`relative flex min-w-0 max-w-full items-center ${compact ? 'gap-1 rounded-lg px-1 py-0.5' : 'gap-1.5 rounded-xl px-1.5 py-1'} wood-block ${
         out ? 'opacity-70' : ''
       }`}
@@ -31,6 +38,7 @@ export function SeatPlaque({ name, count, isTurn, isVictim, out, isMe, compact =
         className={`relative grid ${compact ? 'h-[clamp(18px,4.6dvh,26px)] w-[clamp(18px,4.6dvh,26px)] text-[clamp(10px,2.4dvh,13px)]' : 'h-[clamp(22px,7dvh,40px)] w-[clamp(22px,7dvh,40px)] text-[clamp(11px,3.4dvh,18px)]'} shrink-0 place-items-center rounded-full border-2 bg-gradient-to-br from-amber-100 to-amber-300 font-extrabold text-amber-950 ${
           isTurn ? 'border-yellow-300' : isVictim ? 'border-rose-300' : 'border-amber-900/70'
         }`}
+        style={team && !isTurn && !isVictim ? { borderColor: team.main } : undefined}
       >
         {name.trim().slice(0, 1).toUpperCase()}
       </span>
@@ -43,7 +51,17 @@ export function SeatPlaque({ name, count, isTurn, isVictim, out, isMe, compact =
               Salvó
             </>
           ) : (
-            `${tag ? `${tag} · ` : ''}${count} ${count === 1 ? 'carta' : 'cartas'}`
+            <>
+              {team && (
+                <span
+                  className="rounded px-1 text-[0.85em] font-extrabold leading-snug"
+                  style={{ backgroundColor: team.main, color: team.ink }}
+                >
+                  {team.label}
+                </span>
+              )}
+              {`${tag ? `${tag} · ` : ''}${count} ${count === 1 ? 'carta' : 'cartas'}`}
+            </>
           )}
         </span>
       </span>
@@ -65,6 +83,8 @@ interface PlayerSeatProps {
   registerAnchor: (seat: number, el: HTMLElement | null) => void;
   /** Etiqueta pequeña bajo el nombre (p. ej. "Pareja"). */
   tag?: string;
+  /** Color del equipo del jugador (partidas por equipos). */
+  team?: TeamColor;
   children?: ReactNode;
 }
 
@@ -86,6 +106,7 @@ export default function PlayerSeat({
   onPick,
   registerAnchor,
   tag,
+  team,
 }: PlayerSeatProps) {
   const vertical = side !== 'top';
   const fan =
@@ -107,7 +128,7 @@ export default function PlayerSeat({
   if (!vertical) {
     return (
       <div className="flex min-w-0 items-center justify-center gap-2">
-        <SeatPlaque name={name} count={count} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} />
+        <SeatPlaque name={name} count={count} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} />
         <div className="flex h-[calc(var(--oh)+14px)] min-w-0 items-center justify-center px-2">{fan}</div>
       </div>
     );
@@ -115,7 +136,7 @@ export default function PlayerSeat({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col items-center justify-center gap-1">
-      <SeatPlaque name={name} count={count} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} />
+      <SeatPlaque name={name} count={count} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} />
       {/* El abanico se gira 90°: la caja reserva su largo como alto y el alto de carta como ancho. */}
       <div
         className="relative flex shrink-0 items-center justify-center"

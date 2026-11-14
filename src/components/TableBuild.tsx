@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Build } from '@/games/casinoCapture';
 import CartaUI from './CartaUI';
+import type { TeamColor } from './table/teamColors';
 
 interface TableBuildProps {
   build: Build;
@@ -9,6 +10,8 @@ interface TableBuildProps {
   /** No es el turno del jugador o aún no eligió una carta. */
   disabled: boolean;
   onSelect: () => void;
+  /** Equipo que formó el grupo: halo, fondo tintado e insignia de su color. */
+  team?: TeamColor;
 }
 
 /**
@@ -16,7 +19,7 @@ interface TableBuildProps {
  * y una insignia flotante indica el tipo y el valor ("Par 5", "Suma 14"). El solape es proporcional
  * al alto de la carta (dvh), así se ve igual en móvil vertical, horizontal y escritorio.
  */
-export default function TableBuild({ build, selected, disabled, onSelect }: TableBuildProps) {
+export default function TableBuild({ build, selected, disabled, onSelect, team }: TableBuildProps) {
   const previousSize = useRef(build.cards.length);
   const previousKind = useRef(build.kind);
   const [celebrating, setCelebrating] = useState(false);
@@ -38,6 +41,7 @@ export default function TableBuild({ build, selected, disabled, onSelect }: Tabl
   }, [celebrating]);
 
   const etiqueta = `${build.kind === 'pairs' ? 'Par' : 'Suma'} ${build.value}`;
+  const ariaLabel = team ? `${etiqueta} de ${team.label}` : etiqueta;
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (disabled) return;
@@ -53,7 +57,8 @@ export default function TableBuild({ build, selected, disabled, onSelect }: Tabl
       tabIndex={disabled ? -1 : 0}
       aria-pressed={selected}
       aria-disabled={disabled}
-      aria-label={etiqueta}
+      aria-label={ariaLabel}
+      style={team ? { outline: `3px solid ${team.main}`, outlineOffset: '1px', backgroundColor: team.soft } : undefined}
       onClick={() => {
         if (!disabled) onSelect();
       }}
@@ -65,7 +70,10 @@ export default function TableBuild({ build, selected, disabled, onSelect }: Tabl
       <span
         key={etiqueta}
         aria-hidden
-        className="animate-combo-label absolute -top-2 -right-2 z-10 whitespace-nowrap rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-black shadow sm:text-xs"
+        className={`animate-combo-label absolute -top-2 -right-2 z-10 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none shadow sm:text-xs ${
+          team ? '' : 'bg-amber-500 text-black'
+        }`}
+        style={team ? { backgroundColor: team.main, color: team.ink } : undefined}
       >
         {etiqueta}
       </span>

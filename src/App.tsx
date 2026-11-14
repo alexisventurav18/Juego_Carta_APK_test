@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import Lobby from '@/components/Lobby';
-import OrientationGuard from '@/components/OrientationGuard';
 import RoomView from '@/components/RoomView';
 import OfflineBotGame, { type OfflineSetup } from '@/components/OfflineBotGame';
 import { getStoredRoomId, storeRoomId } from '@/lib/identity';
@@ -28,8 +27,6 @@ export default function App() {
 
   return (
     <>
-      {/* Toda la app es horizontal: en vertical (solo en el navegador) pide girar el dispositivo. */}
-      <OrientationGuard />
       {offlineGame ? (
         <OfflineBotGame {...offlineGame} onLeave={() => setOfflineGame(null)} />
       ) : (

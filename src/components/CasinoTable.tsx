@@ -38,6 +38,8 @@ import PlayerSeat, { SeatPlaque } from './cagao/PlayerSeat';
 import type { Point } from './cagao/types';
 import TableLayout from './table/TableLayout';
 import { CORNER_CHIP, LeaveButton, TableNotices, TurnSound } from './table/chips';
+import { teamColor } from './table/teamColors';
+import { useStartHint } from './table/useStartHint';
 import { seatLayout } from './table/seatLayout';
 import { TB_DROP, TB_FORM, TB_MAIN } from './table/styles';
 import { useDealFlights } from './table/useDealFlights';
@@ -101,6 +103,8 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
   const { playSound, isMuted, toggleMute } = useGameSounds();
 
   const myTurn = state.phase === 'playing' && state.turn === seat && !deal.dealing;
+  // Los avisos de instrucciones salen solo al inicio de la partida (hasta que termina tu primer turno).
+  const showStartHint = useStartHint(myTurn, state.roundNo, state.phase === 'gameOver');
   const card = state.hands[seat].find((c) => c.id === cardId) ?? null;
   const handAfter = card ? state.hands[seat].filter((c) => c.id !== card.id) : [];
   const items = tableItems(state.table, state.builds);
@@ -429,25 +433,27 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
       pickable={false}
       onPick={() => undefined}
       registerAnchor={registerAnchor}
-      tag={state.players.length >= 4 && teamOf(s) === myTeam ? 'Pareja' : undefined}
+      team={teamColor(teamOf(s), myTeam)}
     />
   );
 
-  const scoreChip = (team: 0 | 1, className: string) => {
-    const mine = team === myTeam;
+  /** Tarjeta de puntuación de un equipo (vive en la barra superior), con el color de su equipo. */
+  const scoreChip = (team: 0 | 1) => {
+    const color = teamColor(team, myTeam);
     const needs = closingNeeds(state.scores[team]);
     const progress = Math.min(100, (state.scores[team] / CASINO_TARGET) * 100);
     return (
       <div
+        key={`score-${team}`}
         title={teamName(state.players, team)}
-        className={`wood-block pointer-events-none absolute z-30 flex w-[clamp(64px,11dvw,96px)] flex-col rounded-lg px-1.5 py-0.5 ${className} ${
-          mine ? 'ring-1 ring-amber-300' : ''
-        }`}
+        style={{ boxShadow: `inset 0 0 0 2px ${color.main}, inset 0 -4px 8px rgb(0 0 0 / 0.45), 0 3px 8px rgb(0 0 0 / 0.5)` }}
+        className="wood-block pointer-events-none relative z-30 flex w-[clamp(66px,11.5dvw,100px)] shrink-0 flex-col rounded-lg px-1.5 py-0.5"
       >
         <span className="flex items-center justify-between gap-1 text-[10px] font-semibold leading-tight text-amber-100">
-          <span className="flex min-w-0 items-center gap-0.5 truncate">
+          <span className="flex min-w-0 items-center gap-1 truncate">
+            <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color.main }} />
             {needs && <Lock className="h-2.5 w-2.5 shrink-0 text-amber-300" aria-label="Cierre obligatorio" />}
-            <span className="truncate">{mine ? 'Nosotros' : 'Ellos'}</span>
+            <span className="truncate">{color.label}</span>
           </span>
           <span className="flex shrink-0 items-center gap-0.5 text-amber-300">
             <Sparkles className="h-2.5 w-2.5" aria-hidden />
@@ -460,8 +466,8 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
         </span>
         <span className="mt-0.5 h-1 overflow-hidden rounded-full bg-black/40">
           <span
-            className="block h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500 transition-all duration-500"
-            style={{ width: `${progress}%` }}
+            className="block h-full rounded-full transition-all duration-500"
+            style={{ width: `${progress}%`, backgroundColor: color.main }}
           />
         </span>
       </div>
@@ -489,7 +495,13 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           </button>
         </>
       }
-      topCenter={layout.top.map((s) => renderSeat(s, 'top'))}
+      topCenter={
+        <>
+          {scoreChip(myTeam as 0 | 1)}
+          {layout.top.map((s) => renderSeat(s, 'top'))}
+          {scoreChip((1 - myTeam) as 0 | 1)}
+        </>
+      }
       topRight={<TurnSound label={turnLabel} myTurn={myTurn} muted={isMuted} onToggleMute={toggleMute} />}
       left={layout.left !== null && renderSeat(layout.left, 'left')}
       right={layout.right !== null && renderSeat(layout.right, 'right')}
@@ -507,9 +519,6 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
             aria-hidden
             className="pointer-events-none absolute left-1/2 top-1/2 aspect-square h-[min(70%,22dvh)] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-amber-200/30"
           />
-
-          {scoreChip(myTeam as 0 | 1, 'left-[5%] top-[9%]')}
-          {scoreChip((1 - myTeam) as 0 | 1, 'right-[5%] top-[9%]')}
 
           {/* Mazo: de aquí salen las cartas del reparto */}
           <div
@@ -553,7 +562,13 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
             )}
             {state.builds.map((b) => (
               <div key={b.id} data-table-id={b.id} className="contents">
-                <TableBuild build={b} selected={tableIds.includes(b.id)} disabled={!myTurn} onSelect={() => pickTableItem(b.id)} />
+                <TableBuild
+                  build={b}
+                  selected={tableIds.includes(b.id)}
+                  disabled={!myTurn}
+                  onSelect={() => pickTableItem(b.id)}
+                  team={teamColor(teamOf(b.owner), myTeam)}
+                />
               </div>
             ))}
           </div>
@@ -564,10 +579,11 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
               card={captureNotice.card}
               capturedCount={captureNotice.capturedCount}
               virao={captureNotice.virao}
+              team={teamColor(teamOf(captureNotice.seat), myTeam)}
             />
           )}
 
-          {playing && hint && (
+          {playing && showStartHint && hint && (
             <p className="pointer-events-none absolute bottom-0 left-1/2 z-30 max-w-[96%] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
               {hint}
             </p>
@@ -581,6 +597,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           isTurn={myTurn}
           out={false}
           isMe
+          team={teamColor(myTeam, myTeam)}
         />
       }
       bottomCenter={
