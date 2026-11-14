@@ -1,6 +1,7 @@
 /**
  * Configura el proyecto Android que genera Capacitor (`cap add android`) para el juego:
- *  - Orientación bloqueada en horizontal (sensorLandscape: gira entre los dos lados, nunca vertical).
+ *  - Orientación horizontal nativa desde el primer fotograma (sensorLandscape en el manifiesto + refuerzo en MainActivity):
+ *    la app arranca ya en horizontal y gira entre los dos lados, nunca queda en vertical ni pide girar el teléfono.
  *  - Pantalla completa inmersiva real: barra de estado y de navegación ocultas (se ven un instante al deslizar
  *    desde el borde y vuelven a esconderse solas).
  *  - El contenido se dibuja también bajo el notch / recorte de cámara; la web lo respeta con `env(safe-area-inset-*)`.
@@ -40,18 +41,25 @@ if (fs.existsSync(manifestPath)) {
   console.log('[configureAndroid] AndroidManifest.xml: sensorLandscape');
 }
 
-/* 2. styles.xml: ventana a pantalla completa desde el arranque (sin parpadeo de la barra de estado) */
+/* 2. styles.xml: ventana a pantalla completa desde el arranque, incluido el tema del splash (el que usa la
+      actividad al abrir), para que la barra de estado y la de navegación no se vean ni un instante. */
 const stylesPath = path.join(androidDir, 'app/src/main/res/values/styles.xml');
 if (fs.existsSync(stylesPath)) {
   let styles = fs.readFileSync(stylesPath, 'utf8');
-  if (!styles.includes('android:windowFullscreen')) {
-    styles = styles.replace(
-      /(<style name="AppTheme\.NoActionBar"[^>]*>)/,
-      '$1\n        <item name="android:windowFullscreen">true</item>',
-    );
-    fs.writeFileSync(stylesPath, styles);
+  const items = `
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>`;
+  for (const theme of ['AppTheme.NoActionBar', 'AppTheme.NoActionBarLaunch']) {
+    const open = new RegExp(`(<style name="${theme.replace('.', '\\.')}"[^>]*>)`);
+    const block = new RegExp(`<style name="${theme.replace('.', '\\.')}"[^>]*>[\\s\\S]*?</style>`);
+    const current = block.exec(styles)?.[0];
+    if (current && !current.includes('android:windowFullscreen')) {
+      styles = styles.replace(open, `$1${items}`);
+    }
   }
-  console.log('[configureAndroid] styles.xml: windowFullscreen');
+  fs.writeFileSync(stylesPath, styles);
+  console.log('[configureAndroid] styles.xml: windowFullscreen (tema normal y de arranque)');
 }
 
 /* 3. MainActivity: modo inmersivo, notch y pantalla encendida */
@@ -59,6 +67,7 @@ const javaDir = path.join(androidDir, 'app/src/main/java', ...appId.split('.'));
 fs.mkdirSync(javaDir, { recursive: true });
 const mainActivity = `package ${appId};
 
+import android.content.pm.ActivityInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Window;
@@ -76,6 +85,8 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Horizontal desde el primer momento (refuerza al manifiesto, también en Android que ignore el atributo).
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         Window window = getWindow();
 
         // El contenido se dibuja bajo las barras y el recorte de cámara; la web usa env(safe-area-inset-*).
