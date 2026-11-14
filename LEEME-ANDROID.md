@@ -82,3 +82,17 @@ npm run typecheck && npm test && npm run build
 - **Marcador:** las tarjetas de puntos van en la barra superior de la mesa del Casino, a los lados del compañero.
 - **Aviso de instrucciones:** `components/table/useStartHint.ts`. Sale solo al empezar la partida y desaparece cuando
   termina tu primer turno (en Casino, Tres y Dos y El Cagao).
+
+## Horizontal y barras ocultas: cómo se garantiza (v13)
+
+El proyecto ahora incluye la carpeta `android/` ya configurada (y se versiona en git), así que no depende de ejecutar
+ningún script para que quede en horizontal y en pantalla completa. Hay tres capas:
+
+1. `AndroidManifest.xml` con `screenOrientation="sensorLandscape"`, `MainActivity.java` (horizontal + modo inmersivo) y
+   temas de pantalla completa (incluido el de arranque).
+2. `src/lib/nativeShell.ts`: al abrir, la app pide horizontal y oculta la barra de estado con los plugins
+   `@capacitor/screen-orientation` y `@capacitor/status-bar`.
+3. `scripts/configureAndroid.mjs` reaplica y VERIFICA lo anterior en cada `android:sync`; si falta algo, la compilación falla.
+
+**Importante:** para ver los cambios hay que recompilar e instalar el APK nuevo (`npm install` y `npm run android:apk`).
+Si instalas un APK compilado antes, seguirá como antes. Las barras solo reaparecen un instante al deslizar desde el borde.
