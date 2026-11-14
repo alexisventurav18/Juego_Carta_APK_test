@@ -29,10 +29,8 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: Crear proyecto Android e iconos
-        run: |
-          npx cap add android
-          npx capacitor-assets generate --android
+      - name: Generar iconos de Android
+        run: npx capacitor-assets generate --android
 
       - name: Sincronizar y compilar APK
         run: |
