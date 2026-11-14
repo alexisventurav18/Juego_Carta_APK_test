@@ -33,8 +33,7 @@ Para abrirlo en Android Studio: `npm run android:open`.
 - Ese APK es de depuración: sirve para instalar y probar directamente en el teléfono.
   Para publicar en Google Play necesitas un AAB firmado (`./gradlew bundleRelease` + tu keystore).
 - Cada vez que cambies el código web: `npm run android:sync`.
-- Orientación: por defecto gira con el teléfono. Para fijarla, en
-  `android/app/src/main/AndroidManifest.xml` agrega `android:screenOrientation="landscape"` (o `portrait`) a `<activity>`.
+- Orientación: la app ya queda fija en horizontal (ver "Pantalla completa, horizontal y notch").
 
 ## Opción C: WebIntoApp u otro empaquetador de zip
 
@@ -46,17 +45,18 @@ Esos servicios necesitan la web **compilada**, no el código fuente.
 
 ---
 
-## Pantalla completa, horizontal y notch (v11)
+## Pantalla completa, horizontal y notch (v12)
 
-- **APK (Capacitor):** `scripts/configureAndroid.mjs` deja el proyecto Android en horizontal (`sensorLandscape`), con barras
-  ocultas (inmersivo), contenido bajo el notch y pantalla siempre encendida. Se ejecuta solo en `npm run android:add`,
+- **APK (Capacitor):** `scripts/configureAndroid.mjs` deja el proyecto Android en horizontal (`sensorLandscape` en el
+  manifiesto y `setRequestedOrientation` en `MainActivity`, así arranca ya en horizontal), con barras ocultas (inmersivo,
+  también en el tema de arranque/splash), contenido bajo el notch y pantalla siempre encendida. Se ejecuta solo en `npm run android:add`,
   `npm run android:sync` y en el workflow de GitHub Actions. Si ya tienes la carpeta `android/`, basta con
   `npm run android:configure` y volver a compilar.
 - **Navegador / WebIntoApp / PC:** `public/manifest.webmanifest` pide `fullscreen` + `landscape`. En móviles se entra a
-  pantalla completa con el primer toque; en PC hay un botón de pantalla completa en el menú (o F11). En vertical aparece
-  el aviso "Gira tu dispositivo".
-- **Márgenes seguros:** `index.css` define `--sat/--sar/--sab/--sal`. La mesa y el menú se dibujan dentro de esa caja,
-  así el notch (que en horizontal queda a izquierda o derecha) nunca tapa botones.
+  pantalla completa con el primer toque; en PC hay un botón de pantalla completa en el menú (o F11). Ya no existe la pantalla
+  "Gira tu dispositivo": la orientación la resuelve el sistema (APK) o el manifest de la PWA.
+- **Márgenes seguros:** `index.css` define `--sat/--sar/--sab/--sal`. El marco de madera y los fondos llegan a los bordes
+  físicos de la pantalla (sin franjas negras); solo los botones, cartas y textos se separan lo justo del notch.
 
 ## Mesa y controles unificados
 
@@ -73,3 +73,12 @@ Esos servicios necesitan la web **compilada**, no el código fuente.
 npm install
 npm run typecheck && npm test && npm run build
 ```
+
+## Interfaz (v12)
+
+- **Colores de equipo (Casino):** `components/table/teamColors.ts`. "Nosotros" = celeste y "Ellos" = coral. Se ven en el
+  marcador, en las placas de los jugadores, en el halo y la insignia de cada Par/Suma de la mesa (según quién lo formó) y
+  en el aviso de captura. Tres y Dos y El Cagao se juegan sin parejas, así que no usan colores de equipo.
+- **Marcador:** las tarjetas de puntos van en la barra superior de la mesa del Casino, a los lados del compañero.
+- **Aviso de instrucciones:** `components/table/useStartHint.ts`. Sale solo al empezar la partida y desaparece cuando
+  termina tu primer turno (en Casino, Tres y Dos y El Cagao).
