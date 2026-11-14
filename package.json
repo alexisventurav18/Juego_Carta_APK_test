@@ -12,11 +12,12 @@
     "test": "tsx --test tests/*.test.ts",
     "simulate": "tsx scripts/simulate.ts",
     "sync:functions": "tsx scripts/syncFunctions.ts",
-    "android:add": "cap add android",
+    "android:add": "cap add android && node scripts/configureAndroid.mjs",
     "android:assets": "capacitor-assets generate --android",
-    "android:sync": "npm run build && cap sync android",
+    "android:sync": "npm run build && cap sync android && node scripts/configureAndroid.mjs",
     "android:open": "cap open android",
-    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug"
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug",
+    "android:configure": "node scripts/configureAndroid.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

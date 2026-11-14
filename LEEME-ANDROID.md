@@ -43,3 +43,33 @@ Esos servicios necesitan la web **compilada**, no el código fuente.
 1. Con el `.env` ya completado: `npm install` y `npm run build`.
 2. Se crea la carpeta `dist/`. Comprime **el contenido** de `dist/` (que `index.html` quede en la raíz del zip, no dentro de una subcarpeta).
 3. Sube ese zip al servicio.
+
+---
+
+## Pantalla completa, horizontal y notch (v11)
+
+- **APK (Capacitor):** `scripts/configureAndroid.mjs` deja el proyecto Android en horizontal (`sensorLandscape`), con barras
+  ocultas (inmersivo), contenido bajo el notch y pantalla siempre encendida. Se ejecuta solo en `npm run android:add`,
+  `npm run android:sync` y en el workflow de GitHub Actions. Si ya tienes la carpeta `android/`, basta con
+  `npm run android:configure` y volver a compilar.
+- **Navegador / WebIntoApp / PC:** `public/manifest.webmanifest` pide `fullscreen` + `landscape`. En móviles se entra a
+  pantalla completa con el primer toque; en PC hay un botón de pantalla completa en el menú (o F11). En vertical aparece
+  el aviso "Gira tu dispositivo".
+- **Márgenes seguros:** `index.css` define `--sat/--sar/--sab/--sal`. La mesa y el menú se dibujan dentro de esa caja,
+  así el notch (que en horizontal queda a izquierda o derecha) nunca tapa botones.
+
+## Mesa y controles unificados
+
+- `components/table/TableLayout.tsx` es la mesa de El Cagao hecha componente. Los tres juegos la usan.
+- `HandFan` (mano en abanico) es la misma en los tres: pasar el ratón/dedo eleva la carta, tocar o hacer clic la elige o
+  activa, arrastrar la lleva a la mesa. Casino: arrastrar a un espacio vacío tira la carta; soltarla sobre una carta o
+  combinación de la mesa intenta capturarla. Tres y Dos: arrastrar al centro bota la carta al Pozo.
+- Reparto, vuelos de cartas (`useFlights`, `useDealFlights`) y sonidos son los de El Cagao en todos los modos.
+- El interruptor de sonido es global (menú y mesas) y se recuerda entre sesiones.
+
+## Probar antes de compilar
+
+```bash
+npm install
+npm run typecheck && npm test && npm run build
+```
