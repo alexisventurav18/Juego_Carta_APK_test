@@ -718,8 +718,8 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           )}
 
           {state.summary && state.phase !== 'playing' && !showEndNotice && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/65 p-2 sm:p-3">
-              <div className="max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-2xl space-y-2 overflow-y-auto sm:space-y-3">
+            <div className="casino-round-result-overlay fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/65 p-2 sm:p-3">
+              <div className="casino-round-result-frame max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-2xl space-y-2 overflow-y-auto sm:space-y-3">
                 <RoundResultPanel
                   title={
                     state.phase === 'gameOver' && state.winnerTeam !== null
@@ -729,6 +729,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
                   lines={state.summary.lines}
                   totals={state.summary.totals}
                   teamNames={[teamName(state.players, 0), teamName(state.players, 1)]}
+                  compact
                   onNextRound={state.phase === 'roundEnd' && seat === nextDealer ? () => onMove({ type: 'nextRound' }) : undefined}
                   waitingFor={state.phase === 'roundEnd' ? state.players[nextDealer].name : undefined}
                 />

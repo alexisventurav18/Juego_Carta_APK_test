@@ -7,13 +7,14 @@ interface RoundResultPanelProps {
   lines: [ScoreLine[], ScoreLine[]];
   totals: [number, number];
   teamNames: [string, string];
+  compact?: boolean;
   onNextRound?: () => void;
   waitingFor?: string;
 }
 
-export default function RoundResultPanel({ title, lines, totals, teamNames, onNextRound, waitingFor }: RoundResultPanelProps) {
+export default function RoundResultPanel({ title, lines, totals, teamNames, compact = false, onNextRound, waitingFor }: RoundResultPanelProps) {
   return (
-    <section className="wood-panel space-y-2 p-3 sm:space-y-4 sm:p-6">
+    <section className={`wood-panel space-y-2 p-3 sm:space-y-4 sm:p-6 ${compact ? 'round-result-panel-compact' : ''}`}>
       <div className="flex items-center gap-2">
         <Trophy className="h-4 w-4 shrink-0 text-amber-300 sm:h-5 sm:w-5" />
         <h2 className="min-w-0 text-base font-extrabold text-amber-50 sm:text-lg">{title}</h2>

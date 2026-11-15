@@ -501,3 +501,192 @@ button,
   inset: 0;
   padding: var(--sat) var(--sar) var(--sab) var(--sal);
 }
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .room-waiting-screen {
+    overflow: hidden;
+    max-height: 100dvh;
+  }
+
+  .room-waiting-content {
+    box-sizing: border-box;
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+    padding: clamp(4px, 1.2dvh, 8px) clamp(10px, 2.4vw, 24px);
+  }
+
+  .room-waiting-header {
+    min-height: 0;
+    margin-bottom: clamp(4px, 1dvh, 8px) !important;
+  }
+
+  .room-waiting-header > button {
+    min-height: 32px;
+    padding: 4px 8px;
+  }
+
+  .room-waiting-connection {
+    flex: none;
+    margin-bottom: clamp(4px, 1dvh, 8px) !important;
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+
+  .room-waiting-grid {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    flex: 1;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: clamp(6px, 1.4vw, 14px);
+  }
+
+  .room-waiting-info,
+  .room-waiting-player-panel {
+    min-height: 0;
+    gap: clamp(4px, 1.1dvh, 8px);
+    padding: clamp(7px, 1.8dvh, 12px);
+  }
+
+  .room-waiting-info {
+    justify-content: center;
+  }
+
+  .room-waiting-info > div,
+  .room-waiting-player-panel > p {
+    font-size: clamp(9px, 2.4dvh, 12px);
+  }
+
+  .room-waiting-info > div:nth-child(2) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: clamp(4px, 1dvh, 8px);
+  }
+
+  .room-waiting-info > div:nth-child(2) > p {
+    font-size: clamp(20px, 6dvh, 30px);
+    line-height: 1;
+  }
+
+  .room-waiting-info > div:nth-child(2) > button {
+    min-height: 30px;
+    padding: 4px 8px;
+    font-size: clamp(9px, 2.2dvh, 11px);
+  }
+
+  .room-waiting-player-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .room-waiting-player-panel > * {
+    margin-top: 0 !important;
+  }
+
+  .room-waiting-player-panel > div:first-child {
+    flex: none;
+  }
+
+  .room-waiting-player-panel h2 {
+    font-size: clamp(13px, 3.2dvh, 16px);
+  }
+
+  .room-waiting-player-list {
+    gap: clamp(2px, 0.6dvh, 4px);
+  }
+
+  .room-waiting-player-row,
+  .room-waiting-empty-slot {
+    min-height: clamp(28px, 8dvh, 36px);
+    gap: 5px;
+    padding: 3px 6px;
+    font-size: clamp(9px, 2.2dvh, 11px);
+  }
+
+  .room-waiting-player-row > :first-child {
+    width: clamp(20px, 6dvh, 26px);
+    height: clamp(20px, 6dvh, 26px);
+  }
+
+  .room-waiting-player-row > span {
+    font-size: clamp(9px, 2.2dvh, 11px);
+  }
+
+  .room-waiting-start,
+  .room-waiting-start-message {
+    min-height: clamp(32px, 9dvh, 38px);
+    padding: 4px 8px;
+    font-size: clamp(10px, 2.4dvh, 12px);
+  }
+
+  .casino-round-result-overlay {
+    overflow: hidden;
+    padding: 1dvh 2vw;
+  }
+
+  .casino-round-result-frame {
+    display: flex;
+    flex-direction: column;
+    max-height: 90dvh;
+    gap: clamp(4px, 1dvh, 8px);
+    overflow: hidden;
+  }
+
+  .casino-round-result-frame > * + * {
+    margin-top: 0 !important;
+  }
+
+  .round-result-panel-compact {
+    min-height: 0;
+    gap: clamp(4px, 1.2dvh, 8px);
+    overflow: hidden;
+    padding: clamp(7px, 1.8dvh, 12px);
+  }
+
+  .round-result-panel-compact > * + * {
+    margin-top: clamp(4px, 1.2dvh, 8px) !important;
+  }
+
+  .round-result-panel-compact h2 {
+    font-size: clamp(13px, 3.2dvh, 17px);
+    line-height: 1.15;
+  }
+
+  .round-result-panel-compact > div:nth-of-type(2) {
+    min-height: 0;
+    gap: clamp(4px, 1vw, 8px);
+  }
+
+  .round-result-panel-compact > div:nth-of-type(2) > div {
+    min-height: 0;
+    padding: clamp(5px, 1.4dvh, 9px);
+  }
+
+  .round-result-panel-compact ul {
+    margin-top: clamp(3px, 0.8dvh, 6px);
+    font-size: clamp(9px, 2.2dvh, 12px);
+    line-height: 1.1;
+  }
+
+  .round-result-panel-compact ul > li + li {
+    margin-top: clamp(2px, 0.5dvh, 4px);
+  }
+
+  .round-result-panel-compact ul li > span > span + span {
+    font-size: clamp(8px, 1.8dvh, 10px);
+  }
+
+  .round-result-panel-compact button {
+    min-height: clamp(30px, 8dvh, 36px);
+    padding: 4px 10px;
+    font-size: clamp(10px, 2.2dvh, 12px);
+  }
+
+  .round-result-panel-compact > p {
+    font-size: clamp(9px, 2.1dvh, 11px);
+  }
+}
