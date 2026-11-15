@@ -16,7 +16,7 @@ interface Options {
  * qué hacer al tocar, arrastrar o jalar una carta, y los sonidos. No dibuja nada.
  */
 export function useElCagaoGame({ state, seat, onMove }: Options) {
-  const { playSound, isMuted, toggleMute } = useGameSounds();
+  const { playSound } = useGameSounds();
   // Orden de tu mano en pantalla. "Mezclar" lo cambia solo aquí; el servidor baraja la real.
   const [order, setOrder] = useState<string[]>([]);
 
@@ -152,7 +152,5 @@ export function useElCagaoGame({ state, seat, onMove }: Options) {
     pairByCard,
     pairAll,
     shuffleHand,
-    isMuted,
-    toggleMute,
   };
 }

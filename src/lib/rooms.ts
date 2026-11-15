@@ -40,15 +40,15 @@ async function call(body: Record<string, unknown>): Promise<RoomRow> {
 }
 
 export function createRoom(game: GameId, player: Player): Promise<RoomRow> {
-  return call({ action: 'create', game, name: player.name });
+  return call({ action: 'create', game, name: player.name, avatar: player.avatar });
 }
 
 export function createSoloRoom(game: GameId, player: Player): Promise<RoomRow> {
-  return call({ action: 'create', game, solo: true, name: player.name });
+  return call({ action: 'create', game, solo: true, name: player.name, avatar: player.avatar });
 }
 
 export function joinRoom(code: string, player: Player): Promise<RoomRow> {
-  return call({ action: 'join', code, name: player.name });
+  return call({ action: 'join', code, name: player.name, avatar: player.avatar });
 }
 
 export function fetchRoom(roomId: string): Promise<RoomRow> {

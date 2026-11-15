@@ -1,6 +1,7 @@
 import { type CasinoState, createCasinoGame } from './casino';
 import { createTresYDosGame, TARGET_WINS, type TresYDosState } from './tresYDos';
 import { type CagaoState, createCagaoGame } from './cagao';
+import { encodeAvatar, type Gender, randomAvatar } from './avatar';
 import { randomInt } from './cards';
 import type { GameId, Player } from './shared';
 
@@ -106,22 +107,23 @@ export function createGameState(game: GameId, players: Player[], dealer?: number
   return createCagaoGame(players, dealer);
 }
 
+/** Nombres de los bots con su género, para que la cara que se les da vaya con el nombre. */
+const BOT_NAMES: { name: string; gender: Gender }[] = [
+  { name: 'Santiago', gender: 'm' },
+  { name: 'Valentina', gender: 'f' },
+  { name: 'Mateo', gender: 'm' },
+  { name: 'Camila', gender: 'f' },
+  { name: 'Sebastián', gender: 'm' },
+  { name: 'Luciana', gender: 'f' },
+  { name: 'Gabriel', gender: 'm' },
+  { name: 'Daniela', gender: 'f' },
+];
+
 export function createSoloPlayers(game: GameId, human: Player, playerCount = GAMES[game].soloPlayerCount): Player[] {
-  const botNames = [
-    'Santiago',
-    'Valentina',
-    'Mateo',
-    'Camila',
-    'Sebastián',
-    'Luciana',
-    'Gabriel',
-    'Daniela',
-  ];
-  const availableNames = [...botNames];
+  const available = [...BOT_NAMES];
   const bots = Array.from({ length: playerCount - 1 }, (_, i) => {
-    const nameIndex = randomInt(availableNames.length);
-    const [name] = availableNames.splice(nameIndex, 1);
-    return { id: `bot-${i + 1}`, name };
+    const [pick] = available.splice(randomInt(available.length), 1);
+    return { id: `bot-${i + 1}`, name: pick.name, avatar: encodeAvatar(randomAvatar(Math.random, pick.gender)) };
   });
   return [human, ...bots];
 }

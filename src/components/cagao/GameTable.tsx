@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { resolveAvatarCode } from '../avatar/resolve';
 import { Check, Layers, Shuffle, Skull, X } from 'lucide-react';
 import { rankLabel } from '@/games/cards';
 import type { CagaoMove, CagaoState } from '@/games/cagao';
@@ -180,6 +181,7 @@ export default function GameTable({
       side={side}
       seat={s}
       name={state.players[s].name}
+      avatar={resolveAvatarCode(state.players[s], s === seat)}
       count={state.hands[s].length}
       isTurn={game.playing && state.turn === s}
       isVictim={game.victimSeat === s}
@@ -206,8 +208,10 @@ export default function GameTable({
           </button>
         </>
       }
+      // Con tres rivales arriba (6 jugadores) cada abanico cede ancho para que las placas no se recorten.
+      vars={{ '--top-avail': game.layout.top.length >= 3 ? '13dvw' : '28dvw' } as CSSProperties}
       topCenter={game.layout.top.map((s) => renderSeat(s, 'top'))}
-      topRight={<TurnSound label={turnLabel} myTurn={game.myTurn} muted={game.isMuted} onToggleMute={game.toggleMute} />}
+      topRight={<TurnSound label={turnLabel} myTurn={game.myTurn} />}
       left={game.layout.left !== null && renderSeat(game.layout.left, 'left')}
       right={game.layout.right !== null && renderSeat(game.layout.right, 'right')}
       center={
@@ -216,7 +220,7 @@ export default function GameTable({
           <div className="absolute inset-0 [perspective:1100px]">
             <div
               ref={boardRef}
-              className={`cagao-board absolute inset-x-[3%] inset-y-[6%] rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
+              className={`cagao-board absolute inset-x-[1%] inset-y-[3%] rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
                 dragging && showDropHint ? 'cagao-board-drop' : ''
               }`}
             >
@@ -293,6 +297,7 @@ export default function GameTable({
       bottomLeft={
         <SeatPlaque
           name={state.players[seat].name}
+          avatar={resolveAvatarCode(state.players[seat], true)}
           count={game.hand.length}
           isTurn={game.myTurn}
           out={game.iAmOut}
@@ -391,7 +396,7 @@ export default function GameTable({
               ))}
               {state.loserSeat !== null && (
                 <div
-                  style={{ '--rh': 'clamp(44px, 14dvh, 80px)' } as CSSProperties}
+                  style={{ '--rh': 'clamp(49px, 15.7dvh, 90px)' } as CSSProperties}
                   className="flex items-center gap-2 rounded-xl bg-rose-600/30 px-3 py-1.5 ring-1 ring-rose-300"
                 >
                   <Skull className="h-4 w-4 shrink-0 text-rose-200" aria-hidden />

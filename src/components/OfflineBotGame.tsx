@@ -8,6 +8,7 @@ import type { CasinoMove } from '@/games/casino';
 import type { GameId, Player } from '@/games/shared';
 import type { TresYDosMove } from '@/games/tresYDos';
 import { projectState } from '@/games/view';
+import { getMyAvatar } from '@/lib/identity';
 import CagaoTable from './CagaoTable';
 import CasinoTable from './CasinoTable';
 import TresYDosTable from './TresYDosTable';
@@ -33,7 +34,7 @@ const NOTICE_MS = 4000;
  */
 export default function OfflineBotGame({ game, playerName, playerCount, onLeave }: OfflineBotGameProps) {
   const players = useMemo<Player[]>(
-    () => createSoloPlayers(game, { id: 'local-human', name: playerName }, playerCount),
+    () => createSoloPlayers(game, { id: 'local-human', name: playerName, avatar: getMyAvatar() }, playerCount),
     [game, playerName, playerCount],
   );
   const [state, setState] = useState<GameState>(() => createGameState(game, players));

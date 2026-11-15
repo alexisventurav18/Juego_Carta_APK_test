@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { resolveAvatarCode } from './avatar/resolve';
 import { Layers, Lock, Sparkles, X } from 'lucide-react';
 import {
   CASINO_TARGET,
@@ -22,6 +23,7 @@ import {
 import type { Card } from '@/games/cards';
 import { isBotPlayer, teamName, teamOf } from '@/games/shared';
 import { useGameSounds } from '@/hooks/useGameSounds';
+import { useNotificationsOn } from '@/lib/soundPrefs';
 import CapturedPile from './CapturedPile';
 import CaptureFlight from './CaptureFlight';
 import CartaUI, { DorsoUI } from './CartaUI';
@@ -100,7 +102,8 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
   const deckRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const { flights, spawn, endFlight, registerAnchor, anchorCenter } = useFlights();
-  const { playSound, isMuted, toggleMute } = useGameSounds();
+  const { playSound } = useGameSounds();
+  const notificationsOn = useNotificationsOn();
 
   const myTurn = state.phase === 'playing' && state.turn === seat && !deal.dealing;
   // Los avisos de instrucciones salen solo al inicio de la partida (hasta que termina tu primer turno).
@@ -150,7 +153,11 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
     return [{ team: teamName(state.players, team), score: state.scores[team], needs, entered }];
   });
   const showClosingAlert =
-    closingAlerts.length > 0 && state.phase !== 'gameOver' && !deal.dealing && closingDismissedRound !== state.roundNo;
+    notificationsOn &&
+    closingAlerts.length > 0 &&
+    state.phase !== 'gameOver' &&
+    !deal.dealing &&
+    closingDismissedRound !== state.roundNo;
 
   const captureNotice = state.lastCapture;
   const currentCaptureKey = captureNotice
@@ -386,10 +393,10 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
   const mesaWeight = state.table.length + state.builds.length * 2.2;
   const mesaVars = (
     mesaWeight > 16
-      ? { '--mesa-h': '8.5dvh', '--mesa-h-sm': '8.5dvh' }
+      ? { '--mesa-h': '9.5dvh', '--mesa-h-sm': '9.5dvh' }
       : mesaWeight > 10
-        ? { '--mesa-h': '10.5dvh', '--mesa-h-sm': '10.5dvh' }
-        : { '--mesa-h': '13.5dvh', '--mesa-h-sm': '13.5dvh' }
+        ? { '--mesa-h': '11.8dvh', '--mesa-h-sm': '11.8dvh' }
+        : { '--mesa-h': '15.1dvh', '--mesa-h-sm': '15.1dvh' }
   ) as CSSProperties;
 
   const statusText =
@@ -426,6 +433,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
       side={side}
       seat={s}
       name={state.players[s].name}
+      avatar={resolveAvatarCode(state.players[s], s === seat)}
       count={dealtCount(s)}
       isTurn={playing && !deal.dealing && state.turn === s}
       isVictim={false}
@@ -476,7 +484,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
 
   return (
     <TableLayout
-      vars={{ '--ch': 'clamp(48px, 19dvh, 128px)' } as CSSProperties}
+      vars={{ '--ch': 'clamp(54px, 21.3dvh, 143px)' } as CSSProperties}
       sideCols="21%"
       rows="22%_minmax(0,1fr)_36%"
       centerRef={boardRef}
@@ -502,7 +510,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           {scoreChip((1 - myTeam) as 0 | 1)}
         </>
       }
-      topRight={<TurnSound label={turnLabel} myTurn={myTurn} muted={isMuted} onToggleMute={toggleMute} />}
+      topRight={<TurnSound label={turnLabel} myTurn={myTurn} />}
       left={layout.left !== null && renderSeat(layout.left, 'left')}
       right={layout.right !== null && renderSeat(layout.right, 'right')}
       center={
@@ -510,7 +518,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           {/* Tablero de madera en perspectiva 2.5D: solo el fondo se inclina; las cartas quedan planas para tocarlas bien. */}
           <div aria-hidden className="pointer-events-none absolute inset-0 [perspective:1100px]">
             <div
-              className={`cagao-board absolute inset-x-[3%] inset-y-[6%] rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
+              className={`cagao-board absolute inset-x-[1%] inset-y-[3%] rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
                 dragging && myTurn ? 'cagao-board-drop' : ''
               }`}
             />
@@ -593,6 +601,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
       bottomLeft={
         <SeatPlaque
           name={state.players[seat].name}
+          avatar={resolveAvatarCode(state.players[seat], true)}
           count={handAll.length}
           isTurn={myTurn}
           out={false}

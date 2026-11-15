@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { resolveAvatarCode } from './avatar/resolve';
 import { Trophy } from 'lucide-react';
 import { HAND_SIZE, nextDealerSeat, TARGET_WINS, type TresYDosMove, type TresYDosState, winningDiscardIds } from '@/games/tresYDos';
 import { isBotPlayer } from '@/games/shared';
@@ -40,7 +41,7 @@ interface TresYDosTableProps {
 /** Cartas visibles bajo la de arriba del Pozo, para dar sensación de pila. */
 const PILE_UNDER = 2;
 
-const CENTER_VARS = { '--th': 'clamp(36px, 14.5dvh, 100px)', '--rh': 'clamp(30px, 9.5dvh, 60px)' } as CSSProperties;
+const CENTER_VARS = { '--th': 'clamp(40px, 16.2dvh, 112px)', '--rh': 'clamp(34px, 10.6dvh, 67px)' } as CSSProperties;
 
 /**
  * Mesa de Tres y Dos. Mismo esqueleto, misma mano en abanico, mismos vuelos de cartas y mismos sonidos
@@ -66,7 +67,7 @@ export default function TresYDosTable({
   const boardRef = useRef<HTMLDivElement>(null);
   const deal = useDealIntro(state.roundNo, state.players.length, HAND_SIZE, 1);
   const { flights, spawn, endFlight, registerAnchor, anchorCenter } = useFlights();
-  const { playSound, isMuted, toggleMute } = useGameSounds();
+  const { playSound } = useGameSounds();
 
   const seats = state.players.length;
   const hand = state.hands[seat];
@@ -235,6 +236,7 @@ export default function TresYDosTable({
       side={side}
       seat={s}
       name={state.players[s].name}
+      avatar={resolveAvatarCode(state.players[s], s === seat)}
       count={dealtCount(s)}
       isTurn={playing && !deal.dealing && state.turn === s}
       isVictim={false}
@@ -268,7 +270,7 @@ export default function TresYDosTable({
         </>
       }
       topCenter={layout.top.map((s) => renderSeat(s, 'top'))}
-      topRight={<TurnSound label={turnLabel} myTurn={myTurn} muted={isMuted} onToggleMute={toggleMute} />}
+      topRight={<TurnSound label={turnLabel} myTurn={myTurn} />}
       left={layout.left !== null && renderSeat(layout.left, 'left')}
       right={layout.right !== null && renderSeat(layout.right, 'right')}
       center={
@@ -276,7 +278,7 @@ export default function TresYDosTable({
           {/* Tablero de madera en perspectiva 2.5D, igual que El Cagao */}
           <div aria-hidden className="pointer-events-none absolute inset-0 [perspective:1100px]">
             <div
-              className={`cagao-board absolute inset-x-[3%] inset-y-[6%] rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
+              className={`cagao-board absolute inset-x-[1%] inset-y-[3%] rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
                 dragging && discardStep ? 'cagao-board-drop' : ''
               }`}
             />
@@ -352,6 +354,7 @@ export default function TresYDosTable({
       bottomLeft={
         <SeatPlaque
           name={state.players[seat].name}
+          avatar={resolveAvatarCode(state.players[seat], true)}
           count={hand.length}
           isTurn={myTurn}
           out={false}
@@ -430,7 +433,7 @@ export default function TresYDosTable({
           {!playing && !deal.dealing && !showEndNotice && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-3">
               <div
-                style={{ '--rh': 'clamp(30px, 9.5dvh, 60px)' } as CSSProperties}
+                style={{ '--rh': 'clamp(34px, 10.6dvh, 67px)' } as CSSProperties}
                 className="wood-panel max-h-full w-full max-w-xl space-y-2 overflow-y-auto p-3 text-center sm:p-4"
               >
                 <h2 className="text-base font-extrabold sm:text-xl">

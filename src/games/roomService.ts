@@ -1,3 +1,4 @@
+import { isAvatarCode } from './avatar';
 import { botStep } from './bots';
 import { randomInt } from './cards';
 import { applyGameMove } from './engine';
@@ -59,8 +60,8 @@ interface Auth {
 }
 
 export type RoomRequest =
-  | ({ action: 'create'; game: GameId; solo?: boolean; name: string } & Auth)
-  | ({ action: 'join'; code: string; name: string } & Auth)
+  | ({ action: 'create'; game: GameId; solo?: boolean; name: string; avatar?: string } & Auth)
+  | ({ action: 'join'; code: string; name: string; avatar?: string } & Auth)
   | ({ action: 'view'; roomId: string } & Auth)
   | ({ action: 'start'; roomId: string; dealer?: number } & Auth)
   | ({ action: 'move'; roomId: string; move: unknown } & Auth)
@@ -131,6 +132,11 @@ function readName(req: Record<string, unknown>): string {
   return name;
 }
 
+/** El avatar es opcional: si falta o no es válido se ignora (el cliente muestra uno estable). */
+function readAvatar(req: Record<string, unknown>): string | undefined {
+  return isAvatarCode(req.avatar) ? req.avatar : undefined;
+}
+
 function readRoomId(req: Record<string, unknown>): string {
   if (typeof req.roomId !== 'string' || !UUID_PATTERN.test(req.roomId)) throw new RoomError('Esta sala ya no existe.');
   return req.roomId;
@@ -184,7 +190,8 @@ async function create(store: RoomStore, req: Record<string, unknown>): Promise<R
   const name = readName(req);
   if (typeof req.game !== 'string' || !(req.game in GAMES)) throw new RoomError('Juego no válido.');
   const game = req.game as GameId;
-  const human: Player = { id: auth.playerId, name };
+  const avatar = readAvatar(req);
+  const human: Player = avatar ? { id: auth.playerId, name, avatar } : { id: auth.playerId, name };
   const players = req.solo === true ? createSoloPlayers(game, human) : [human];
   const stored = await store.create(
     { game, status: 'waiting', players },
@@ -208,7 +215,8 @@ async function join(store: RoomStore, req: Record<string, unknown>): Promise<Roo
     }
     if (room.status !== 'waiting') throw new RoomError('Esa partida ya empezó.');
     if (room.players.length >= GAMES[room.game].maxPlayers) throw new RoomError('La sala está llena.');
-    const players = [...room.players, { id: auth.playerId, name }];
+    const avatar = readAvatar(req);
+    const players = [...room.players, avatar ? { id: auth.playerId, name, avatar } : { id: auth.playerId, name }];
     const keys = { ...secret.keys, [auth.playerId]: await hashKey(auth.key) };
     const result = await commit(store, stored, { players, keys }, players.length - 1);
     if (result.ok) return result;

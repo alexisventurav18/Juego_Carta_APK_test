@@ -1,7 +1,11 @@
+import { encodeAvatar, isAvatarCode, randomAvatar } from '@/games/avatar';
+
 const PLAYER_ID_KEY = 'cartas.playerId';
 const PLAYER_SECRET_KEY = 'cartas.playerKey';
 const PLAYER_NAME_KEY = 'cartas.playerName';
 const ROOM_ID_KEY = 'cartas.roomId';
+const AVATAR_KEY = 'cartas.avatar';
+const AVATAR_CHOSEN_KEY = 'cartas.avatarChosen';
 
 // Algunos navegadores (modo privado, cookies bloqueadas) lanzan errores al usar localStorage.
 function readStorage(key: string): string | null {
@@ -56,6 +60,9 @@ export function resetPlayerIdentity(): void {
   writeStorage(PLAYER_ID_KEY, null);
   writeStorage(PLAYER_SECRET_KEY, null);
   writeStorage(PLAYER_NAME_KEY, null);
+  writeStorage(AVATAR_KEY, null);
+  writeStorage(AVATAR_CHOSEN_KEY, null);
+  sessionAvatar = null;
   writeStorage(ROOM_ID_KEY, null);
 }
 
@@ -87,3 +94,38 @@ export function getStoredRoomId(): string | null {
 export function storeRoomId(roomId: string | null): void {
   writeStorage(ROOM_ID_KEY, roomId);
 }
+
+/** Avatar guardado de este jugador, o null si todavía no eligió uno. */
+export function getStoredAvatar(): string | null {
+  const stored = readStorage(AVATAR_KEY);
+  return isAvatarCode(stored) ? stored : null;
+}
+
+/** Guarda el avatar. Con `chosen` se anota que el jugador lo eligió él (y no fue uno asignado al azar). */
+export function storeAvatar(code: string, chosen = false): void {
+  if (!isAvatarCode(code)) return;
+  writeStorage(AVATAR_KEY, code);
+  if (chosen) writeStorage(AVATAR_CHOSEN_KEY, '1');
+}
+
+/** ¿El jugador ya pasó por el editor? Si no, su avatar es uno asignado al azar. */
+export function hasChosenAvatar(): boolean {
+  return readStorage(AVATAR_CHOSEN_KEY) === '1';
+}
+
+let sessionAvatar: string | null = null;
+
+/**
+ * Avatar de este jugador. Si nunca eligió uno se le asigna uno al azar y se recuerda, así su cara no cambia
+ * entre partidas aunque no abra el editor.
+ */
+export function getMyAvatar(): string {
+  const stored = getStoredAvatar();
+  if (stored) return stored;
+  if (!sessionAvatar) {
+    sessionAvatar = encodeAvatar(randomAvatar());
+    storeAvatar(sessionAvatar);
+  }
+  return sessionAvatar;
+}
+

@@ -3,6 +3,8 @@ export type GameId = 'casino' | 'tresydos' | 'cagao';
 export interface Player {
   id: string;
   name: string;
+  /** Código del avatar (ver avatar.ts). Opcional: quien no lo envía recibe uno estable según su id. */
+  avatar?: string;
 }
 
 export interface ScoreLine {

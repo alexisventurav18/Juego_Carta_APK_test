@@ -1,12 +1,16 @@
 import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BookOpen, Bot, DoorOpen, Maximize2, Minimize2, RefreshCw, Spade, Volume2, VolumeX, X } from 'lucide-react';
+import { BookOpen, Bot, DoorOpen, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, Spade, Users, VolumeX, X } from 'lucide-react';
 import { GAMES } from '@/games';
-import type { GameId } from '@/games/shared';
+import type { GameId, Player } from '@/games/shared';
 import { createRoom, joinRoom } from '@/lib/rooms';
-import { getPlayerId, getStoredName, resetPlayerIdentity, storeName } from '@/lib/identity';
+import { getMyAvatar, getPlayerId, getStoredName, hasChosenAvatar, resetPlayerIdentity, storeAvatar, storeName } from '@/lib/identity';
 import { useFullscreen } from '@/lib/platform';
 import { useMuted } from '@/lib/soundPrefs';
 import { useGameSounds } from '@/hooks/useGameSounds';
+import Avatar from './avatar/Avatar';
+import AvatarEditor from './avatar/AvatarEditor';
+import { useOptions } from './options/OptionsProvider';
+import Tutorial from './tutorial/Tutorial';
 import { WoodFrame } from './cagao/CardAssets';
 import GameCards from './GameCards';
 import type { OfflineSetup } from './OfflineBotGame';
@@ -25,21 +29,14 @@ const FRAME_VARS = {
   '--medal': 'clamp(20px, 5dvh, 38px)',
 } as CSSProperties;
 
-interface OfflineOption {
-  /** Jugadores en total, contando al humano. */
-  count: number;
-  label: string;
+/** Cantidad de bots que se pueden elegir: solo las mesas que el juego permite (el Casino, 2 o 4 jugadores). */
+function botOptions(game: GameId): number[] {
+  return GAMES[game].playerCounts.map((count) => count - 1);
 }
 
-/** Tamaños de mesa que se pueden jugar sin conexión: el Casino va por equipos; los otros, por número de bots. */
-function offlineOptions(game: GameId): OfflineOption[] {
-  if (game === 'casino') {
-    return [
-      { count: 4, label: 'En equipo' },
-      { count: 2, label: '1 contra 1' },
-    ];
-  }
-  return GAMES[game].playerCounts.map((count) => ({ count, label: `${count - 1} bot${count === 2 ? '' : 's'}` }));
+function botCaption(game: GameId, bots: number): string {
+  if (game === 'casino') return bots === 3 ? 'Dos equipos de dos: tú y un bot contra dos bots.' : 'Uno contra uno.';
+  return `${bots + 1} jugadores en la mesa, contándote a ti.`;
 }
 
 const BTN = 'flex min-h-[clamp(36px,10dvh,46px)] touch-manipulation items-center justify-center gap-1.5 rounded-lg px-[clamp(8px,1.6dvw,18px)] text-[clamp(11px,2.8dvh,14px)] transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60';
@@ -50,18 +47,23 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
   const [game, setGame] = useState<GameId>('casino');
   const [code, setCode] = useState('');
   const [panel, setPanel] = useState<'rules' | 'join' | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [avatar, setAvatar] = useState(getMyAvatar);
+  const [avatarChosen, setAvatarChosen] = useState(hasChosenAvatar);
   const [busy, setBusy] = useState<'create' | 'join' | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Tamaño de mesa elegido para jugar sin conexión, por juego (si no se tocó, el recomendado).
-  const [offlineCounts, setOfflineCounts] = useState<Partial<Record<GameId, number>>>({});
-  const { muted, toggleMuted } = useMuted();
+  // Cantidad de bots elegida para jugar sin conexión, por juego (si no se tocó, la recomendada).
+  const [botCounts, setBotCounts] = useState<Partial<Record<GameId, number>>>({});
+  const { muted } = useMuted();
+  const options = useOptions();
   const fullscreen = useFullscreen();
   const { playSound } = useGameSounds();
 
   const info = GAMES[game];
   const trimmedName = name.trim();
-  const options = offlineOptions(game);
-  const offlineCount = offlineCounts[game] ?? info.soloPlayerCount;
+  const bots = botCounts[game] ?? info.soloPlayerCount - 1;
+  const botChoices = botOptions(game);
 
   const selectGame = (id: GameId) => {
     if (id !== game) playSound('cardSlide');
@@ -69,7 +71,7 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
     setError(null);
   };
 
-  const run = async (kind: 'create' | 'join', action: (player: { id: string; name: string }) => Promise<string>) => {
+  const run = async (kind: 'create' | 'join', action: (player: Player) => Promise<string>) => {
     if (!trimmedName) {
       setError('Escribe tu nombre para continuar.');
       setPanel(null);
@@ -79,7 +81,7 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
     setError(null);
     storeName(trimmedName);
     try {
-      const roomId = await action({ id: getPlayerId(), name: trimmedName });
+      const roomId = await action({ id: getPlayerId(), name: trimmedName, avatar });
       onEnter(roomId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Algo salió mal. Inténtalo de nuevo.');
@@ -102,6 +104,8 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
 
   const changePlayer = () => {
     resetPlayerIdentity();
+    setAvatar(getMyAvatar());
+    setAvatarChosen(false);
     setName('');
     setCode('');
     setError(null);
@@ -114,7 +118,7 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
     }
     setError(null);
     storeName(trimmedName);
-    onStartOffline({ game, playerName: trimmedName, playerCount: offlineCount });
+    onStartOffline({ game, playerName: trimmedName, playerCount: bots + 1 });
   };
 
   return (
@@ -126,9 +130,23 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
           {/* Barra superior: perfil, título y ajustes */}
           <header className="flex shrink-0 items-center justify-between gap-3">
             <div className="wood-block flex min-w-0 max-w-[34%] items-center gap-2 rounded-xl py-1 pl-1 pr-2">
-              <span className="grid h-[clamp(26px,7.5dvh,34px)] w-[clamp(26px,7.5dvh,34px)] shrink-0 place-items-center rounded-full border-2 border-amber-900/70 bg-gradient-to-br from-amber-100 to-amber-300 text-sm font-extrabold text-amber-950">
-                {trimmedName ? trimmedName.slice(0, 1).toUpperCase() : '?'}
-              </span>
+              <button
+                type="button"
+                onClick={() => setEditorOpen(true)}
+                aria-label="Editar mi avatar"
+                title="Editar mi avatar"
+                className="relative shrink-0 touch-manipulation rounded-full transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 active:scale-95"
+              >
+                <Avatar code={avatar} className="h-[clamp(28px,8dvh,38px)] w-[clamp(28px,8dvh,38px)] border-2 border-amber-900/70" />
+                <span
+                  aria-hidden
+                  className={`absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full ring-1 ring-amber-950/60 ${
+                    avatarChosen ? 'bg-amber-200 text-amber-950' : 'animate-pulse bg-amber-400 text-amber-950'
+                  }`}
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </span>
+              </button>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value.slice(0, 24))}
@@ -163,15 +181,13 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
               <button type="button" onClick={() => setPanel('rules')} aria-label={`Reglas de ${info.name}`} title="Reglas" className={ICON_BTN}>
                 <BookOpen className="h-4 w-4" />
               </button>
-              <button
-                type="button"
-                onClick={toggleMuted}
-                aria-label={muted ? 'Activar sonido' : 'Silenciar'}
-                aria-pressed={muted}
-                title={muted ? 'Activar sonido' : 'Silenciar'}
-                className={ICON_BTN}
-              >
-                {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              <button type="button" onClick={options.open} aria-label="Opciones" title="Opciones" className={`${ICON_BTN} relative`}>
+                <Settings className="h-4 w-4" />
+                {muted && (
+                  <span aria-hidden className="absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-rose-600 text-white ring-1 ring-rose-200/70">
+                    <VolumeX className="h-2.5 w-2.5" />
+                  </span>
+                )}
               </button>
               {fullscreen.supported && (
                 <button
@@ -190,29 +206,52 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
           {/* Los modos de juego, lado a lado y todos a la vista */}
           <GameCards games={GAME_ORDER} selected={game} onSelect={selectGame} />
 
-          {/* Acciones del juego elegido: una sola fila, repartida de forma pareja */}
-          <footer className="flex w-full shrink-0 items-stretch justify-center gap-[clamp(6px,1.4dvw,14px)]">
-            <div className="flex flex-none items-stretch gap-1.5" role="group" aria-label={game === 'casino' ? 'Tipo de partida' : 'Rivales'}>
-              {options.map((option) => {
-                const active = option.count === offlineCount;
-                return (
-                  <button
-                    key={option.count}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setOfflineCounts((current) => ({ ...current, [game]: option.count }))}
-                    className={`${BTN} min-w-[clamp(72px,13dvw,120px)] font-bold ${active ? 'btn-gold' : 'btn-wood'}`}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
+          {/* Configuración de la partida: cuántos bots y el tutorial */}
+          <div className="flex shrink-0 items-center justify-center gap-[clamp(8px,2dvw,20px)]">
+            <div className="wood-block flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-1">
+              <Users className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+              <span className="text-[clamp(11px,2.8dvh,14px)] font-bold text-amber-50">Bots</span>
+              <div className="flex items-center gap-1" role="radiogroup" aria-label={`Cantidad de bots en ${info.name}`}>
+                {botChoices.map((count) => {
+                  const active = count === bots;
+                  return (
+                    <button
+                      key={count}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      aria-label={`${count} ${count === 1 ? 'bot' : 'bots'}`}
+                      onClick={() => setBotCounts((current) => ({ ...current, [game]: count }))}
+                      className={`grid h-[clamp(26px,7.4dvh,32px)] w-[clamp(26px,7.4dvh,32px)] touch-manipulation place-items-center rounded-lg text-[clamp(12px,3dvh,15px)] font-extrabold transition-transform active:scale-90 ${
+                        active ? 'btn-gold' : 'btn-wood'
+                      }`}
+                    >
+                      {count}
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="hidden max-w-[16rem] truncate text-[11px] text-amber-100/70 min-[760px]:inline [@media(max-height:340px)]:hidden">
+                {botCaption(game, bots)}
+              </span>
             </div>
-            <button type="button" onClick={startOffline} className={`${BTN} min-w-0 max-w-[16rem] flex-1 btn-gold font-extrabold`}>
-              <Bot className="h-4 w-4 shrink-0" />
-              <span className="truncate">Jugar {info.name}</span>
+            <button
+              type="button"
+              onClick={() => setTutorialOpen(true)}
+              className="btn-wood flex min-h-[clamp(30px,8.4dvh,38px)] touch-manipulation items-center gap-1.5 rounded-xl px-3 text-[clamp(11px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
+            >
+              <GraduationCap className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+              Tutorial de {info.name}
             </button>
-            <button type="button" onClick={handleCreate} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[12rem] flex-1 btn-leaf font-bold`}>
+          </div>
+
+          {/* Acciones del juego elegido: contra bots, sala en línea o unirse */}
+          <footer className="flex w-full shrink-0 items-stretch justify-center gap-[clamp(6px,1.4dvw,14px)]">
+            <button type="button" onClick={startOffline} className={`${BTN} min-w-0 max-w-[22rem] flex-[2] btn-gold font-extrabold`}>
+              <Bot className="h-4 w-4 shrink-0" />
+              <span className="truncate">Jugar {info.name} contra {bots} {bots === 1 ? 'bot' : 'bots'}</span>
+            </button>
+            <button type="button" onClick={handleCreate} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[14rem] flex-1 btn-leaf font-bold`}>
               <Spade className="h-4 w-4 shrink-0" />
               <span className="truncate">{busy === 'create' ? 'Creando...' : 'Crear sala'}</span>
             </button>
@@ -278,6 +317,28 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
           </Modal>
         )}
       </div>
+      {editorOpen && (
+        <AvatarEditor
+          initial={avatarChosen ? avatar : null}
+          onClose={() => setEditorOpen(false)}
+          onSave={(code) => {
+            storeAvatar(code, true);
+            setAvatar(code);
+            setAvatarChosen(true);
+            setEditorOpen(false);
+          }}
+        />
+      )}
+      {tutorialOpen && (
+        <Tutorial
+          game={game}
+          onClose={() => setTutorialOpen(false)}
+          onPlay={() => {
+            setTutorialOpen(false);
+            startOffline();
+          }}
+        />
+      )}
     </div>
   );
 }

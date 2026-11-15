@@ -7,9 +7,9 @@ const BASE_VARS = {
   '--corner': 'clamp(28px, 9dvh, 60px)',
   '--medal': 'clamp(26px, 8dvh, 56px)',
   // Alto de cartas: tu mano, las de los rivales y las de la pila central.
-  '--ch': 'clamp(52px, 21dvh, 140px)',
-  '--oh': 'clamp(30px, 11dvh, 74px)',
-  '--ph': 'clamp(40px, 16dvh, 96px)',
+  '--ch': 'clamp(58px, 23.5dvh, 157px)',
+  '--oh': 'clamp(34px, 12.3dvh, 83px)',
+  '--ph': 'clamp(45px, 17.9dvh, 108px)',
 } as CSSProperties;
 
 interface TableLayoutProps {

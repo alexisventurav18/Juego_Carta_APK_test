@@ -468,20 +468,20 @@ button,
 
 /* Altura de las cartas de CartaUI (mano y mesa), con los mismos topes que antes. */
 .cu-mano {
-  --cu-h: min(var(--mano-h, 15dvh), 10rem);
+  --cu-h: min(var(--mano-h, 16.8dvh), 11.2rem);
 }
 
 .cu-mesa {
-  --cu-h: min(var(--mesa-h, 12dvh), 9rem);
+  --cu-h: min(var(--mesa-h, 13.4dvh), 10rem);
 }
 
 @media (min-width: 640px) {
   .cu-mano {
-    --cu-h: min(var(--mano-h-sm, 18dvh), 10rem);
+    --cu-h: min(var(--mano-h-sm, 20.2dvh), 11.2rem);
   }
 
   .cu-mesa {
-    --cu-h: min(var(--mesa-h-sm, 15dvh), 9rem);
+    --cu-h: min(var(--mesa-h-sm, 16.8dvh), 10rem);
   }
 }
 

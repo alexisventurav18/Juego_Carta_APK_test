@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNotificationsOn } from '@/lib/soundPrefs';
 
 /**
  * Aviso de instrucciones de la mesa ("Elige una carta de tu mano o arrástrala a la mesa."): se muestra solo al
@@ -11,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
  * Devuelve `true` mientras el aviso puede mostrarse.
  */
 export function useStartHint(myTurn: boolean, roundNo: number, finished = false): boolean {
+  const notificationsOn = useNotificationsOn();
   const [dismissed, setDismissed] = useState(false);
   const hadTurn = useRef(false);
   const lastRound = useRef(roundNo);
@@ -28,5 +30,5 @@ export function useStartHint(myTurn: boolean, roundNo: number, finished = false)
     else if (hadTurn.current) setDismissed(true);
   }, [myTurn]);
 
-  return !dismissed && !finished;
+  return notificationsOn && !dismissed && !finished;
 }

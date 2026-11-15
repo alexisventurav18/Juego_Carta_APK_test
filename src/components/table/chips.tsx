@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
-import { ArrowLeft, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Settings, VolumeX } from 'lucide-react';
+import { useOptions } from '@/components/options/OptionsProvider';
+import { useTurnNotification } from '@/lib/notify';
+import { useMuted } from '@/lib/soundPrefs';
 
 /** Botón cuadrado de las esquinas de la mesa (salir, sonido), igual que en El Cagao. */
 export const CORNER_BUTTON =
@@ -20,12 +23,30 @@ export function LeaveButton({ onLeave }: { onLeave?: () => void }) {
 interface TurnSoundProps {
   label: string;
   myTurn: boolean;
-  muted: boolean;
-  onToggleMute: () => void;
 }
 
-/** Esquina superior derecha: de quién es el turno y el interruptor de sonido. */
-export function TurnSound({ label, myTurn, muted, onToggleMute }: TurnSoundProps) {
+/** Botón de opciones (engranaje). Si el audio está silenciado se ve una marca para recordarlo. */
+export function OptionsButton({ className = CORNER_BUTTON }: { className?: string }) {
+  const { open } = useOptions();
+  const { muted } = useMuted();
+  return (
+    <button type="button" onClick={open} aria-label="Opciones" title="Opciones" className={`${className} relative`}>
+      <Settings className="h-4 w-4" />
+      {muted && (
+        <span
+          aria-hidden
+          className="absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-rose-600 text-white ring-1 ring-rose-200/70"
+        >
+          <VolumeX className="h-2.5 w-2.5" />
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** Esquina superior derecha: de quién es el turno y el botón de opciones. */
+export function TurnSound({ label, myTurn }: TurnSoundProps) {
+  useTurnNotification(myTurn);
   return (
     <>
       <span
@@ -36,15 +57,7 @@ export function TurnSound({ label, myTurn, muted, onToggleMute }: TurnSoundProps
       >
         {label}
       </span>
-      <button
-        type="button"
-        onClick={onToggleMute}
-        aria-label={muted ? 'Activar sonido' : 'Silenciar'}
-        aria-pressed={muted}
-        className={CORNER_BUTTON}
-      >
-        {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-      </button>
+      <OptionsButton />
     </>
   );
 }

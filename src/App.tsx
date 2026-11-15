@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Lobby from '@/components/Lobby';
 import RoomView from '@/components/RoomView';
 import OfflineBotGame, { type OfflineSetup } from '@/components/OfflineBotGame';
+import { OptionsProvider } from '@/components/options/OptionsProvider';
 import { getStoredRoomId, storeRoomId } from '@/lib/identity';
 
 export default function App() {
@@ -26,7 +27,7 @@ export default function App() {
   };
 
   return (
-    <>
+    <OptionsProvider>
       {offlineGame ? (
         <OfflineBotGame {...offlineGame} onLeave={() => setOfflineGame(null)} />
       ) : (
@@ -38,6 +39,6 @@ export default function App() {
           )}
         </div>
       )}
-    </>
+    </OptionsProvider>
   );
 }

@@ -83,7 +83,7 @@ export default function TableBuild({ build, selected, disabled, onSelect, team }
           className={
             i === 0
               ? ''
-              : '-ml-[calc(var(--mesa-h,12dvh)*0.285)] sm:-ml-[calc(var(--mesa-h-sm,15dvh)*0.293)]'
+              : '-ml-[calc(var(--mesa-h,13.4dvh)*0.285)] sm:-ml-[calc(var(--mesa-h-sm,16.8dvh)*0.293)]'
           }
           style={{ zIndex: i + 1 }}
         >

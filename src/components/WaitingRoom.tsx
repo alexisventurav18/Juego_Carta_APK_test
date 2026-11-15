@@ -3,6 +3,8 @@ import { Check, Copy, Play, Users } from 'lucide-react';
 import { canStartGame, GAMES } from '@/games';
 import type { Player } from '@/games/shared';
 import type { RoomRow } from '@/lib/rooms';
+import Avatar from './avatar/Avatar';
+import { resolveAvatarCode } from './avatar/resolve';
 
 interface WaitingRoomProps {
   room: RoomRow;
@@ -17,6 +19,8 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
   const canStart = canStartGame(room.game, room.players.length);
   const slots = Math.max(info.maxPlayers - room.players.length, 0);
   const [copied, setCopied] = useState(false);
+  // Las salas de más de 4 jugadores muestran la lista en dos columnas para no obligar a desplazarse.
+  const twoColumns = info.maxPlayers > 4;
 
   const copyCode = async () => {
     try {
@@ -41,14 +45,14 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
   };
 
   return (
-    <div className="mx-auto grid max-w-3xl gap-6 md:grid-cols-[1fr_1.2fr]">
-      <div className="flex flex-col justify-between gap-6 wood-panel p-6">
+    <div className="mx-auto grid max-w-3xl gap-3 min-[600px]:grid-cols-[1fr_1.2fr] sm:gap-5">
+      <div className="flex flex-col gap-4 self-start wood-panel p-4 sm:p-5">
         <div className="space-y-2">
           <p className="text-sm font-bold text-amber-200">Sala de {info.name}</p>
           <p className="text-sm text-amber-100/85">Comparte este código con tus amigos para que entren.</p>
         </div>
         <div className="space-y-3">
-          <p className="font-mono text-4xl font-semibold tracking-[0.35em] text-amber-300">{room.code}</p>
+          <p className="font-mono text-3xl font-semibold tracking-[0.3em] text-amber-300 sm:text-4xl">{room.code}</p>
           <button
             type="button"
             onClick={copyCode}
@@ -60,7 +64,7 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
         </div>
       </div>
 
-      <div className="wood-panel space-y-5 p-6">
+      <div className="wood-panel space-y-3 p-4 sm:space-y-4 sm:p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-amber-50">Jugadores</h2>
           <span className="inline-flex items-center gap-1.5 text-sm text-amber-100/70">
@@ -69,14 +73,14 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
           </span>
         </div>
 
-        <ul className="space-y-2">
+        <ul className={`grid gap-1.5 ${twoColumns ? 'min-[600px]:grid-cols-2' : ''}`}>
           {room.players.map((player, index) => (
-            <PlayerRow key={player.id} player={player} index={index} isMe={player.id === myId} />
+            <PlayerRow key={player.id} player={player} index={index} isMe={player.id === myId} compact={twoColumns} />
           ))}
           {Array.from({ length: slots }, (_, i) => (
             <li
               key={`empty-${i}`}
-              className="rounded-xl border border-dashed border-amber-200/30 px-4 py-3 text-sm text-amber-100/50"
+              className="flex min-h-[44px] items-center rounded-xl border border-dashed border-amber-200/30 px-3 py-1.5 text-sm text-amber-100/50"
             >
               Esperando jugador...
             </li>
@@ -109,13 +113,12 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
   );
 }
 
-function PlayerRow({ player, index, isMe }: { player: Player; index: number; isMe: boolean }) {
+function PlayerRow({ player, index, isMe, compact }: { player: Player; index: number; isMe: boolean; compact: boolean }) {
   return (
-    <li className="flex items-center gap-3 rounded-xl bg-black/25 px-4 py-3 ring-1 ring-amber-200/15">
-      <span className="flex h-7 w-7 items-center justify-center rounded-full wood-block text-xs font-bold text-amber-100">
-        {index + 1}
-      </span>
+    <li className="flex min-h-[44px] min-w-0 items-center gap-2.5 rounded-xl bg-black/25 px-3 py-1.5 ring-1 ring-amber-200/15">
+      <Avatar code={resolveAvatarCode(player, isMe)} className="h-8 w-8 border-2 border-amber-900/70" />
       <span className="flex-1 truncate text-sm font-bold text-amber-50">{player.name}</span>
+      {index === 0 && !compact && <span className="rounded-md bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-200">Anfitrión</span>}
       {isMe && <span className="text-xs font-bold text-lime-400">Tú</span>}
     </li>
   );

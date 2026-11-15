@@ -8,6 +8,7 @@ import { botTickDelay } from '@/games/bots';
 import { isBotPlayer } from '@/games/shared';
 import { getPlayerId } from '@/lib/identity';
 import { botTick, fetchRoom, requestStart, type RoomConnectionStatus, type RoomRow, sendMove, subscribeToRoom } from '@/lib/rooms';
+import { OptionsButton } from './table/chips';
 import WaitingRoom from './WaitingRoom';
 import CasinoTable from './CasinoTable';
 import TresYDosTable from './TresYDosTable';
@@ -220,16 +221,19 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
           <ArrowLeft className="h-4 w-4" />
           Salir de la sala
         </button>
-        <div className="text-right">
-          <p className="text-xs font-bold text-amber-200/80">{info.name}</p>
-          <p className="font-mono text-base font-semibold tracking-[0.3em] text-amber-50 sm:text-lg">{room.code}</p>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-xs font-bold text-amber-200/80">{info.name}</p>
+            <p className="font-mono text-base font-semibold tracking-[0.3em] text-amber-50 sm:text-lg">{room.code}</p>
+          </div>
+          <OptionsButton />
         </div>
       </header>
 
       <div
         role="status"
         aria-live="polite"
-        className={`mb-3 flex items-center justify-center gap-2 rounded-xl px-3 py-1.5 text-[11px] font-medium sm:mb-5 sm:px-4 sm:py-2 sm:text-xs ${
+        className={`mb-2 flex items-center justify-center gap-2 rounded-xl px-3 py-1 text-[11px] font-medium sm:mb-4 sm:px-4 sm:py-2 sm:text-xs ${
           connection === 'connected'
             ? 'bg-lime-600/25 text-lime-200 ring-1 ring-lime-400/40'
             : connection === 'offline'
