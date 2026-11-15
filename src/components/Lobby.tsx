@@ -16,6 +16,7 @@ import GameCards from './GameCards';
 import type { OfflineSetup } from './OfflineBotGame';
 
 interface LobbyProps {
+  initialJoinCode?: string;
   onEnter: (roomId: string) => void;
   onStartOffline: (setup: OfflineSetup) => void;
 }
@@ -42,11 +43,11 @@ function botCaption(game: GameId, bots: number): string {
 const BTN = 'flex min-h-[clamp(36px,10dvh,46px)] touch-manipulation items-center justify-center gap-1.5 rounded-lg px-[clamp(8px,1.6dvw,18px)] text-[clamp(11px,2.8dvh,14px)] transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60';
 const ICON_BTN = 'wood-chip grid h-[clamp(32px,9dvh,40px)] w-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation place-items-center rounded-lg transition-transform active:scale-95';
 
-export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
+export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: LobbyProps) {
   const [name, setName] = useState(getStoredName);
   const [game, setGame] = useState<GameId>('casino');
-  const [code, setCode] = useState('');
-  const [panel, setPanel] = useState<'rules' | 'join' | null>(null);
+  const [code, setCode] = useState(initialJoinCode ?? '');
+  const [panel, setPanel] = useState<'rules' | 'join' | null>(initialJoinCode ? 'join' : null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [avatar, setAvatar] = useState(getMyAvatar);
@@ -74,7 +75,7 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
   const run = async (kind: 'create' | 'join', action: (player: Player) => Promise<string>) => {
     if (!trimmedName) {
       setError('Escribe tu nombre para continuar.');
-      setPanel(null);
+      setPanel(kind === 'join' ? 'join' : null);
       return;
     }
     setBusy(kind);
@@ -85,7 +86,7 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
       onEnter(roomId);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Algo salió mal. Inténtalo de nuevo.');
-      setPanel(null);
+      setPanel(kind === 'join' ? 'join' : null);
     } finally {
       setBusy(null);
     }
@@ -238,10 +239,11 @@ export default function Lobby({ onEnter, onStartOffline }: LobbyProps) {
             <button
               type="button"
               onClick={() => setTutorialOpen(true)}
+              aria-label={`Aprende a jugar ${info.name}`}
               className="btn-wood flex min-h-[clamp(30px,8.4dvh,38px)] touch-manipulation items-center gap-1.5 rounded-xl px-3 text-[clamp(11px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
             >
               <GraduationCap className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-              Tutorial de {info.name}
+              Aprende a jugar
             </button>
           </div>
 

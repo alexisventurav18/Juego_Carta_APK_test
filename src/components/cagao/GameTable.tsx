@@ -27,6 +27,7 @@ export interface GameTableProps {
   /** Texto de la sala o partida, visible en la hoja de pares. */
   roomLabel?: string;
   connection?: 'connected' | 'connecting' | 'offline';
+  onRetry?: () => void;
   /** Aviso de error o información pasajera. */
   notice?: string | null;
   /** Contenido extra del resultado (p. ej. el botón "Jugar otra partida"). */
@@ -47,6 +48,7 @@ export default function GameTable({
   onLeave,
   roomLabel,
   connection,
+  onRetry,
   notice,
   resultFooter,
 }: GameTableProps) {
@@ -473,7 +475,7 @@ export default function GameTable({
       )}
 
           <FlightLayer flights={flights} onDone={endFlight} />
-          <TableNotices connection={connection} notice={notice} />
+          <TableNotices connection={connection} notice={notice} onRetry={onRetry} />
         </>
       }
     />

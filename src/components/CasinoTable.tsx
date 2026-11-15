@@ -57,6 +57,7 @@ interface CasinoTableProps {
   /** Texto de la sala o partida, visible en la hoja de cartas capturadas. */
   roomLabel?: string;
   connection?: 'connected' | 'connecting' | 'offline';
+  onRetry?: () => void;
   /** Aviso de error o información pasajera. */
   notice?: string | null;
   /** Contenido extra del panel de resultados (p. ej. el botón "Jugar otra partida"). */
@@ -84,7 +85,7 @@ function isCasinoPointCard(card: { rank: number; suit: string }): boolean {
  * toca las cartas de la mesa que quieres, y pulsa el botón; o arrastra la carta a la mesa (y suéltala
  * sobre una carta de la mesa para capturarla).
  */
-export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, connection, notice, resultFooter }: CasinoTableProps) {
+export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter }: CasinoTableProps) {
   const [cardId, setCardId] = useState<string | null>(null);
   const [capturedOpen, setCapturedOpen] = useState(false);
   const [tableIds, setTableIds] = useState<string[]>([]);
@@ -746,7 +747,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           )}
 
           <FlightLayer flights={flights} onDone={endFlight} />
-          <TableNotices connection={connection} notice={notice} />
+          <TableNotices connection={connection} notice={notice} onRetry={onRetry} />
         </>
       }
     />

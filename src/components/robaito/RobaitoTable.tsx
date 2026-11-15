@@ -33,6 +33,7 @@ export interface RobaitoTableProps {
   /** Texto de la sala o partida. */
   roomLabel?: string;
   connection?: 'connected' | 'connecting' | 'offline';
+  onRetry?: () => void;
   /** Aviso de error o información pasajera. */
   notice?: string | null;
   /** Contenido extra del resultado (p. ej. el botón "Jugar otra partida"). */
@@ -82,7 +83,7 @@ function describeEvent(event: RobaitoEvent, seat: number, names: string[]): stri
  * los otros juegos. Toca una carta para elegirla (se marca qué se llevaría) y tócala otra vez, pulsa el botón
  * o arrástrala al centro para jugarla.
  */
-export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, connection, notice, resultFooter }: RobaitoTableProps) {
+export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter }: RobaitoTableProps) {
   const game = useRobaitoGame({ state, seat, onMove });
   const { event } = game;
   const seats = state.players.length;
@@ -493,7 +494,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
           )}
 
           <FlightLayer flights={flights} onDone={endFlight} />
-          <TableNotices connection={connection} notice={notice} />
+          <TableNotices connection={connection} notice={notice} onRetry={onRetry} />
           {roomLabel && <span className="sr-only">{roomLabel}</span>}
         </>
       }

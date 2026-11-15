@@ -66,19 +66,26 @@ export function TurnSound({ label, myTurn }: TurnSoundProps) {
 export function TableNotices({
   connection,
   notice,
+  onRetry,
 }: {
   connection?: 'connected' | 'connecting' | 'offline';
   notice?: string | null;
+  onRetry?: () => void;
 }): ReactNode {
   return (
     <>
       {(connection === 'offline' || connection === 'connecting') && (
-        <p
+        <div
           role="status"
-          className="pointer-events-none absolute inset-x-3 top-1 z-50 mx-auto max-w-sm rounded-full bg-amber-500 px-3 py-1 text-center text-[11px] font-semibold text-stone-900 shadow-lg"
+          className="absolute inset-x-3 top-1 z-50 mx-auto flex max-w-sm items-center justify-center gap-2 rounded-full bg-amber-500 px-3 py-1 text-center text-[11px] font-semibold text-stone-900 shadow-lg"
         >
-          {connection === 'offline' ? 'Sin conexión. Reintentando...' : 'Conectando al servidor...'}
-        </p>
+          <span>{connection === 'offline' ? 'Sin conexión. Reintentando...' : 'Conectando al servidor...'}</span>
+          {connection === 'offline' && onRetry && (
+            <button type="button" onClick={onRetry} className="rounded-full bg-black/15 px-2 py-1 font-extrabold underline">
+              Reintentar
+            </button>
+          )}
+        </div>
       )}
       {notice && (
         <p

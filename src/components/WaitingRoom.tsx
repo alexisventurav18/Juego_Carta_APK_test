@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Check, Copy, Play, Users } from 'lucide-react';
+import { Check, Copy, Play, Share2, Users } from 'lucide-react';
 import { canStartGame, GAMES } from '@/games';
 import type { Player } from '@/games/shared';
+import { createRoomInviteUrl } from '@/lib/invitation';
 import type { RoomRow } from '@/lib/rooms';
 import Avatar from './avatar/Avatar';
 import { resolveAvatarCode } from './avatar/resolve';
@@ -19,6 +20,8 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
   const canStart = canStartGame(room.game, room.players.length);
   const slots = Math.max(info.maxPlayers - room.players.length, 0);
   const [copied, setCopied] = useState(false);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const inviteUrl = createRoomInviteUrl(room.code, import.meta.env.VITE_APP_URL, window.location.href);
   // Las salas de 4 o más jugadores muestran la lista en dos columnas para ahorrar altura en móvil.
   const twoColumns = info.maxPlayers >= 4;
 
@@ -44,6 +47,27 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
     }
   };
 
+  const shareInvite = async () => {
+    const text = inviteUrl ? `¡Juega ${info.name} conmigo! Código: ${room.code}` : `¡Juega ${info.name} conmigo! Código de la sala: ${room.code}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Invitación a ${info.name}`,
+          text,
+          ...(inviteUrl ? { url: inviteUrl } : {}),
+        });
+        setShareMessage(inviteUrl ? 'Invitación compartida' : 'Código compartido; configura el enlace público para incluir una URL');
+      } else {
+        await copyText(inviteUrl ? `${text}\n${inviteUrl}` : text);
+        setShareMessage(inviteUrl ? 'Enlace y código copiados' : 'Código copiado; configura el enlace público para compartir una URL');
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setShareMessage('No se pudo compartir. Copia el código de la sala.');
+    }
+    window.setTimeout(() => setShareMessage(null), 3000);
+  };
+
   return (
     <div className="room-waiting-grid mx-auto grid w-full max-w-3xl gap-2 min-[600px]:grid-cols-[1fr_1.2fr] sm:gap-5">
       <div className="room-waiting-info flex flex-col gap-2 self-start wood-panel p-3 sm:gap-4 sm:p-5">
@@ -61,6 +85,15 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
             {copied ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
             {copied ? 'Código copiado' : 'Copiar código'}
           </button>
+          <button
+            type="button"
+            onClick={() => void shareInvite()}
+            className="btn-gold inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-extrabold transition-transform active:scale-95 sm:min-h-[44px] sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
+          >
+            <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            Compartir invitación
+          </button>
+          {shareMessage && <p role="status" className="text-xs text-amber-200">{shareMessage}</p>}
         </div>
       </div>
 
@@ -111,6 +144,23 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
       </div>
     </div>
   );
+}
+
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const input = document.createElement('textarea');
+  input.value = text;
+  input.setAttribute('readonly', '');
+  input.style.position = 'fixed';
+  input.style.opacity = '0';
+  document.body.appendChild(input);
+  input.select();
+  const copied = document.execCommand('copy');
+  input.remove();
+  if (!copied) throw new Error('No se pudo copiar la invitación.');
 }
 
 function PlayerRow({ player, index, isMe, compact }: { player: Player; index: number; isMe: boolean; compact: boolean }) {

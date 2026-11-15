@@ -40,6 +40,11 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const [retryToken, setRetryToken] = useState(0);
   const versionRef = useRef(-1);
 
+  const retryConnection = () => {
+    setConnection('connecting');
+    setRetryToken((value) => value + 1);
+  };
+
   const acceptRow = useCallback((row: RoomRow) => {
     setRoom((prev) => {
       const next = !prev || row.version >= prev.version ? row : prev;
@@ -114,7 +119,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
           versionRef.current = -1;
           setRoom(null);
           setLoadError(null);
-          setRetryToken((value) => value + 1);
+          retryConnection();
         }}
         onLeave={onLeave}
       />
@@ -173,6 +178,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       onLeave,
       roomLabel: `${info.name} · Sala ${room.code}`,
       connection,
+      onRetry: retryConnection,
       notice,
       resultFooter:
         isGameFinished(state) && seat === 0 ? (
@@ -253,6 +259,11 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         {connection === 'offline' && <WifiOff className="h-3.5 w-3.5" />}
         {connection === 'connecting' && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
         {connection === 'connected' ? 'Conectado al servidor' : connection === 'offline' ? 'Sin conexión. Reintentando...' : 'Conectando al servidor...'}
+        {connection === 'offline' && (
+          <button type="button" onClick={retryConnection} className="ml-2 rounded-md bg-black/25 px-2 py-1 font-bold text-amber-50 underline">
+            Reintentar
+          </button>
+        )}
       </div>
 
       {notice && (

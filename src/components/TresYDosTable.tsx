@@ -32,6 +32,7 @@ interface TresYDosTableProps {
   /** Texto de la sala o partida. */
   roomLabel?: string;
   connection?: 'connected' | 'connecting' | 'offline';
+  onRetry?: () => void;
   /** Aviso de error o información pasajera. */
   notice?: string | null;
   /** Contenido extra del panel de resultados (p. ej. el botón "Jugar otra partida"). */
@@ -55,6 +56,7 @@ export default function TresYDosTable({
   onLeave,
   roomLabel,
   connection,
+  onRetry,
   notice,
   resultFooter,
 }: TresYDosTableProps) {
@@ -491,7 +493,7 @@ export default function TresYDosTable({
           )}
 
           <FlightLayer flights={flights} onDone={endFlight} />
-          <TableNotices connection={connection} notice={notice} />
+          <TableNotices connection={connection} notice={notice} onRetry={onRetry} />
           {roomLabel && <span className="sr-only">{roomLabel}</span>}
         </>
       }
