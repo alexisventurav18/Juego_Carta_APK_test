@@ -1,5 +1,7 @@
 import { applyCagaoMove, chooseCagaoMove, type CagaoState, seatsWithPairs } from './cagao.ts';
 import { applyCasinoMove, nextDealerSeat } from './casino.ts';
+import { applyRobaitoMove, HAND_SIZE, TABLE_SIZE, type RobaitoState } from './robaito.ts';
+import { chooseRobaitoMove } from './robaitoBot.ts';
 import { casinoBotMove } from './casinoBot.ts';
 import type { GameState } from './index.ts';
 import { isBotPlayer, type MoveResult } from './shared.ts';
@@ -11,6 +13,8 @@ const CAGAO_MOVE_MS = 1400;
 /** Pausa entre un bot y otro al bajar sus pares iniciales en El Cagao. */
 const PAIRING_MS = 900;
 const ROUND_PAUSE_MS = 6000;
+/** El Robaíto: lo que tarda la mesa en barajar y repartir al empezar (ver useDealIntro), más un respiro. */
+const ROBAITO_DEAL_MS = 12 * 90 + 220 + 700;
 
 export interface BotStep {
   result: MoveResult<GameState>;
@@ -22,6 +26,10 @@ function isBotTurn(state: GameState): boolean {
 }
 
 function moveDelay(state: GameState): number {
+  if (state.game === 'robaito' && state.lastEvent === null) {
+    // Primera jugada de la partida: se espera a que termine el reparto en pantalla.
+    return ROBAITO_DEAL_MS + (state.players.length * HAND_SIZE + TABLE_SIZE) * 220;
+  }
   return state.game === 'cagao' ? CAGAO_MOVE_MS : BOT_MOVE_MS;
 }
 
@@ -67,7 +75,9 @@ export function botStep(state: GameState): BotStep | null {
       ? casinoBotMove(state)
       : state.game === 'tresydos'
         ? tresYDosBotMove(state)
-        : cagaoBotMove(state);
+        : state.game === 'robaito'
+          ? robaitoBotMove(state)
+          : cagaoBotMove(state);
   return { result, delayMs: moveDelay(state) };
 }
 
@@ -77,4 +87,8 @@ export function tresYDosBotMove(state: TresYDosState): MoveResult<TresYDosState>
 
 export function cagaoBotMove(state: CagaoState): MoveResult<CagaoState> {
   return applyCagaoMove(state, state.turn, chooseCagaoMove(state));
+}
+
+export function robaitoBotMove(state: RobaitoState): MoveResult<RobaitoState> {
+  return applyRobaitoMove(state, state.turn, chooseRobaitoMove(state));
 }

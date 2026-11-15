@@ -39,5 +39,16 @@ export function projectState(state: GameState, seat: number): GameState {
         : null,
     };
   }
+  if (state.game === 'robaito') {
+    // Cada paquete se apila boca arriba: solo se ve la cima. Al terminar se muestran completos.
+    const piles =
+      state.phase === 'gameOver'
+        ? state.piles
+        : state.piles.map((pile, s) => [
+            ...faceDown(`pile${s}`, Math.max(0, pile.length - 1)),
+            ...pile.slice(-1),
+          ]);
+    return { ...state, hands, piles, deck: faceDown('deck', state.deck.length) };
+  }
   return { ...state, hands, deck: faceDown('deck', state.deck.length) };
 }
