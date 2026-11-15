@@ -718,8 +718,8 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           )}
 
           {state.summary && state.phase !== 'playing' && !showEndNotice && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/65 p-3">
-              <div className="max-h-full w-full max-w-2xl space-y-3 overflow-y-auto">
+            <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/65 p-2 sm:p-3">
+              <div className="max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-2xl space-y-2 overflow-y-auto sm:space-y-3">
                 <RoundResultPanel
                   title={
                     state.phase === 'gameOver' && state.winnerTeam !== null

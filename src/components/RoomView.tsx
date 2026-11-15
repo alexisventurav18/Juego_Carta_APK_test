@@ -219,8 +219,8 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
 
   return (
     <div className="wood-stage safe-screen overflow-y-auto">
-      <div className="mx-auto w-full max-w-6xl px-3 py-3 sm:px-6 sm:py-5">
-      <header className="mb-3 flex items-center justify-between gap-3 sm:mb-6 sm:gap-4">
+      <div className="mx-auto w-full max-w-6xl px-3 py-2 sm:px-6 sm:py-5">
+      <header className="mb-2 flex items-center justify-between gap-2 sm:mb-6 sm:gap-4">
         <button
           type="button"
           onClick={onLeave}
@@ -241,7 +241,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       <div
         role="status"
         aria-live="polite"
-        className={`mb-2 flex items-center justify-center gap-2 rounded-xl px-3 py-1 text-[11px] font-medium sm:mb-4 sm:px-4 sm:py-2 sm:text-xs ${
+        className={`mb-2 flex items-center justify-center gap-2 rounded-xl px-3 py-1 text-[10px] font-medium sm:mb-4 sm:px-4 sm:py-2 sm:text-xs ${
           connection === 'connected'
             ? 'bg-lime-600/25 text-lime-200 ring-1 ring-lime-400/40'
             : connection === 'offline'

@@ -453,12 +453,12 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
             ))}
 
           {game.gameOver && endNoticeDismissed && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-3">
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-2 sm:p-3">
               <div
                 style={{ '--rh': 'clamp(34px, 10.6dvh, 67px)' } as CSSProperties}
-                className="wood-panel max-h-full w-full max-w-md space-y-2 overflow-y-auto p-3 text-center sm:p-4"
+                className="wood-panel max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-md space-y-1.5 overflow-y-auto p-2 text-center sm:space-y-2 sm:p-4"
               >
-                <h2 className="text-base font-extrabold sm:text-xl">
+                <h2 className="text-sm font-extrabold sm:text-xl">
                   {game.tie ? `¡Empate entre ${winnerNames}!` : game.iWon ? '¡Ganaste la partida!' : `${winnerNames} ganó la partida`}
                 </h2>
                 <div className="space-y-1">
@@ -468,13 +468,13 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
                     return (
                       <div
                         key={player.id}
-                        className={`flex items-center gap-2 rounded-xl px-2 py-1 ${won ? 'bg-amber-400/25 ring-1 ring-amber-300' : 'bg-black/25'}`}
+                        className={`flex items-center gap-1.5 rounded-xl px-1.5 py-1 sm:gap-2 sm:px-2 ${won ? 'bg-amber-400/25 ring-1 ring-amber-300' : 'bg-black/25'}`}
                       >
                         <span className="flex min-w-0 flex-1 items-center gap-1 text-left text-xs font-semibold sm:text-sm">
                           {won && <Trophy className="h-3 w-3 shrink-0 text-amber-300" aria-hidden />}
                           <span className="truncate">{names[s]}</span>
                         </span>
-                        <span className="shrink-0 text-sm font-extrabold tabular-nums text-amber-300">{cardsWord(count)}</span>
+                        <span className="shrink-0 text-xs font-extrabold tabular-nums text-amber-300 sm:text-sm">{cardsWord(count)}</span>
                         {top && <PlayingCard card={top} heightVar="--rh" plain />}
                       </div>
                     );

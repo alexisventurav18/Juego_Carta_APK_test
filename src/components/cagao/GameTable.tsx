@@ -378,14 +378,14 @@ export default function GameTable({
         ))}
 
       {game.gameOver && endNoticeDismissed && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 p-3">
-          <div className="max-h-full w-full max-w-md space-y-2 overflow-y-auto rounded-2xl bg-[#3a2010] p-4 text-center ring-2 ring-amber-300/50">
-            <h2 className="text-lg font-extrabold">
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 p-2 sm:p-3">
+          <div className="max-h-full w-full max-w-md space-y-1.5 overflow-y-auto rounded-2xl bg-[#3a2010] p-2.5 text-center ring-2 ring-amber-300/50 sm:space-y-2 sm:p-4">
+            <h2 className="text-base font-extrabold sm:text-lg">
               {game.iLost ? '¡Te quedaste con El Cagao!' : `${loserName} se quedó con El Cagao`}
             </h2>
-            <div className="space-y-1 text-left text-sm">
+            <div className="space-y-1 text-left text-xs sm:text-sm">
               {state.finishOrder.map((s, i) => (
-                <div key={s} className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-1">
+                <div key={s} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-2 py-1 sm:gap-2 sm:px-3">
                   <span className="w-5 shrink-0 font-bold tabular-nums text-amber-200">{i + 1}º</span>
                   <span className="min-w-0 flex-1 truncate font-semibold">{names[s]}</span>
                   <span className="flex shrink-0 items-center gap-1 text-emerald-200">

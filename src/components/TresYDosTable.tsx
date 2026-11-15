@@ -431,12 +431,12 @@ export default function TresYDosTable({
 
           {/* Al cantar 3 y 2 todos muestran sus 5 cartas */}
           {!playing && !deal.dealing && !showEndNotice && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-3">
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-2 sm:p-3">
               <div
                 style={{ '--rh': 'clamp(34px, 10.6dvh, 67px)' } as CSSProperties}
-                className="wood-panel max-h-full w-full max-w-xl space-y-2 overflow-y-auto p-3 text-center sm:p-4"
+                className="wood-panel max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-xl space-y-1.5 overflow-y-auto p-2 text-center sm:space-y-2 sm:p-4"
               >
-                <h2 className="text-base font-extrabold sm:text-xl">
+                <h2 className="text-sm font-extrabold sm:text-xl">
                   {state.phase === 'gameOver'
                     ? iWon
                       ? '¡Ganaste la partida!'
@@ -449,11 +449,11 @@ export default function TresYDosTable({
                   {state.players.map((player, s) => (
                     <div
                       key={player.id}
-                      className={`flex items-center gap-2 rounded-xl px-2 py-1 ${
+                      className={`flex items-center gap-1.5 rounded-xl px-1.5 py-1 sm:gap-2 sm:px-2 ${
                         s === state.winnerSeat ? 'bg-amber-400/25 ring-1 ring-amber-300' : 'bg-black/25'
                       }`}
                     >
-                      <span className="flex w-24 shrink-0 items-center gap-1 text-left text-xs font-semibold sm:w-32 sm:text-sm">
+                      <span className="flex w-[5.5rem] shrink-0 items-center gap-1 text-left text-[11px] font-semibold sm:w-32 sm:text-sm">
                         {s === state.winnerSeat && <Trophy className="h-3 w-3 shrink-0 text-amber-300" aria-hidden />}
                         <span className="truncate">{s === seat ? 'Tú' : player.name}</span>
                         <span className="shrink-0 text-amber-300">{state.wins[s]}</span>
