@@ -15,6 +15,7 @@ import {
   type StoredRoom,
 } from '../src/games/roomService';
 import type { GameState } from '../src/games';
+import { encodeAvatar, randomAvatar, seededRandom } from '../src/games/avatar';
 
 class MemoryStore implements RoomStore {
   rooms = new Map<string, StoredRoom>();
@@ -316,5 +317,23 @@ describe('servidor de salas: solo contra bots', () => {
     const stale = view.version - 1;
     const stillSame = await ok(store, { action: 'tick', roomId: created.id, expectedVersion: stale, ...A });
     assert.equal(stillSame.version, view.version);
+  });
+});
+
+describe('Avatares en las salas', () => {
+  it('guarda el avatar válido de quien crea y de quien entra, y descarta el inválido', async () => {
+    const store = new MemoryStore();
+    const code = encodeAvatar(randomAvatar(seededRandom('srv')));
+    const created = await ok(store, { action: 'create', game: 'cagao', name: 'Ana', avatar: code, ...A });
+    assert.equal(created.players[0].avatar, code);
+    const joined = await ok(store, { action: 'join', code: created.code, name: 'Beto', avatar: '<script>', ...B });
+    assert.equal('avatar' in joined.players[1], false);
+    assert.equal(joined.players[0].avatar, code);
+  });
+
+  it('sin avatar los jugadores quedan igual que antes ({ id, name })', async () => {
+    const store = new MemoryStore();
+    const created = await ok(store, { action: 'create', game: 'casino', name: 'Ana', ...A });
+    assert.deepEqual(created.players, [{ id: A.playerId, name: 'Ana' }]);
   });
 });
