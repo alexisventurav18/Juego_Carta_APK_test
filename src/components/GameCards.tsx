@@ -21,6 +21,8 @@ const PREVIEW: Record<GameId, { cards: Card[]; plain: boolean }> = {
   tresydos: { cards: [card('p-t1', 'picas', 13), card('p-t2', 'corazones', 13), card('p-t3', 'treboles', 8)], plain: true },
   // El A♠ es El Cagao, junto a dos cartas que ya tienen pareja en juego.
   cagao: { cards: [card('p-g1', 'corazones', 7), card('picas-1', 'picas', 1), card('p-g3', 'treboles', 7)], plain: false },
+  // Un 9 que roba el paquete de otro 9: la carta jugada va encima de lo que se llevó.
+  robaito: { cards: [card('p-r1', 'treboles', 9), card('p-r2', 'corazones', 9), card('p-r3', 'picas', 9)], plain: true },
 };
 
 const FAN_TILT = [-9, 0, 9];

@@ -5,12 +5,14 @@ import { botStep, botTickDelay } from '@/games/bots';
 import { applyGameMove } from '@/games/engine';
 import type { CagaoMove } from '@/games/cagao';
 import type { CasinoMove } from '@/games/casino';
+import type { RobaitoMove } from '@/games/robaito';
 import type { GameId, Player } from '@/games/shared';
 import type { TresYDosMove } from '@/games/tresYDos';
 import { projectState } from '@/games/view';
 import { getMyAvatar } from '@/lib/identity';
 import CagaoTable from './CagaoTable';
 import CasinoTable from './CasinoTable';
+import RobaitoTable from './robaito/RobaitoTable';
 import TresYDosTable from './TresYDosTable';
 import { PANEL_BUTTON } from './wood/styles';
 
@@ -63,7 +65,7 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  const move = (nextMove: CasinoMove | TresYDosMove | CagaoMove) => {
+  const move = (nextMove: CasinoMove | TresYDosMove | CagaoMove | RobaitoMove) => {
     const result = applyGameMove(state, HUMAN_SEAT, nextMove);
     if ('error' in result) {
       setNotice(result.error);
@@ -98,6 +100,9 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
   }
   if (view.game === 'tresydos') {
     return <TresYDosTable key={matchKey} state={view} {...tableProps} onMove={move} />;
+  }
+  if (view.game === 'robaito') {
+    return <RobaitoTable key={matchKey} state={view} {...tableProps} onMove={move} />;
   }
   return <CagaoTable key={matchKey} state={view} {...tableProps} onMove={move} />;
 }

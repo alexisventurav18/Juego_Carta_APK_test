@@ -235,8 +235,75 @@ const CAGAO: TutorialStep[] = [
   },
 ];
 
+const ROBAITO: TutorialStep[] = [
+  {
+    title: 'Bienvenido a El Robaíto',
+    body: [
+      'Cada jugador recibe 4 cartas y hay 4 boca arriba en el centro de la mesa. Solo importa el número de la carta: el palo no cuenta.',
+      'En tu turno juegas una carta. Gana quien termine con más cartas en su paquete.',
+    ],
+    demo: [
+      { cards: [card('w1', 'corazones', 6), card('w2', 'picas', 9), card('w3', 'diamantes', 4), card('w4', 'treboles', 13)], caption: 'La mesa' },
+      { cards: [card('w5', 'corazones', 9), card('w6', 'treboles', 3), card('w7', 'picas', 12), card('w8', 'diamantes', 10)], caption: 'Tu mano' },
+    ],
+  },
+  {
+    title: 'Levanta de la mesa',
+    body: [
+      'Si juegas una carta y en la mesa hay cartas del mismo número, te las llevas todas, y tu carta queda encima de tu paquete.',
+      'Elige tu 7 de corazones, toca los dos 7 de la mesa y pulsa Levantar.',
+    ],
+    practice: {
+      kind: 'play',
+      hand: [card('h1', 'corazones', 7), card('h2', 'treboles', 3), card('h3', 'picas', 13)],
+      table: [card('q1', 'picas', 7), card('q2', 'diamantes', 4), card('q3', 'diamantes', 7), card('q4', 'treboles', 12)],
+      action: 'Levantar',
+      check: (hand, table) => hand.id === 'h1' && sameIds(table, ['q1', 'q3']),
+      success: '¡Muy bien! Te llevas los dos 7 de la mesa y tu 7 queda arriba de tu paquete.',
+      wrong: 'Elige tu 7 de corazones y, de la mesa, los dos 7 (el de picas y el de diamantes).',
+    },
+  },
+  {
+    title: '¡El Robaíto!',
+    body: [
+      'Cada jugador tiene su paquete boca arriba: solo se ve la última carta que entró. Si tu carta es del mismo número que esa carta de arriba, le robas el paquete entero.',
+      'Tienes un 9 en la mano. Toca el paquete al que se lo puedes robar.',
+    ],
+    practice: {
+      kind: 'tap',
+      cards: [card('s1', 'treboles', 9), card('s2', 'diamantes', 12), card('s3', 'picas', 5)],
+      labels: ['Mateo · 6 cartas', 'Camila · 4 cartas', 'Santiago · 3 cartas'],
+      correct: (c) => c.rank === 9,
+      success: '¡Robaíto! Te llevas las 6 cartas de Mateo y tu 9 queda arriba de tu paquete.',
+      wrong: 'Esa carta de arriba no es un 9. Busca el paquete cuya carta de arriba sea un 9.',
+    },
+  },
+  {
+    title: 'Todo en una jugada',
+    body: [
+      'Si tu carta empareja con la mesa y también con la cima de uno o más paquetes rivales, te llevas todo a la vez. Si no empareja con nada, tu carta se queda en la mesa.',
+      'Tu propio paquete no se roba: solo puedes quitarles paquetes a los demás.',
+    ],
+  },
+  {
+    title: 'Nuevos repartos y final',
+    body: [
+      'Cuando todos se quedan sin cartas y aún hay mazo, se reparten 4 cartas nuevas a cada uno (la mesa no recibe cartas).',
+      'Al acabarse el mazo, las cartas sueltas que queden en la mesa son del último que se llevó cartas. Gana el paquete más grande; si hay empate, se comparte la victoria.',
+    ],
+  },
+  {
+    title: 'Controles',
+    body: [
+      'Toca una carta para elegirla: verás qué cartas de la mesa te llevarías y qué paquetes le robarías. Tócala otra vez, pulsa el botón o arrástrala al centro para jugarla.',
+      'Las cartas con aro dorado roban un paquete y las de aro verde levantan de la mesa. El engranaje de arriba a la derecha abre las Opciones.',
+    ],
+  },
+];
+
 export const TUTORIALS: Record<GameId, TutorialStep[]> = {
   casino: CASINO,
   tresydos: TRES_Y_DOS,
   cagao: CAGAO,
+  robaito: ROBAITO,
 };

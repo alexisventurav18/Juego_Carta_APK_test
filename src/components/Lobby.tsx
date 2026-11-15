@@ -20,7 +20,7 @@ interface LobbyProps {
   onStartOffline: (setup: OfflineSetup) => void;
 }
 
-const GAME_ORDER: GameId[] = ['casino', 'tresydos', 'cagao'];
+const GAME_ORDER: GameId[] = ['casino', 'tresydos', 'cagao', 'robaito'];
 
 /** Medidas del marco del menú: más finas que las de la mesa para dejar sitio a las tarjetas. */
 const FRAME_VARS = {

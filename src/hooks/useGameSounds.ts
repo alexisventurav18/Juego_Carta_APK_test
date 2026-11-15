@@ -7,6 +7,7 @@ export type SoundEffect =
   | 'cardShuffle' // Al repartir o mezclar el mazo
   | 'pairMatch' // Al bajar un par a la mesa
   | 'cagaoAlert' // Al robar el As de Picas ("El Cagao")
+  | 'steal' // Al robar el paquete de un rival (El Robaíto)
   | 'win' // Al quedarse sin cartas (salvarse)
   | 'lose'; // Al quedar como "El Cagao"
 
@@ -109,6 +110,15 @@ export function useGameSounds() {
             playCardNoise(ctx, sfx, 0.1, now, 1200);
             playTone(ctx, sfx, 220, 'sawtooth', now + 0.05, 0.22, 0.12); // La3
             playTone(ctx, sfx, 155.56, 'sawtooth', now + 0.2, 0.35, 0.14); // Re#3 (tritono de tensión)
+            break;
+
+          case 'steal':
+            // Barrido de cartas y arpegio ascendente: ¡te llevaste el paquete!
+            playCardNoise(ctx, sfx, 0.12, now, 1000);
+            playCardNoise(ctx, sfx, 0.08, now + 0.07, 1900);
+            playTone(ctx, sfx, 392.0, 'triangle', now + 0.04, 0.14, 0.13); // Sol4
+            playTone(ctx, sfx, 587.33, 'triangle', now + 0.12, 0.16, 0.15); // Re5
+            playTone(ctx, sfx, 880.0, 'triangle', now + 0.2, 0.3, 0.16); // La5
             break;
 
           case 'win':

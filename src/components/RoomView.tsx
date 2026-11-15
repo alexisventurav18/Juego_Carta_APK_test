@@ -4,6 +4,7 @@ import { canStartGame, GAMES, isGameFinished } from '@/games';
 import type { CasinoMove } from '@/games/casino';
 import type { TresYDosMove } from '@/games/tresYDos';
 import type { CagaoMove } from '@/games/cagao';
+import type { RobaitoMove } from '@/games/robaito';
 import { botTickDelay } from '@/games/bots';
 import { isBotPlayer } from '@/games/shared';
 import { getPlayerId } from '@/lib/identity';
@@ -13,6 +14,7 @@ import WaitingRoom from './WaitingRoom';
 import CasinoTable from './CasinoTable';
 import TresYDosTable from './TresYDosTable';
 import CagaoTable from './CagaoTable';
+import RobaitoTable from './robaito/RobaitoTable';
 import CoinToss from './CoinToss';
 
 interface RoomViewProps {
@@ -164,7 +166,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const state = room.state;
   const info = GAMES[room.game];
 
-  // Los tres juegos ocupan toda la pantalla: sale, estado de conexión y avisos van dentro de su barra superior.
+  // Los juegos ocupan toda la pantalla: sale, estado de conexión y avisos van dentro de su barra superior.
   if (state !== null && room.status !== 'waiting') {
     const tableProps = {
       seat,
@@ -197,6 +199,12 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
             state={state}
             {...tableProps}
             onMove={(move: TresYDosMove) => void run(() => sendMove(room.id, move))}
+          />
+        ) : state.game === 'robaito' ? (
+          <RobaitoTable
+            state={state}
+            {...tableProps}
+            onMove={(move: RobaitoMove) => void run(() => sendMove(room.id, move))}
           />
         ) : (
           <CagaoTable

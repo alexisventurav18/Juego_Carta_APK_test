@@ -1,11 +1,12 @@
 import { type CasinoState, createCasinoGame } from './casino';
 import { createTresYDosGame, TARGET_WINS, type TresYDosState } from './tresYDos';
 import { type CagaoState, createCagaoGame } from './cagao';
+import { createRobaitoGame, type RobaitoState } from './robaito';
 import { encodeAvatar, type Gender, randomAvatar } from './avatar';
 import { randomInt } from './cards';
 import type { GameId, Player } from './shared';
 
-export type GameState = CasinoState | TresYDosState | CagaoState;
+export type GameState = CasinoState | TresYDosState | CagaoState | RobaitoState;
 
 export interface GameInfo {
   id: GameId;
@@ -99,11 +100,38 @@ export const GAMES: Record<GameId, GameInfo> = {
       'La partida termina cuando solo queda un jugador con cartas. Esa persona tiene El Cagao (el A♠) y pierde.',
     ],
   },
+  robaito: {
+    id: 'robaito',
+    name: 'El Robaíto',
+    tagline: 'Levanta cartas de la mesa o róbale el paquete a tu rival si igualas su carta de arriba.',
+    playerCounts: [2, 3, 4],
+    playerCountLabel: 'De 2 a 4 jugadores',
+    maxPlayers: 4,
+    soloPlayerCount: 3,
+    quickRules: [
+      'Juega una carta: te llevas las cartas de la mesa del mismo número, y tu carta queda arriba de tu paquete.',
+      'Si tu carta iguala la de arriba del paquete de un rival, ¡le robas el paquete entero!',
+      'Si no igualas nada, tu carta se queda en la mesa.',
+      'Gana quien termine con más cartas en su paquete.',
+    ],
+    rules: [
+      'Se usa la baraja americana de 52 cartas, sin comodines. Solo importa el número de la carta (A, 2 al 10, J, Q, K); el palo no cuenta. Pueden jugar de 2 a 4 personas, cada una por su cuenta.',
+      'Cada jugador recibe 4 cartas boca abajo (solo tú ves las tuyas) y se ponen 4 boca arriba en el centro de la mesa. El resto forma el mazo. Un sorteo elige quién reparte y empieza el jugador que le sigue.',
+      'En tu turno juegas una carta de tu mano. Si en la mesa hay una o más cartas de ese mismo número, te las llevas todas, y tu carta queda encima de tu paquete.',
+      'Cada jugador tiene su paquete boca arriba junto a él: solo se ve la última carta que entró (la de arriba) y cuántas cartas tiene en total. Si tu carta iguala la de arriba del paquete de un rival, le robas el paquete completo: lo juntas con el tuyo y tu carta queda arriba. Tu propio paquete no se roba.',
+      'Si tu carta iguala cartas de la mesa y también la cima de uno o más paquetes rivales, te llevas todo en la misma jugada. Es obligatorio: si tu carta puede capturar, captura.',
+      'Si tu carta no iguala nada, la botas al centro de la mesa, boca arriba.',
+      'Cuando todos se quedan sin cartas y todavía hay mazo, se reparten 4 cartas nuevas a cada jugador (la mesa no recibe cartas nuevas).',
+      'Al terminar el mazo y jugarse las últimas cartas, las que queden sueltas en la mesa son del último jugador que se llevó cartas o robó un paquete.',
+      'Gana quien tenga más cartas en su paquete. Si dos o más tienen la misma cantidad, hay empate.',
+    ],
+  },
 };
 
 export function createGameState(game: GameId, players: Player[], dealer?: number): GameState {
   if (game === 'casino') return createCasinoGame(players, dealer);
   if (game === 'tresydos') return createTresYDosGame(players, dealer);
+  if (game === 'robaito') return createRobaitoGame(players, dealer);
   return createCagaoGame(players, dealer);
 }
 

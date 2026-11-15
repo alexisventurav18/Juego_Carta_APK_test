@@ -1,5 +1,6 @@
 import { applyCagaoMove, type CagaoMove } from './cagao';
 import { applyCasinoMove, type CasinoMove } from './casino';
+import { applyRobaitoMove, type RobaitoMove } from './robaito';
 import { applyTresYDosMove, type TresYDosMove } from './tresYDos';
 import type { GameState } from './index';
 import type { MoveResult } from './shared';
@@ -12,6 +13,7 @@ export function applyGameMove(state: GameState, seat: number, move: unknown): Mo
   try {
     if (state.game === 'casino') return applyCasinoMove(state, seat, move as CasinoMove);
     if (state.game === 'tresydos') return applyTresYDosMove(state, seat, move as TresYDosMove);
+    if (state.game === 'robaito') return applyRobaitoMove(state, seat, move as RobaitoMove);
     return applyCagaoMove(state, seat, move as CagaoMove);
   } catch {
     return { error: 'Jugada no válida.' };
