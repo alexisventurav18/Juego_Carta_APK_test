@@ -1,4 +1,6 @@
 import { useId } from 'react';
+import { publicAsset } from '@/lib/publicAsset';
+import type { CardBackTheme } from '@/lib/visualPrefs';
 import type { Suit } from './types';
 
 /* ------------------------------------------------------------------ */
@@ -171,8 +173,27 @@ ${POD(88, 168, 14, 0.95)}${POD(162, 168, -14, 0.95)}
 <path d="M28 322c14 0 22-8 22-22c-14 0-22 8-22 22Z"/><path d="M222 322c-14 0-22-8-22-22c14 0 22 8 22 22Z"/></g>
 </svg>`;
 
-/** Fondo del reverso (una sola imagen reutilizada por todas las cartas boca abajo). */
+/** Fondos locales para el reverso, compartidos por todas las cartas boca abajo. */
 export const CARD_BACK_URL = `url("data:image/svg+xml;utf8,${encodeURIComponent(BACK_SVG)}")`;
+
+const recolorBack = (colors: { leaf: string; pod: string; flower: string }) =>
+  BACK_SVG.split('#5f8f35').join(colors.leaf)
+    .split('#2f4d14').join(colors.leaf)
+    .split('#4d7326').join(colors.leaf)
+    .split('#bd6a20').join(colors.pod)
+    .split('#4a210a').join(colors.pod)
+    .split('#5a2b0c').join(colors.pod)
+    .split('#e9a3ab').join(colors.flower)
+    .split('#b9626d').join(colors.flower);
+
+export const CARD_BACK_IMAGES: Record<CardBackTheme, string> = {
+  cacao: CARD_BACK_URL,
+  azul: `url("data:image/svg+xml;utf8,${encodeURIComponent(recolorBack({ leaf: '#2563a6', pod: '#17416f', flower: '#83c5e8' }))}")`,
+  rojo: `url("data:image/svg+xml;utf8,${encodeURIComponent(recolorBack({ leaf: '#a8323e', pod: '#6f1d2a', flower: '#f0a3a6' }))}")`,
+  'madera-turquesa': `url("${publicAsset('images/temas/cartas/dorso-madera-turquesa.webp')}")`,
+  'dominicano-azul': `url("${publicAsset('images/temas/cartas/dorso-dominicano-azul.webp')}")`,
+  'dominicano-bandera': `url("${publicAsset('images/temas/cartas/dorso-dominicano-bandera.webp')}")`,
+};
 
 /* ------------------------------------------------------------------ */
 /* El Cagao (A♠) y figuras con detalles dorados                        */

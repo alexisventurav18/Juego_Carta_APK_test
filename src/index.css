@@ -329,11 +329,13 @@ button,
 
 /* Tablero central: madera cálida con veta; el 3D lo pone la perspectiva del contenedor. */
 .cagao-board {
-  background-color: #8a5a2b;
-  background-image:
+  background-color: var(--table-bg-color, #8a5a2b);
+  background-image: var(--table-bg-image,
     repeating-linear-gradient(92deg, rgb(60 30 10 / 0.2) 0 1px, transparent 1px 6px),
     repeating-linear-gradient(88deg, rgb(255 225 170 / 0.09) 0 2px, transparent 2px 12px),
-    radial-gradient(ellipse at 50% 40%, #b57a3c 0%, #8a5a2b 55%, #6a4220 100%);
+    radial-gradient(ellipse at 50% 40%, #b57a3c 0%, #8a5a2b 55%, #6a4220 100%));
+  background-position: center;
+  background-size: cover;
   box-shadow:
     0 18px 28px rgb(0 0 0 / 0.55),
     inset 0 0 0 3px #5b3416,
@@ -411,6 +413,14 @@ button,
   color: #fff7e6;
 }
 
+.lobby-stage {
+  background-color: var(--menu-bg-color, #2a160a);
+  background-image: var(--menu-bg-image, radial-gradient(ellipse at 50% 35%, #4a2a12, #1e0e05 75%));
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
 /* Panel oscuro para ventanas, resultados y avisos. */
 .wood-panel {
   background: linear-gradient(180deg, #4a2a12, #2f1809);
@@ -424,11 +434,13 @@ button,
 
 /* Fondo del tablero de madera (sin inclinar): el mismo que usa El Cagao, para mesas con contenido variable. */
 .wood-board-flat {
-  background-color: #8a5a2b;
-  background-image:
+  background-color: var(--table-bg-color, #8a5a2b);
+  background-image: var(--table-bg-image,
     repeating-linear-gradient(92deg, rgb(60 30 10 / 0.2) 0 1px, transparent 1px 6px),
     repeating-linear-gradient(88deg, rgb(255 225 170 / 0.09) 0 2px, transparent 2px 12px),
-    radial-gradient(ellipse at 50% 40%, #b57a3c 0%, #8a5a2b 55%, #6a4220 100%);
+    radial-gradient(ellipse at 50% 40%, #b57a3c 0%, #8a5a2b 55%, #6a4220 100%));
+  background-position: center;
+  background-size: cover;
   box-shadow:
     0 14px 24px rgb(0 0 0 / 0.5),
     inset 0 0 0 3px #5b3416,

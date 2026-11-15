@@ -64,7 +64,7 @@ export function DorsoUI({ className = CARTA_ALTURA.mesa }: { className?: string 
   return (
     <div
       className={`aspect-[2.5/3.5] shrink-0 rounded-md bg-cover bg-center shadow-[0_2px_5px_rgba(0,0,0,0.45)] ring-1 ring-black/40 ${className}`}
-      style={{ backgroundImage: CARD_BACK_URL }}
+      style={{ backgroundImage: `var(--card-back-image, ${CARD_BACK_URL})` }}
     />
   );
 }

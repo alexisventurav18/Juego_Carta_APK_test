@@ -4,6 +4,8 @@ import { Bell, BellOff, Music, Settings, Volume2, VolumeX, X, Zap } from 'lucide
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { requestNotificationPermission } from '@/lib/notify';
 import { usePrefs } from '@/lib/soundPrefs';
+import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
+import { CARD_BACK_THEMES, MENU_THEMES, TABLE_THEMES, useVisualPrefs } from '@/lib/visualPrefs';
 
 interface OptionsModalProps {
   onClose: () => void;
@@ -81,11 +83,54 @@ function Row({ icon, title, hint, control, children }: { icon: ReactNode; title:
   );
 }
 
-/** Panel de opciones: avisos, silencio general, volumen general y control separado de música y efectos. */
+function ThemePicker<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  cardPreview = false,
+}: {
+  label: string;
+  value: T;
+  options: { id: T; label: string; color: string; image: string }[];
+  onChange: (value: T) => void;
+  cardPreview?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {options.map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          aria-label={`${label}: ${option.label}`}
+          aria-pressed={value === option.id}
+          onClick={() => onChange(option.id)}
+          className={`flex min-w-0 touch-manipulation flex-col items-center gap-1 rounded-lg p-1.5 text-[10px] font-bold text-amber-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 ${
+            value === option.id ? 'bg-amber-300/20 ring-2 ring-amber-300' : 'bg-black/20 ring-1 ring-amber-200/15'
+          }`}
+        >
+          <span
+            aria-hidden
+            className={`block bg-cover bg-center bg-no-repeat ${cardPreview ? 'h-10 w-7 rounded' : 'h-7 w-full rounded-md'} ring-1 ring-white/30`}
+            style={{ backgroundColor: option.color, backgroundImage: option.image }}
+          />
+          <span className="truncate">{option.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Panel de opciones: audio, avisos y personalización visual. */
 export default function OptionsModal({ onClose }: OptionsModalProps) {
   const { prefs, update } = usePrefs();
+  const { prefs: visualPrefs, update: updateVisual } = useVisualPrefs();
   const { playSound } = useGameSounds();
   const titleId = useId();
+  const cardBackOptions = CARD_BACK_THEMES.map((theme) => ({
+    ...theme,
+    image: CARD_BACK_IMAGES[theme.id],
+  }));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -178,6 +223,40 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
               disabled={prefs.muted || !prefs.sfxOn}
             />
           </Row>
+
+          <section className="space-y-2 rounded-xl bg-black/25 p-3 ring-1 ring-amber-200/15" aria-label="Personalización visual">
+            <h3 className="text-sm font-bold text-amber-50">Apariencia</h3>
+            <div className="space-y-3">
+              <div>
+                <p className="mb-1.5 text-xs font-semibold text-amber-100/80">Reverso de las cartas</p>
+                <ThemePicker
+                  label="Reverso de las cartas"
+                  value={visualPrefs.cardBack}
+                  options={cardBackOptions}
+                  onChange={(cardBack) => updateVisual({ cardBack })}
+                  cardPreview
+                />
+              </div>
+              <div>
+                <p className="mb-1.5 text-xs font-semibold text-amber-100/80">Mesa de juego</p>
+                <ThemePicker
+                  label="Mesa de juego"
+                  value={visualPrefs.table}
+                  options={TABLE_THEMES}
+                  onChange={(table) => updateVisual({ table })}
+                />
+              </div>
+              <div>
+                <p className="mb-1.5 text-xs font-semibold text-amber-100/80">Menú principal</p>
+                <ThemePicker
+                  label="Fondo del menú principal"
+                  value={visualPrefs.menu}
+                  options={MENU_THEMES}
+                  onChange={(menu) => updateVisual({ menu })}
+                />
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>,

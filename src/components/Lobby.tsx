@@ -123,7 +123,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   };
 
   return (
-    <div className="wood-stage fixed inset-0 overflow-hidden" style={FRAME_VARS}>
+    <div className="wood-stage lobby-stage fixed inset-0 overflow-hidden" style={FRAME_VARS}>
       {/* Marco a sangre: llega a los bordes físicos de la pantalla; solo el contenido esquiva el notch. */}
       <WoodFrame />
       <div className="absolute" style={{ top: 'var(--sat)', right: 'var(--sar)', bottom: 'var(--sab)', left: 'var(--sal)' }}>

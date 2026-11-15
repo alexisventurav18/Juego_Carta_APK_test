@@ -66,7 +66,7 @@ export function CardBack({ size = 'sm' }: { size?: CardSize }) {
   return (
     <div
       className={`${SIZE_CLASS[size]} shrink-0 bg-cover bg-center shadow-[0_2px_5px_rgba(0,0,0,0.45)] ring-1 ring-black/40`}
-      style={{ backgroundImage: CARD_BACK_URL }}
+      style={{ backgroundImage: `var(--card-back-image, ${CARD_BACK_URL})` }}
     />
   );
 }
