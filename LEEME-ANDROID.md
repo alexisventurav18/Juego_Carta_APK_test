@@ -8,6 +8,8 @@ No hace falta tocar el código del juego.
 El modo online necesita `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` **en el momento de compilar**.
 Crea un archivo `.env` (copia de `.env.example`) con tu clave anon. Sin ella el APK abre,
 y el modo contra bots offline funciona, pero crear/unirse a salas online dará error.
+Para que las invitaciones compartidas desde el APK incluyan un enlace, configura también `VITE_APP_URL`
+con la URL pública de la versión web (por ejemplo, `https://tu-dominio.com`).
 
 ## Opción A: en tu PC (Node 20+, Java 21 y Android Studio)
 
@@ -24,7 +26,8 @@ Para abrirlo en Android Studio: `npm run android:open`.
 ## Opción B: sin instalar nada (GitHub Actions)
 
 1. Sube el proyecto a un repositorio de GitHub.
-2. En Settings > Secrets and variables > Actions agrega `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
+2. En Settings > Secrets and variables > Actions agrega `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+   y `VITE_APP_URL` (URL pública de la versión web, para los enlaces de invitación).
 3. Pestaña Actions > "Compilar APK Android" > Run workflow.
 4. Al terminar, descarga el APK desde "Artifacts".
 
