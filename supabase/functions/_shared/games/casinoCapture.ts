@@ -88,6 +88,7 @@ export function pairsRankOf(card: Card, items: TableItem[]): number | null {
  * de su carta. `_seat` se conserva para no cambiar la firma que usan la interfaz y el bot.
  */
 export function isLegalCapture(card: Card, items: TableItem[], _seat: number): boolean {
+  void _seat;
   return isValidCapture(card, items);
 }
 
