@@ -5,6 +5,7 @@ import { rankLabel } from '@/games/cards';
 import { CAGAO_CARD_ID, type CagaoMove, type CagaoState } from '@/games/cagao';
 import { isBotPlayer } from '@/games/shared';
 import { useElCagaoGame } from '@/hooks/useElCagaoGame';
+import { useWinReward } from '@/hooks/useWinReward';
 import DealerReveal from '../DealerReveal';
 import DefeatNotice from '../DefeatNotice';
 import VictoryCelebration from '../VictoryCelebration';
@@ -54,6 +55,7 @@ export default function GameTable({
 }: GameTableProps) {
   const game = useElCagaoGame({ state, seat, onMove });
   const { event } = game;
+  const winReward = useWinReward(state, seat);
   const [dealerOpen, setDealerOpen] = useState(state.roundNo === 1 && !state.players.some(isBotPlayer));
   const [endNoticeDismissed, setEndNoticeDismissed] = useState(false);
   const [pairsOpen, setPairsOpen] = useState(false);
@@ -387,6 +389,7 @@ export default function GameTable({
             title="¡TE SALVASTE!"
             message={`${loserName} se quedó con El Cagao.`}
             continueLabel="Continuar"
+            rewardCoins={game.iLost ? null : winReward}
             onContinue={() => setEndNoticeDismissed(true)}
           />
         ))}

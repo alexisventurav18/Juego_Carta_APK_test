@@ -5,6 +5,7 @@ import { HAND_SIZE, TABLE_SIZE, type RobaitoEvent, type RobaitoMove, type Robait
 import { isBotPlayer } from '@/games/shared';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { useRobaitoGame } from '@/hooks/useRobaitoGame';
+import { useWinReward } from '@/hooks/useWinReward';
 import { resolveAvatarCode } from '../avatar/resolve';
 import { DorsoUI } from '../CartaUI';
 import DealerReveal from '../DealerReveal';
@@ -86,6 +87,7 @@ function describeEvent(event: RobaitoEvent, seat: number, names: string[]): stri
 export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter }: RobaitoTableProps) {
   const game = useRobaitoGame({ state, seat, onMove });
   const { event } = game;
+  const winReward = useWinReward(state, seat);
   const seats = state.players.length;
   const [dragging, setDragging] = useState(false);
   const [dealerOpen, setDealerOpen] = useState(state.dealNo === 1 && !state.players.some(isBotPlayer));
@@ -442,6 +444,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
                     : `Juntaste ${bestCount} cartas en tu paquete.`
                 }
                 continueLabel="Continuar"
+                rewardCoins={game.iWon ? winReward : null}
                 onContinue={() => setEndNoticeDismissed(true)}
               />
             ) : (

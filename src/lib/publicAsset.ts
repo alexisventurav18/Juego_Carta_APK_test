@@ -7,7 +7,9 @@
  * que no existe (404). Resolviéndola aquí, el fondo carga igual desde un `style` inline que desde una clase.
  */
 export function publicAsset(path: string): string {
-  const relative = `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
+  // Fuera de Vite (p. ej. pruebas con tsx) import.meta.env no existe: se usa '/'.
+  const base = import.meta.env?.BASE_URL ?? '/';
+  const relative = `${base}${path.replace(/^\/+/, '')}`;
   if (typeof document === 'undefined') return relative;
   try {
     return new URL(relative, document.baseURI).href;

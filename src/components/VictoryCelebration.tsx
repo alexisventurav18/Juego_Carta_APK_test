@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Coins } from 'lucide-react';
 
 interface VictoryCelebrationProps {
   onContinue: () => void;
@@ -6,6 +7,8 @@ interface VictoryCelebrationProps {
   title?: string;
   message?: string;
   continueLabel?: string;
+  /** Monedas ganadas por esta victoria (null si no hay recompensa que mostrar). */
+  rewardCoins?: number | null;
 }
 
 const COLORS = ['bg-amber-400', 'bg-lime-500', 'bg-orange-400', 'bg-rose-500', 'bg-yellow-200'];
@@ -27,6 +30,7 @@ export default function VictoryCelebration({
   title = '¡GANASTE!',
   message = 'Tu equipo se llevó la partida. Revisa el desglose de puntos.',
   continueLabel = 'Ver el desglose',
+  rewardCoins = null,
 }: VictoryCelebrationProps) {
   const [pieces] = useState(makePieces);
 
@@ -53,6 +57,12 @@ export default function VictoryCelebration({
           {title}
         </h2>
         <p className="text-base text-amber-50">{message}</p>
+        {rewardCoins !== null && rewardCoins > 0 && (
+          <p className="mx-auto flex w-fit items-center gap-2 rounded-full bg-amber-400/20 px-4 py-2 text-base font-extrabold text-amber-300 ring-1 ring-amber-300/60">
+            <Coins className="h-5 w-5" aria-hidden />
+            +{rewardCoins} monedas
+          </p>
+        )}
         <button
           type="button"
           onClick={onContinue}

@@ -1,9 +1,10 @@
-import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BookOpen, Bot, DoorOpen, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, Spade, Users, VolumeX, X, Zap } from 'lucide-react';
+import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { BookOpen, Bot, Coins, DoorOpen, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
 import { createRoom, joinRoom } from '@/lib/rooms';
 import { getMyAvatar, getPlayerId, getStoredName, hasChosenAvatar, resetPlayerIdentity, storeAvatar, storeName } from '@/lib/identity';
+import { claimDaily, useEconomy } from '@/lib/economy';
 import { useFullscreen } from '@/lib/platform';
 import { useMuted } from '@/lib/soundPrefs';
 import { useGameSounds } from '@/hooks/useGameSounds';
@@ -11,6 +12,7 @@ import Avatar from './avatar/Avatar';
 import AvatarEditor from './avatar/AvatarEditor';
 import { useOptions } from './options/OptionsProvider';
 import Tutorial from './tutorial/Tutorial';
+import Store from './Store';
 import { WoodFrame } from './cagao/CardAssets';
 import GameCards from './GameCards';
 import type { OfflineSetup } from './OfflineBotGame';
@@ -82,6 +84,9 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const [panel, setPanel] = useState<'rules' | 'join' | null>(initialJoinCode ? 'join' : null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [storeOpen, setStoreOpen] = useState(false);
+  const [dailyGranted, setDailyGranted] = useState<number | null>(null);
+  const economy = useEconomy();
   const [avatar, setAvatar] = useState(getMyAvatar);
   const [avatarChosen, setAvatarChosen] = useState(hasChosenAvatar);
   const [busy, setBusy] = useState<'create' | 'join' | null>(null);
@@ -95,6 +100,17 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const options = useOptions();
   const fullscreen = useFullscreen();
   const { playSound } = useGameSounds();
+
+  // Recompensa diaria: 50 monedas la primera vez que se entra cada día.
+  useEffect(() => {
+    const granted = claimDaily();
+    if (granted > 0) {
+      setDailyGranted(granted);
+      const timer = window.setTimeout(() => setDailyGranted(null), 6000);
+      return () => window.clearTimeout(timer);
+    }
+    return undefined;
+  }, []);
 
   const info = GAMES[game];
   const trimmedName = name.trim();
@@ -229,6 +245,26 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setStoreOpen(true)}
+                aria-label={`Tienda, tienes ${economy.coins} monedas`}
+                title="Tienda: dorsos, mesas y fondos"
+                className="flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg bg-amber-400/20 px-3 text-[clamp(13px,2.8dvh,14px)] font-extrabold text-amber-300 ring-1 ring-amber-300/60 transition-transform active:scale-95"
+              >
+                <Coins className="h-4 w-4 shrink-0" aria-hidden />
+                {economy.coins}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStoreOpen(true)}
+                aria-label="Abrir la tienda"
+                title="Tienda"
+                className="btn-wood flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
+              >
+                <ShoppingBag className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+                <span className="hidden min-[900px]:inline">Tienda</span>
+              </button>
               {lastOffline && (
                 <button
                   type="button"
@@ -325,6 +361,14 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           </footer>
         </div>
 
+        {dailyGranted !== null && dailyGranted > 0 && (
+          <p
+            role="status"
+            className="pointer-events-none absolute left-1/2 top-[calc(var(--frame)+4px)] z-40 -translate-x-1/2 rounded-full bg-amber-400/25 px-4 py-2 text-center text-[13px] font-extrabold text-amber-300 ring-1 ring-amber-300/60"
+          >
+            ¡Recompensa diaria! +{dailyGranted} monedas por entrar hoy
+          </p>
+        )}
         {error && (
           <p
             role="alert"
@@ -380,6 +424,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           </Modal>
         )}
       </div>
+      {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
       {editorOpen && (
         <AvatarEditor
           initial={avatarChosen ? avatar : null}

@@ -1,7 +1,8 @@
-import { useEffect, useId, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, BellOff, Music, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
+import { Bell, BellOff, Lock, Music, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { useGameSounds } from '@/hooks/useGameSounds';
+import { isOwned, shopPrice, useEconomy, type CosmeticCategory } from '@/lib/economy';
 import { requestNotificationPermission } from '@/lib/notify';
 import { usePrefs } from '@/lib/soundPrefs';
 import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
@@ -89,25 +90,30 @@ function ThemePicker<T extends string>({
   options,
   onChange,
   cardPreview = false,
+  lockedPrice,
 }: {
   label: string;
   value: T;
   options: { id: T; label: string; color: string; image: string }[];
   onChange: (value: T) => void;
   cardPreview?: boolean;
+  /** Precio en monedas si la opción no es del jugador; null si ya es suya. */
+  lockedPrice?: (id: T) => number | null;
 }) {
   return (
     <div className="grid grid-cols-3 gap-2">
-      {options.map((option) => (
+      {options.map((option) => {
+        const price = lockedPrice?.(option.id) ?? null;
+        return (
         <button
           key={option.id}
           type="button"
-          aria-label={`${label}: ${option.label}`}
+          aria-label={`${label}: ${option.label}${price !== null ? `, bloqueado, cuesta ${price} monedas` : ''}`}
           aria-pressed={value === option.id}
           onClick={() => onChange(option.id)}
           className={`flex min-w-0 touch-manipulation flex-col items-center gap-1 rounded-lg p-1.5 text-[10px] font-bold text-amber-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 ${
             value === option.id ? 'bg-amber-300/20 ring-2 ring-amber-300' : 'bg-black/20 ring-1 ring-amber-200/15'
-          }`}
+          } ${price !== null ? 'opacity-70' : ''}`}
         >
           <span
             aria-hidden
@@ -115,8 +121,14 @@ function ThemePicker<T extends string>({
             style={{ backgroundColor: option.color, backgroundImage: option.image }}
           />
           <span className="truncate">{option.label}</span>
+          {price !== null && (
+            <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-300">
+              <Lock className="h-2.5 w-2.5" aria-hidden /> {price} monedas
+            </span>
+          )}
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -125,6 +137,8 @@ function ThemePicker<T extends string>({
 export default function OptionsModal({ onClose }: OptionsModalProps) {
   const { prefs, update } = usePrefs();
   const { prefs: visualPrefs, update: updateVisual } = useVisualPrefs();
+  const economy = useEconomy();
+  const [lockedNotice, setLockedNotice] = useState<string | null>(null);
   const { playSound } = useGameSounds();
   const titleId = useId();
   const cardBackOptions = CARD_BACK_THEMES.map((theme) => ({
@@ -144,6 +158,36 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
     update({ notifications: value });
     if (value) void requestNotificationPermission();
   };
+
+  /**
+   * Los temas de pago solo se pueden equipar si ya son del jugador; si no,
+   * se avisa del precio y de que se compran en la Tienda (antes se podían
+   * equipar gratis desde aquí, sin pasar por la tienda).
+   */
+  const tryEquip = (
+    category: CosmeticCategory,
+    id: string,
+    label: string,
+    patch: Parameters<typeof updateVisual>[0],
+  ) => {
+    if (isOwned(economy, category, id)) {
+      setLockedNotice(null);
+      updateVisual(patch);
+      return;
+    }
+    const price = shopPrice(category, id);
+    setLockedNotice(
+      price !== null
+        ? `«${label}» cuesta ${price} monedas — cómpralo en la Tienda.`
+        : `«${label}» no está disponible.`,
+    );
+  };
+
+  /** Precio en monedas si la opción no es del jugador; null si ya es suya. */
+  const lockedPriceFor =
+    (category: CosmeticCategory) =>
+    (id: string): number | null =>
+      isOwned(economy, category, id) ? null : shopPrice(category, id);
 
   return createPortal(
     <div
@@ -226,6 +270,11 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
 
           <section className="space-y-2 rounded-xl bg-black/25 p-3 ring-1 ring-amber-200/15" aria-label="Personalización visual">
             <h3 className="text-sm font-bold text-amber-50">Apariencia</h3>
+            {lockedNotice && (
+              <p role="status" className="rounded-lg bg-amber-300/15 px-2 py-1.5 text-[11px] font-semibold text-amber-200 ring-1 ring-amber-300/40">
+                {lockedNotice}
+              </p>
+            )}
             <div className="space-y-3">
               <div>
                 <p className="mb-1.5 text-xs font-semibold text-amber-100/80">Reverso de las cartas</p>
@@ -233,7 +282,15 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
                   label="Reverso de las cartas"
                   value={visualPrefs.cardBack}
                   options={cardBackOptions}
-                  onChange={(cardBack) => updateVisual({ cardBack })}
+                  onChange={(cardBack) =>
+                    tryEquip(
+                      'cardBack',
+                      cardBack,
+                      CARD_BACK_THEMES.find((t) => t.id === cardBack)?.label ?? cardBack,
+                      { cardBack },
+                    )
+                  }
+                  lockedPrice={lockedPriceFor('cardBack')}
                   cardPreview
                 />
               </div>
@@ -243,7 +300,15 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
                   label="Mesa de juego"
                   value={visualPrefs.table}
                   options={TABLE_THEMES}
-                  onChange={(table) => updateVisual({ table })}
+                  onChange={(table) =>
+                    tryEquip(
+                      'table',
+                      table,
+                      TABLE_THEMES.find((t) => t.id === table)?.label ?? table,
+                      { table },
+                    )
+                  }
+                  lockedPrice={lockedPriceFor('table')}
                 />
               </div>
               <div>
@@ -252,7 +317,15 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
                   label="Fondo del menú principal"
                   value={visualPrefs.menu}
                   options={MENU_THEMES}
-                  onChange={(menu) => updateVisual({ menu })}
+                  onChange={(menu) =>
+                    tryEquip(
+                      'menu',
+                      menu,
+                      MENU_THEMES.find((t) => t.id === menu)?.label ?? menu,
+                      { menu },
+                    )
+                  }
+                  lockedPrice={lockedPriceFor('menu')}
                 />
               </div>
             </div>

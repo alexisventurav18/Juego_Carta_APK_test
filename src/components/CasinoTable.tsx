@@ -23,6 +23,7 @@ import {
 import type { Card } from '@/games/cards';
 import { isBotPlayer, teamName, teamOf } from '@/games/shared';
 import { useGameSounds } from '@/hooks/useGameSounds';
+import { useWinReward } from '@/hooks/useWinReward';
 import { useNotificationsOn } from '@/lib/soundPrefs';
 import CapturedPile from './CapturedPile';
 import CaptureFlight from './CaptureFlight';
@@ -146,6 +147,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
   const nextDealer = nextDealerSeat(state);
   const showEndNotice = state.phase === 'gameOver' && endNoticeDismissedRound !== state.roundNo;
   const iWon = state.winnerTeam === teamOf(seat);
+  const winReward = useWinReward(state, seat);
   const myTeam = teamOf(seat);
   const closingAlerts: ClosingAlert[] = [0, 1].flatMap((team) => {
     const needs = closingNeeds(state.scores[team]);
@@ -691,7 +693,10 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           )}
           {showEndNotice &&
             (iWon ? (
-              <VictoryCelebration onContinue={() => setEndNoticeDismissedRound(state.roundNo)} />
+              <VictoryCelebration
+                rewardCoins={iWon ? winReward : null}
+                onContinue={() => setEndNoticeDismissedRound(state.roundNo)}
+              />
             ) : (
               <DefeatNotice onContinue={() => setEndNoticeDismissedRound(state.roundNo)} />
             ))}

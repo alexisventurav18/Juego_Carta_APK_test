@@ -4,6 +4,7 @@ import { Trophy } from 'lucide-react';
 import { HAND_SIZE, nextDealerSeat, TARGET_WINS, type TresYDosMove, type TresYDosState, winningDiscardIds } from '@/games/tresYDos';
 import { isBotPlayer } from '@/games/shared';
 import { useGameSounds } from '@/hooks/useGameSounds';
+import { useWinReward } from '@/hooks/useWinReward';
 import DealerReveal from './DealerReveal';
 import DefeatNotice from './DefeatNotice';
 import { DorsoUI } from './CartaUI';
@@ -93,6 +94,7 @@ export default function TresYDosTable({
   const nextDealer = nextDealerSeat(state);
   const winnerName = state.winnerSeat !== null ? state.players[state.winnerSeat].name : '';
   const iWon = state.winnerSeat === seat;
+  const winReward = useWinReward(state, seat);
   const showEndNotice = state.phase === 'gameOver' && endNoticeDismissedRound !== state.roundNo;
 
   // Cada paso o turno nuevo empieza sin carta elegida.
@@ -428,6 +430,7 @@ export default function TresYDosTable({
                 title="¡CANTASTE!"
                 message={`Llegaste a ${TARGET_WINS} rondas ganadas y te llevaste la partida.`}
                 continueLabel="Continuar"
+                rewardCoins={iWon ? winReward : null}
                 onContinue={() => setEndNoticeDismissedRound(state.roundNo)}
               />
             ) : (
