@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import Lobby from '@/components/Lobby';
+import OrientationGuard from '@/components/OrientationGuard';
 import RoomView from '@/components/RoomView';
 import OfflineBotGame, { type OfflineSetup } from '@/components/OfflineBotGame';
 import { OptionsProvider } from '@/components/options/OptionsProvider';
@@ -40,6 +41,9 @@ export default function App() {
 
   return (
     <OptionsProvider>
+      {/* El bloqueo de orientación es silencioso y puede fallar: en vertical se
+          muestra el aviso "Gira tu teléfono" en lugar de una mesa cortada. */}
+      <OrientationGuard />
       <div
         className="contents"
         style={{

@@ -425,6 +425,11 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [myTurn, shownHand, state.table, state.builds, seat],
   );
+  // Cartas de puntos en la mano (10♦, 2♠ y ases): aro dorado permanente.
+  const pointCardIds = useMemo(
+    () => new Set(shownHand.filter(isCasinoPointCard).map((c) => c.id)),
+    [shownHand],
+  );
   const selectedIds = useMemo(() => new Set(cardId ? [cardId] : []), [cardId]);
   const mineRef = useCallback((el: HTMLDivElement | null) => registerAnchor(seat, el), [registerAnchor, seat]);
 
@@ -458,7 +463,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
         style={{ boxShadow: `inset 0 0 0 2px ${color.main}, inset 0 -4px 8px rgb(0 0 0 / 0.45), 0 3px 8px rgb(0 0 0 / 0.5)` }}
         className="wood-block pointer-events-none relative z-30 flex w-[clamp(66px,11.5dvw,100px)] shrink-0 flex-col rounded-lg px-1.5 py-0.5"
       >
-        <span className="flex items-center justify-between gap-1 text-[10px] font-semibold leading-tight text-amber-100">
+        <span className="flex items-center justify-between gap-1 text-[12px] font-semibold leading-tight text-amber-100">
           <span className="flex min-w-0 items-center gap-1 truncate">
             <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color.main }} />
             {needs && <Lock className="h-2.5 w-2.5 shrink-0 text-amber-300" aria-label="Cierre obligatorio" />}
@@ -471,7 +476,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
         </span>
         <span className="flex items-baseline gap-0.5 leading-none">
           <span className="text-sm font-extrabold tabular-nums text-amber-50">{state.scores[team]}</span>
-          <span className="text-[10px] text-amber-200/70">/{CASINO_TARGET}</span>
+          <span className="text-[12px] text-amber-200/70">/{CASINO_TARGET}</span>
         </span>
         <span className="mt-0.5 h-1 overflow-hidden rounded-full bg-black/40">
           <span
@@ -553,7 +558,11 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
             )}
             {state.table.map((c, i) =>
               deal.isTableDealt(i) ? (
-                <div key={c.id} data-table-id={c.id} className={c.id === pointCardId ? 'relative animate-point-drop' : 'relative'}>
+                <div
+                  key={c.id}
+                  data-table-id={c.id}
+                  className={`${c.id === pointCardId ? 'animate-point-drop ' : ''}relative rounded-xl ${isCasinoPointCard(c) ? 'point-card-ring' : ''}`}
+                >
                   <CartaUI
                     card={c}
                     size="mesa"
@@ -618,6 +627,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           plain
           selectedIds={selectedIds}
           playableIds={playableIds}
+          pointCardIds={pointCardIds}
           interactive={myTurn}
           canDrag={() => myTurn}
           dropRef={boardRef}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { createGameState, createSoloPlayers, GAMES, isGameFinished, type GameState } from '@/games';
 import { botStep, botTickDelay } from '@/games/bots';
@@ -42,8 +42,19 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
   const [state, setState] = useState<GameState>(() => createGameState(game, players));
   const [matchKey, setMatchKey] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  // Si el paso del bot falla, se reintenta con espera en lugar de dejar la partida
+  // atascada: el error no cambia el estado, así que sin este contador el efecto
+  // nunca volvería a correr. El contador se reinicia con cada estado nuevo.
+  const [botRetries, setBotRetries] = useState(0);
+  const botRetryTimerRef = useRef<number | null>(null);
+  const BOT_MAX_RETRIES = 3;
+  const BOT_RETRY_MS = 2500;
 
   // Los bots juegan solos cuando les toca: cualquier cambio del estado reinicia la espera.
+  useEffect(() => {
+    setBotRetries(0);
+  }, [state]);
+
   useEffect(() => {
     const delay = botTickDelay(state);
     if (delay === null) return;
@@ -52,12 +63,24 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
       if (!step) return;
       if ('error' in step.result) {
         setNotice(step.result.error);
+        if (botRetries < BOT_MAX_RETRIES) {
+          botRetryTimerRef.current = window.setTimeout(
+            () => setBotRetries((value) => value + 1),
+            BOT_RETRY_MS,
+          );
+        }
         return;
       }
       setState(step.result.state);
     }, delay);
-    return () => window.clearTimeout(timer);
-  }, [state]);
+    return () => {
+      window.clearTimeout(timer);
+      if (botRetryTimerRef.current !== null) {
+        window.clearTimeout(botRetryTimerRef.current);
+        botRetryTimerRef.current = null;
+      }
+    };
+  }, [state, botRetries]);
 
   useEffect(() => {
     if (!notice) return;

@@ -50,10 +50,10 @@ export default function GameCards({ games, selected, onSelect }: GameCardsProps)
               <img src={MODE_ART[id]} alt="" className="h-[92%] max-w-full rounded-lg object-contain drop-shadow-md" />
             </span>
             <span className="relative text-[clamp(15px,4.2dvh,24px)] font-extrabold leading-none text-amber-50">{info.name}</span>
-            <span className="relative line-clamp-2 text-[clamp(10px,2.5dvh,13px)] leading-snug text-amber-100/85 [@media(max-height:340px)]:hidden">
+            <span className="relative line-clamp-2 text-[13px] leading-snug text-amber-100/85 [@media(max-height:340px)]:hidden">
               {info.tagline}
             </span>
-            <span className="relative inline-flex items-center gap-1 text-[clamp(10px,2.4dvh,12px)] font-bold text-amber-300">
+            <span className="relative inline-flex items-center gap-1 text-[13px] font-bold text-amber-300">
               <Users className="h-3 w-3 shrink-0" aria-hidden />
               {info.playerCountLabel}
             </span>

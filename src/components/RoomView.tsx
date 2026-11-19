@@ -39,6 +39,13 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const [connection, setConnection] = useState<RoomConnectionStatus>('connecting');
   const [retryToken, setRetryToken] = useState(0);
   const versionRef = useRef(-1);
+  // Reintentos del turno del bot: si el tick falla (p. ej. un error transitorio del
+  // servidor) se reintenta con espera en lugar de depender del sondeo de 15 s.
+  const [botRetries, setBotRetries] = useState(0);
+  const botVersionRef = useRef(-1);
+  const botRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const BOT_TICK_MAX_RETRIES = 3;
+  const BOT_TICK_RETRY_MS = 2500;
 
   const retryConnection = () => {
     setConnection('connecting');
@@ -100,16 +107,39 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   }, [notice]);
 
   // El primer humano de la sala pide al servidor las jugadas de los bots; el servidor es quien las calcula.
+  // Si el tick falla, se reintenta hasta 3 veces con 2,5 s de espera; el contador se
+  // reinicia cuando la versión de la sala cambia (es decir, cuando alguien jugó).
   useEffect(() => {
     if (!room?.state || !room.players.some(isBotPlayer)) return;
     if (room.players.find((p) => !isBotPlayer(p))?.id !== playerId) return;
+    if (room.version !== botVersionRef.current) {
+      botVersionRef.current = room.version;
+      if (botRetries !== 0) setBotRetries(0);
+      return;
+    }
     const delay = botTickDelay(room.state);
     if (delay === null) return;
     const timer = setTimeout(() => {
-      botTick(room.id, room.version).then(acceptRow).catch((err: unknown) => setNotice(errorMessage(err)));
+      botTick(room.id, room.version)
+        .then((row) => {
+          setBotRetries(0);
+          acceptRow(row);
+        })
+        .catch((err: unknown) => {
+          setNotice(errorMessage(err));
+          if (botRetries < BOT_TICK_MAX_RETRIES) {
+            botRetryTimerRef.current = setTimeout(() => setBotRetries((value) => value + 1), BOT_TICK_RETRY_MS);
+          }
+        });
     }, delay);
-    return () => clearTimeout(timer);
-  }, [room, playerId, acceptRow]);
+    return () => {
+      clearTimeout(timer);
+      if (botRetryTimerRef.current !== null) {
+        clearTimeout(botRetryTimerRef.current);
+        botRetryTimerRef.current = null;
+      }
+    };
+  }, [room, playerId, acceptRow, botRetries]);
 
   if (loadError) {
     return (

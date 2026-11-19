@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Reac
 import { resolveAvatarCode } from '../avatar/resolve';
 import { Check, Layers, Shuffle, Skull, X } from 'lucide-react';
 import { rankLabel } from '@/games/cards';
-import type { CagaoMove, CagaoState } from '@/games/cagao';
+import { CAGAO_CARD_ID, type CagaoMove, type CagaoState } from '@/games/cagao';
 import { isBotPlayer } from '@/games/shared';
 import { useElCagaoGame } from '@/hooks/useElCagaoGame';
 import DealerReveal from '../DealerReveal';
@@ -174,6 +174,8 @@ export default function GameTable({
   })();
 
   const turnLabel = game.gameOver ? 'Fin' : game.pairing ? 'Bajando pares' : game.myTurn ? 'Tu turno' : names[state.turn];
+  // Aviso persistente mientras tengas el A♠: si te quedas con él al final, pierdes.
+  const hasCagao = game.playing && !game.iAmOut && game.hand.some((card) => card.id === CAGAO_CARD_ID);
   const lastPairs = state.pairs.slice(-4);
   const showDropHint = game.pairing && game.pairableIds.size > 0;
 
@@ -213,7 +215,7 @@ export default function GameTable({
       // Con tres rivales arriba (6 jugadores) cada abanico cede ancho para que las placas no se recorten.
       vars={{ '--top-avail': game.layout.top.length >= 3 ? '13dvw' : '28dvw' } as CSSProperties}
       topCenter={game.layout.top.map((s) => renderSeat(s, 'top'))}
-      topRight={<TurnSound label={turnLabel} myTurn={game.myTurn} />}
+      topRight={<TurnSound label={turnLabel} myTurn={game.myTurn} showFlow />}
       left={game.layout.left !== null && renderSeat(game.layout.left, 'left')}
       right={game.layout.right !== null && renderSeat(game.layout.right, 'right')}
       center={
@@ -313,7 +315,16 @@ export default function GameTable({
             Sin cartas: ¡te salvaste!
           </p>
         ) : (
-          <HandFan
+          <div className="flex min-w-0 flex-col items-center gap-1">
+            {hasCagao && (
+              <p
+                role="alert"
+                className="canta-pulse pointer-events-none z-30 whitespace-nowrap rounded-full bg-rose-600 px-3 py-1 text-[13px] font-bold text-white shadow-lg"
+              >
+                ¡Tienes el A♠! Si te quedas con él, pierdes
+              </p>
+            )}
+            <HandFan
             cards={game.shownHand}
             heightVar="--ch"
             avail="min(56dvw, 620px)"
@@ -331,6 +342,7 @@ export default function GameTable({
               if (el) registerAnchor(seat, el);
             }}
           />
+          </div>
         )
       }
       bottomRight={

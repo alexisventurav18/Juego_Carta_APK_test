@@ -269,7 +269,7 @@ function chooseCasino(state: CasinoState): { move: CasinoMove | null; result: Mo
   const pool = [...top(captures, MAX_CAPTURE_CANDIDATES), ...drops, ...top(formations, MAX_FORMATION_CANDIDATES)];
   if (pool.length === 0) {
     const fallback = fallbackMove(state);
-    return { move: fallback.move, result: fallback.result };
+    return { move: 'error' in fallback.result ? null : fallback.move, result: fallback.result };
   }
 
   let best: Candidate | null = null;
@@ -281,11 +281,15 @@ function chooseCasino(state: CasinoState): { move: CasinoMove | null; result: Mo
   return { move: chosen.move, result: { state: chosen.next } };
 }
 
-function fallbackMove(state: CasinoState): { move: CasinoMove; result: MoveResult<CasinoState> } {
+function fallbackMove(state: CasinoState): { move: CasinoMove | null; result: MoveResult<CasinoState> } {
   const seat = state.turn;
+  const hand = state.hands[seat] ?? [];
+  // Sin cartas en mano no hay jugada posible: se devuelve un error en lugar de
+  // romper al leer hand[0] (antes lanzaba TypeError y dejaba el turno atascado).
+  if (hand.length === 0) return { move: null, result: { error: 'El bot no tiene cartas para jugar.' } };
   const items = tableItems(state.table, state.builds);
-  let move: CasinoMove = { type: 'play', cardId: state.hands[seat][0].id, captureIds: [] };
-  for (const card of state.hands[seat]) {
+  let move: CasinoMove = { type: 'play', cardId: hand[0].id, captureIds: [] };
+  for (const card of hand) {
     const options = captureOptions(card, items, seat);
     if (options.length > 0) {
       move = { type: 'play', cardId: card.id, captureIds: options[0].map((item) => item.id) };

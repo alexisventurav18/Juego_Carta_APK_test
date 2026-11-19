@@ -2,7 +2,92 @@ import type { Card } from './cards';
 
 export const MAX_CAPTURE_VALUE = 14;
 
-export const MAX_TABLE_SUM = MAX_CAPTURE_VALUE * 3;
+/**
+ * Tope de la suma mínima al enumerar combinaciones de la mesa. Una captura o una
+ * sumatoria de pares puede agrupar hasta 6 grupos de 14 (6 × 14 = 84): un tope
+ * menor, como 42, dejaba fuera formaciones válidas con mesas grandes (por ejemplo
+ * cuatro reyes en pares, que suman 52). La suma usa el valor mínimo de cada carta
+ * (el As vale 1 aquí); la validación real con As = 1 o 14 la hacen `formationValue`
+ * e `isValidCapture`, así que este tope nunca descarta una jugada legal. El coste de
+ * enumerar hasta 84 se controla con las condiciones necesarias de `canBeCapture` y
+ * `canBePairsFormation`, que evitan evaluar la partición costosa en casi todos los
+ * subconjuntos.
+ */
+export const MAX_TABLE_SUM = MAX_CAPTURE_VALUE * 6;
+
+interface ValueSums {
+  /** Suma de los valores mínimos (As = 1). */
+  minSum: number;
+  /** Suma de los valores máximos (As = 14). */
+  maxSum: number;
+  /** Mayor valor mínimo entre las cartas (una carta no cabe en un grupo menor que este). */
+  maxMin: number;
+}
+
+function valueSums(valuesList: number[][]): ValueSums {
+  let minSum = 0;
+  let maxSum = 0;
+  let maxMin = 0;
+  for (const values of valuesList) {
+    const lo = Math.min(...values);
+    minSum += lo;
+    maxSum += Math.max(...values);
+    maxMin = Math.max(maxMin, lo);
+  }
+  return { minSum, maxSum, maxMin };
+}
+
+/**
+ * Condición necesaria (y barata) para que `items` se puedan capturar con `card`:
+ * algún valor de la carta admite repartirlas en grupos de ese valor. Es necesaria
+ * porque cada grupo debe sumar exactamente el valor de la carta y ninguna carta
+ * puede ir en un grupo menor que su valor mínimo. Nunca descarta una captura
+ * válida; solo evita llamar a `isValidCapture` (que particiona en grupos y es
+ * costoso) en los subconjuntos que no pueden serlo.
+ */
+export function canBeCapture(
+  card: Card,
+  items: TableItem[],
+  sums: ValueSums = valueSums(items.map((item) => item.values)),
+): boolean {
+  if (items.length === 0) return false;
+  // Los totales que se pueden alcanzar son minSum + 13·k (cada As puede valer 1 o 14).
+  const aceCount = (sums.maxSum - sums.minSum) / 13;
+  for (const target of captureValues(card)) {
+    if (sums.maxMin > target) continue;
+    for (let k = 0; k <= aceCount; k++) {
+      const total = sums.minSum + 13 * k;
+      if (total > 0 && total % target === 0) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Condición necesaria (y barata) para que `card` + `looseCards` puedan formar
+ * pares de un valor que `handAfter` pueda llevarse después: el total debe
+ * repartirse en al menos 2 grupos iguales de un valor entre 2 y 14. Nunca
+ * descarta una formación válida; solo evita llamar a `formationValue` con pares
+ * (que prueba todas las asignaciones del As y el reparto en grupos) en los
+ * subconjuntos que no pueden serlo.
+ */
+export function canBePairsFormation(card: Card, looseCards: Card[], handAfter: Card[]): boolean {
+  const cards = [card, ...looseCards];
+  const sums = valueSums(cards.map((c) => captureValues(c)));
+  // Los totales que se pueden alcanzar son minSum + 13·k (cada As puede valer 1 o 14).
+  const aceCount = (sums.maxSum - sums.minSum) / 13;
+  for (let value = 2; value <= MAX_CAPTURE_VALUE; value++) {
+    if (sums.maxMin > value) continue;
+    if (!handCanCapture(handAfter, value)) continue;
+    for (let k = 0; k <= aceCount; k++) {
+      const total = sums.minSum + 13 * k;
+      if (total % value !== 0) continue;
+      const groups = total / value;
+      if (groups >= 2 && groups <= cards.length) return true;
+    }
+  }
+  return false;
+}
 
 export type FormationKind = 'sum' | 'pairs';
 
@@ -94,14 +179,25 @@ export function isLegalCapture(card: Card, items: TableItem[], _seat: number): b
 
 export function captureOptions(card: Card, items: TableItem[], seat: number): TableItem[][] {
   const options: TableItem[][] = [];
-  const walk = (start: number, chosen: TableItem[], minSum: number) => {
-    if (chosen.length > 0 && isLegalCapture(card, chosen, seat)) options.push([...chosen]);
+  const walk = (start: number, chosen: TableItem[], minSum: number, maxSum: number, maxMin: number) => {
+    // La partición en grupos solo se evalúa cuando el subconjunto puede ser una captura;
+    // en mesas grandes casi ningún subconjunto pasa este filtro barato.
+    if (
+      chosen.length > 0 &&
+      canBeCapture(card, chosen, { minSum, maxSum, maxMin }) &&
+      isLegalCapture(card, chosen, seat)
+    ) {
+      options.push([...chosen]);
+    }
     for (let i = start; i < items.length; i++) {
-      const next = minSum + Math.min(...items[i].values);
-      if (next <= MAX_TABLE_SUM) walk(i + 1, [...chosen, items[i]], next);
+      const values = items[i].values;
+      const lo = Math.min(...values);
+      const nextMin = minSum + lo;
+      if (nextMin > MAX_TABLE_SUM) continue;
+      walk(i + 1, [...chosen, items[i]], nextMin, maxSum + Math.max(...values), Math.max(maxMin, lo));
     }
   };
-  walk(0, [], 0);
+  walk(0, [], 0, 0, 0);
   return options;
 }
 

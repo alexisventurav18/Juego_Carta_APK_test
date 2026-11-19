@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ArrowLeft, Settings, VolumeX } from 'lucide-react';
+import { ArrowLeft, RotateCw, Settings, VolumeX } from 'lucide-react';
 import { useOptions } from '@/components/options/OptionsProvider';
 import { useTurnNotification } from '@/lib/notify';
 import { useMuted } from '@/lib/soundPrefs';
@@ -23,6 +23,8 @@ export function LeaveButton({ onLeave }: { onLeave?: () => void }) {
 interface TurnSoundProps {
   label: string;
   myTurn: boolean;
+  /** Muestra la flecha de sentido del turno (El Cagao y Tres y Dos). */
+  showFlow?: boolean;
 }
 
 /** Botón de opciones (engranaje). Si el audio está silenciado se ve una marca para recordarlo. */
@@ -45,18 +47,29 @@ export function OptionsButton({ className = CORNER_BUTTON }: { className?: strin
 }
 
 /** Esquina superior derecha: de quién es el turno y el botón de opciones. */
-export function TurnSound({ label, myTurn }: TurnSoundProps) {
+export function TurnSound({ label, myTurn, showFlow = false }: TurnSoundProps) {
   useTurnNotification(myTurn);
   return (
     <>
+      {myTurn && <span aria-hidden className="turn-screen-glow" />}
       <span
         aria-live="polite"
-        className={`max-w-[7rem] truncate rounded-full px-2.5 py-1.5 text-[11px] font-bold leading-none ${
-          myTurn ? 'bg-amber-400 text-stone-900' : 'bg-black/40 text-amber-50 ring-1 ring-amber-200/30'
+        className={`max-w-[7rem] truncate rounded-full px-2.5 py-1.5 text-[13px] font-bold leading-none ${
+          myTurn
+            ? 'turn-chip-myturn bg-amber-400 text-stone-900'
+            : 'bg-black/40 text-amber-50 ring-1 ring-amber-200/30'
         }`}
       >
         {label}
       </span>
+      {showFlow && (
+        <span
+          title="El turno pasa al siguiente jugador, a tu izquierda"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black/40 text-amber-200 ring-1 ring-amber-200/30"
+        >
+          <RotateCw className="turn-flow h-4 w-4" aria-hidden />
+        </span>
+      )}
       <OptionsButton />
     </>
   );

@@ -1,6 +1,7 @@
 import { americanDeck, type Card, randomInt, shuffle } from './cards.ts';
 import {
   type Build,
+  canBePairsFormation,
   captureValues,
   captureOptions,
   convertValue,
@@ -241,21 +242,43 @@ export function scoreRound(
   return { lines, totals, needs };
 }
 
-/** Gana quien llegue a 21; si ambos llegan, el de más puntos, y a igualdad el que más sumó en la ronda. */
-export function decideWinner(scores: [number, number], roundTotals: [number, number]): number | null {
+/**
+ * Gana quien llegue a 21; si ambos llegan, el de más puntos, y a igualdad el que más sumó en la ronda.
+ * Si también empatan en la ronda, se desempatan por las cartas capturadas y luego por las picas
+ * (las 13 picas no se pueden repartir en empate, así que siempre hay un ganador cuando se pasa el
+ * desempate). Sin datos de desempate se devuelve null y se juega otra ronda.
+ */
+export interface CasinoTiebreak {
+  /** Cartas capturadas por equipo en la ronda que acaba de terminar. */
+  captured: [number, number];
+  /** Picas capturadas por equipo en la ronda que acaba de terminar. */
+  spades: [number, number];
+}
+
+export function decideWinner(
+  scores: [number, number],
+  roundTotals: [number, number],
+  tiebreak?: CasinoTiebreak,
+): number | null {
   const reached = ([0, 1] as const).filter((team) => scores[team] >= CASINO_TARGET);
   if (reached.length === 0) return null;
   if (reached.length === 1) return reached[0];
   if (scores[0] !== scores[1]) return scores[0] > scores[1] ? 0 : 1;
   if (roundTotals[0] !== roundTotals[1]) return roundTotals[0] > roundTotals[1] ? 0 : 1;
+  if (tiebreak) {
+    if (tiebreak.captured[0] !== tiebreak.captured[1]) return tiebreak.captured[0] > tiebreak.captured[1] ? 0 : 1;
+    if (tiebreak.spades[0] !== tiebreak.spades[1]) return tiebreak.spades[0] > tiebreak.spades[1] ? 0 : 1;
+  }
   return null;
 }
 
 function finishRound(state: CasinoState): CasinoState {
   const captured: [CaptureGroup[], CaptureGroup[]] = [[...state.captured[0]], [...state.captured[1]]];
   const leftover = [...state.table, ...state.builds.flatMap((build) => build.cards)];
-  if (state.lastCapturer !== null && leftover.length > 0) {
-    const team = teamOf(state.lastCapturer);
+  if (leftover.length > 0) {
+    // Las cartas que quedan en la mesa siempre cuentan: si nadie capturó en la ronda,
+    // se las lleva el equipo del repartidor en lugar de desecharlas.
+    const team = state.lastCapturer !== null ? teamOf(state.lastCapturer) : teamOf(state.dealer);
     captured[team] = [...captured[team], { cards: leftover, virao: false, pairsRank: null }];
   }
   const flat: [Card[], Card[]] = [
@@ -267,7 +290,13 @@ function finishRound(state: CasinoState): CasinoState {
     state.scores[0] + summary.totals[0],
     state.scores[1] + summary.totals[1],
   ];
-  const winner = decideWinner(scores, summary.totals);
+  const winner = decideWinner(scores, summary.totals, {
+    captured: [flat[0].length, flat[1].length],
+    spades: [
+      flat[0].filter((card) => card.suit === 'picas').length,
+      flat[1].filter((card) => card.suit === 'picas').length,
+    ],
+  });
   return {
     ...state,
     phase: winner !== null ? 'gameOver' : 'roundEnd',
@@ -507,6 +536,9 @@ export function formationMoves(state: CasinoState, seat: number): CasinoMove[] {
     for (const loose of subsets) {
       const tableIds = loose.map((c) => c.id);
       for (const kind of FORMATION_KINDS) {
+        // Los pares prueban todas las asignaciones del As y el reparto en grupos:
+        // solo se evalúan cuando el subconjunto puede formarlos (ver canBePairsFormation).
+        if (kind === 'pairs' && !canBePairsFormation(card, loose, rest)) continue;
         if (formationValue(kind, card, loose, rest) !== null) {
           moves.push({ type: 'build', cardId: card.id, kind, tableIds });
         }

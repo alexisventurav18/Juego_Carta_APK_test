@@ -1,5 +1,6 @@
 import type { GameState } from '@/games';
 import type { GameId, Player } from '@/games/shared';
+import { serverErrorMessage } from './functionsError';
 import { getPlayerId, getPlayerKey } from './identity';
 import { supabase } from './supabase';
 
@@ -33,7 +34,12 @@ async function call(body: Record<string, unknown>): Promise<RoomRow> {
   const { data, error } = await supabase.functions.invoke(FUNCTION_NAME, {
     body: { ...body, playerId: getPlayerId(), key: getPlayerKey() },
   });
-  if (error) throw new Error(SERVER_UNREACHABLE);
+  if (error) {
+    // El servidor suele explicar el rechazo (sala llena, sala inexistente...): se
+    // muestra ese mensaje y solo se usa el genérico de "sin conexión" si no hay
+    // ninguno (p. ej. fallo de red).
+    throw new Error((await serverErrorMessage(error)) ?? SERVER_UNREACHABLE);
+  }
   const response = data as ServerResponse | null;
   if (!response?.ok || !response.room) throw new Error(response?.error ?? 'Respuesta inesperada del servidor.');
   return response.room;

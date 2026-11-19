@@ -19,6 +19,8 @@ interface HandFanProps {
   markedIds?: Set<string>;
   /** Cartas que se pueden usar ahora mismo (aro verde suave). */
   playableIds?: Set<string>;
+  /** Cartas de puntos del Casino (10♦, 2♠ y ases): aro dorado permanente. */
+  pointCardIds?: Set<string>;
   /** Cartas elegidas: se quedan elevadas con aro amarillo. */
   selectedIds?: Set<string>;
   /** Cartas que no se pueden tocar ahora (se atenúan). */
@@ -70,6 +72,7 @@ export function HandFan({
   plain = false,
   markedIds,
   playableIds,
+  pointCardIds,
   selectedIds,
   disabledIds,
   twinOf,
@@ -205,6 +208,11 @@ export function HandFan({
         const twinLifted = !lifted && hoverTwinId === card.id;
         const marked = interactive && (markedIds?.has(card.id) ?? false);
         const playable = interactive && (playableIds?.has(card.id) ?? false);
+        const isPointCard = pointCardIds?.has(card.id) ?? false;
+        // Carta jugable (puede capturar o levantar): se levanta un poco y se ilumina
+        // siempre, no solo al pasar el dedo. Las demás no se atenúan: en Casino y
+        // Robaíto también se pueden dejar en la mesa o usar para formar.
+        const playableLift = playable && !lifted && !twinLifted;
         const dimmed = disabledIds?.has(card.id) ?? false;
         const poseStyle = {
           transform: `translateY(${pose.drop}) rotate(${pose.rotate}deg)`,
@@ -249,8 +257,8 @@ export function HandFan({
               data-hand-lift
               className="pointer-events-none relative will-change-transform"
               style={{
-                zIndex: lifted ? 300 : twinLifted ? 200 : i + 1,
-                transform: lifted ? LIFT : twinLifted ? LIFT_TWIN : 'translate3d(0,0,0)',
+                zIndex: lifted ? 300 : twinLifted || playableLift ? 200 : i + 1,
+                transform: lifted ? LIFT : twinLifted || playableLift ? LIFT_TWIN : 'translate3d(0,0,0)',
                 transition: 'transform 150ms ease-out',
               }}
             >
@@ -259,7 +267,7 @@ export function HandFan({
                   <div
                     className={`${wiggleId === card.id ? 'card-wiggle ' : ''}relative rounded-[calc(var(${heightVar})*0.07)] transition-shadow ${ring} ${
                       highlightId === card.id && !selected ? 'ring-[3px] ring-yellow-300' : ''
-                    } ${dimmed ? 'opacity-60' : ''}`}
+                    } ${dimmed ? 'opacity-60' : ''} ${playable && !selected ? 'brightness-110 saturate-110' : ''} ${isPointCard ? 'point-card-ring' : ''}`}
                   >
                     <PlayingCard card={card} heightVar={heightVar} plain={plain} />
                     {highlightId === card.id && (

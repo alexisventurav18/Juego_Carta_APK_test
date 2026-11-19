@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BookOpen, Bot, DoorOpen, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, Spade, Users, VolumeX, X } from 'lucide-react';
+import { BookOpen, Bot, DoorOpen, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, Spade, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
 import { createRoom, joinRoom } from '@/lib/rooms';
@@ -40,12 +40,44 @@ function botCaption(game: GameId, bots: number): string {
   return `${bots + 1} jugadores en la mesa, contándote a ti.`;
 }
 
-const BTN = 'flex min-h-[clamp(36px,10dvh,46px)] touch-manipulation items-center justify-center gap-1.5 rounded-lg px-[clamp(8px,1.6dvw,18px)] text-[clamp(11px,2.8dvh,14px)] transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60';
+/** Última partida sin conexión: el botón "Jugar rápido" la repite sin configurar nada. */
+const LAST_OFFLINE_KEY = 'cartas-dominicanas:last-offline';
+
+interface LastOffline {
+  game: GameId;
+  playerCount: number;
+}
+
+function readLastOffline(): LastOffline | null {
+  try {
+    const raw = localStorage.getItem(LAST_OFFLINE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LastOffline>;
+    if (parsed.game && parsed.playerCount && GAMES[parsed.game]) {
+      return { game: parsed.game, playerCount: parsed.playerCount };
+    }
+  } catch {
+    // Sin almacenamiento: no hay última partida, se juega con los valores por defecto.
+  }
+  return null;
+}
+
+function storeLastOffline(setup: LastOffline): void {
+  try {
+    localStorage.setItem(LAST_OFFLINE_KEY, JSON.stringify(setup));
+  } catch {
+    // Sin almacenamiento: la partida arranca igual, solo no se recuerda.
+  }
+}
+
+const BTN = 'flex min-h-[clamp(36px,10dvh,46px)] touch-manipulation items-center justify-center gap-1.5 rounded-lg px-[clamp(8px,1.6dvw,18px)] text-[clamp(13px,2.8dvh,14px)] transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60';
 const ICON_BTN = 'wood-chip grid h-[clamp(32px,9dvh,40px)] w-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation place-items-center rounded-lg transition-transform active:scale-95';
 
 export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: LobbyProps) {
   const [name, setName] = useState(getStoredName);
-  const [game, setGame] = useState<GameId>('casino');
+  // La última partida sin conexión: el lobby abre en ese juego y "Jugar rápido" la repite.
+  const [lastOffline, setLastOffline] = useState<LastOffline | null>(readLastOffline);
+  const [game, setGame] = useState<GameId>(() => readLastOffline()?.game ?? 'casino');
   const [code, setCode] = useState(initialJoinCode ?? '');
   const [panel, setPanel] = useState<'rules' | 'join' | null>(initialJoinCode ? 'join' : null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -55,7 +87,10 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const [busy, setBusy] = useState<'create' | 'join' | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Cantidad de bots elegida para jugar sin conexión, por juego (si no se tocó, la recomendada).
-  const [botCounts, setBotCounts] = useState<Partial<Record<GameId, number>>>({});
+  // Al abrir, se recupera la de la última partida jugada.
+  const [botCounts, setBotCounts] = useState<Partial<Record<GameId, number>>>(() =>
+    lastOffline ? { [lastOffline.game]: lastOffline.playerCount - 1 } : {},
+  );
   const { muted } = useMuted();
   const options = useOptions();
   const fullscreen = useFullscreen();
@@ -119,7 +154,22 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
     }
     setError(null);
     storeName(trimmedName);
-    onStartOffline({ game, playerName: trimmedName, playerCount: bots + 1 });
+    const setup = { game, playerName: trimmedName, playerCount: bots + 1 };
+    storeLastOffline({ game: setup.game, playerCount: setup.playerCount });
+    setLastOffline({ game: setup.game, playerCount: setup.playerCount });
+    onStartOffline(setup);
+  };
+
+  /** Un toque: repite la última partida sin conexión (mismo juego y mismos bots). */
+  const quickPlay = () => {
+    if (!lastOffline) return;
+    if (!trimmedName) {
+      setError('Escribe tu nombre para continuar.');
+      return;
+    }
+    setError(null);
+    storeName(trimmedName);
+    onStartOffline({ game: lastOffline.game, playerName: trimmedName, playerCount: lastOffline.playerCount });
   };
 
   return (
@@ -153,7 +203,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                 onChange={(e) => setName(e.target.value.slice(0, 24))}
                 placeholder="Tu nombre"
                 aria-label="Tu nombre"
-                className="min-w-0 flex-1 bg-transparent text-[clamp(12px,3dvh,15px)] font-bold text-amber-50 placeholder:text-amber-100/45 focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent text-[clamp(13px,3dvh,15px)] font-bold text-amber-50 placeholder:text-amber-100/45 focus:outline-none"
               />
               {trimmedName && (
                 <button
@@ -173,12 +223,23 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                 <Spade className="h-[1em] w-[1em] shrink-0 text-amber-300" aria-hidden />
                 Cartas Dominicanas
               </h1>
-              <p className="mt-1 text-[clamp(9px,2.2dvh,12px)] text-amber-100/70 [@media(max-height:400px)]:hidden">
+              <p className="mt-1 text-[12px] text-amber-100/70 [@media(max-height:400px)]:hidden">
                 Elige tu juego y a la mesa
               </p>
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5">
+              {lastOffline && (
+                <button
+                  type="button"
+                  onClick={quickPlay}
+                  title={`Jugar rápido: ${GAMES[lastOffline.game].name} contra ${lastOffline.playerCount - 1} ${lastOffline.playerCount - 1 === 1 ? 'bot' : 'bots'}`}
+                  className="btn-gold flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-extrabold transition-transform active:scale-95"
+                >
+                  <Zap className="h-4 w-4 shrink-0" aria-hidden />
+                  Jugar rápido
+                </button>
+              )}
               <button type="button" onClick={() => setPanel('rules')} aria-label={`Reglas de ${info.name}`} title="Reglas" className={ICON_BTN}>
                 <BookOpen className="h-4 w-4" />
               </button>
@@ -211,7 +272,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           <div className="flex shrink-0 items-center justify-center gap-[clamp(8px,2dvw,20px)]">
             <div className="wood-block flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-1">
               <Users className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-              <span className="text-[clamp(11px,2.8dvh,14px)] font-bold text-amber-50">Bots</span>
+              <span className="text-[clamp(13px,2.8dvh,14px)] font-bold text-amber-50">Bots</span>
               <div className="flex items-center gap-1" role="radiogroup" aria-label={`Cantidad de bots en ${info.name}`}>
                 {botChoices.map((count) => {
                   const active = count === bots;
@@ -223,7 +284,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                       aria-checked={active}
                       aria-label={`${count} ${count === 1 ? 'bot' : 'bots'}`}
                       onClick={() => setBotCounts((current) => ({ ...current, [game]: count }))}
-                      className={`grid h-[clamp(26px,7.4dvh,32px)] w-[clamp(26px,7.4dvh,32px)] touch-manipulation place-items-center rounded-lg text-[clamp(12px,3dvh,15px)] font-extrabold transition-transform active:scale-90 ${
+                      className={`grid h-[clamp(26px,7.4dvh,32px)] w-[clamp(26px,7.4dvh,32px)] touch-manipulation place-items-center rounded-lg text-[clamp(13px,3dvh,15px)] font-extrabold transition-transform active:scale-90 ${
                         active ? 'btn-gold' : 'btn-wood'
                       }`}
                     >
@@ -232,7 +293,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                   );
                 })}
               </div>
-              <span className="hidden max-w-[16rem] truncate text-[11px] text-amber-100/70 min-[760px]:inline [@media(max-height:340px)]:hidden">
+              <span className="hidden max-w-[16rem] truncate text-[13px] text-amber-100/70 min-[760px]:inline [@media(max-height:340px)]:hidden">
                 {botCaption(game, bots)}
               </span>
             </div>
@@ -240,7 +301,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
               type="button"
               onClick={() => setTutorialOpen(true)}
               aria-label={`Aprende a jugar ${info.name}`}
-              className="btn-wood flex min-h-[clamp(30px,8.4dvh,38px)] touch-manipulation items-center gap-1.5 rounded-xl px-3 text-[clamp(11px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
+              className="btn-wood flex min-h-[clamp(30px,8.4dvh,38px)] touch-manipulation items-center gap-1.5 rounded-xl px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
             >
               <GraduationCap className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
               Aprende a jugar
@@ -267,7 +328,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
         {error && (
           <p
             role="alert"
-            className="pointer-events-none absolute bottom-[calc(var(--frame)+4px)] left-1/2 z-40 max-w-[80%] -translate-x-1/2 rounded-xl bg-rose-700/90 px-4 py-2 text-center text-xs font-medium text-rose-50 ring-1 ring-rose-300/60"
+            className="pointer-events-none absolute bottom-[calc(var(--frame)+4px)] left-1/2 z-40 max-w-[80%] -translate-x-1/2 rounded-xl bg-rose-700/90 px-4 py-2 text-center text-[13px] font-medium text-rose-50 ring-1 ring-rose-300/60"
           >
             {error}
           </p>

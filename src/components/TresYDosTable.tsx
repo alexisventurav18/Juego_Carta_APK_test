@@ -82,7 +82,6 @@ export default function TresYDosTable({
   const forbiddenId = state.drawnFrom === 'discard' ? state.drawnCardId : null;
   const winningIds = discardStep ? winningDiscardIds(hand, forbiddenId) : [];
   const selected = hand.find((c) => c.id === cardId) ?? null;
-  const selectedWins = selected !== null && winningIds.includes(selected.id);
   const pileTop = state.discardPile[state.discardPile.length - 1] ?? null;
   const pileUnder = state.discardPile.slice(Math.max(0, state.discardPile.length - 1 - PILE_UNDER), -1);
   const deckDisplayCount = deal.dealing
@@ -272,7 +271,7 @@ export default function TresYDosTable({
         </>
       }
       topCenter={layout.top.map((s) => renderSeat(s, 'top'))}
-      topRight={<TurnSound label={turnLabel} myTurn={myTurn} />}
+      topRight={<TurnSound label={turnLabel} myTurn={myTurn} showFlow />}
       left={layout.left !== null && renderSeat(layout.left, 'left')}
       right={layout.right !== null && renderSeat(layout.right, 'right')}
       center={
@@ -388,15 +387,23 @@ export default function TresYDosTable({
         playing ? (
           <div className="flex w-full flex-col gap-1">
             {state.turnStep === 'discard' && state.turn === seat ? (
-              selectedWins && selected ? (
-                <button type="button" onClick={() => discardCard(selected)} className={TB_SING}>
-                  ¡Cantar 3 y 2!
-                </button>
-              ) : (
+              <>
+                {winningIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const win = hand.find((c) => c.id === winningIds[0]);
+                      if (win) discardCard(win);
+                    }}
+                    className={`${TB_SING} canta-pulse`}
+                  >
+                    ¡Cantar 3 y 2!
+                  </button>
+                )}
                 <button type="button" onClick={() => selected && discardCard(selected)} disabled={!discardStep || !selected} className={TB_DROP}>
                   Botar Carta
                 </button>
-              )
+              </>
             ) : (
               <>
                 <button type="button" onClick={() => draw('deckDraw')} disabled={!canDrawDeck} className={TB_MAIN}>

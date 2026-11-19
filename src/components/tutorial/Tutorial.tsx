@@ -18,11 +18,11 @@ interface TutorialProps {
 const STAGE_VARS = { '--tut-h': 'clamp(56px, 21dvh, 124px)', '--tut-h-small': 'clamp(40px, 14dvh, 84px)' } as CSSProperties;
 
 function Feedback({ state, success, wrong }: { state: 'idle' | 'ok' | 'bad'; success: string; wrong: string }) {
-  if (state === 'idle') return <p className="text-xs text-amber-100/70">Pruébalo tú: es una práctica, no pasa nada si fallas.</p>;
+  if (state === 'idle') return <p className="text-[13px] text-amber-100/70">Pruébalo tú: es una práctica, no pasa nada si fallas.</p>;
   return (
     <p
       role="status"
-      className={`flex items-start gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
+      className={`flex items-start gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold ${
         state === 'ok' ? 'bg-lime-600/30 text-lime-100 ring-1 ring-lime-300/40' : 'bg-rose-700/40 text-rose-50 ring-1 ring-rose-300/40'
       }`}
     >
@@ -66,7 +66,7 @@ function PracticeCard({
       ) : (
         face
       )}
-      {label && <span className="text-[11px] font-bold text-amber-200">{label}</span>}
+      {label && <span className="text-[13px] font-bold text-amber-200">{label}</span>}
     </span>
   );
 }
@@ -190,7 +190,7 @@ function Demo({ demo }: { demo: NonNullable<TutorialStep['demo']> }) {
               <PracticeCard key={c.id} card={c} faceDown={row.faceDown} heightVar={demo.length > 1 ? '--tut-h-small' : '--tut-h'} />
             ))}
           </div>
-          {row.caption && <span className="text-[11px] font-bold text-amber-200">{row.caption}</span>}
+          {row.caption && <span className="text-[13px] font-bold text-amber-200">{row.caption}</span>}
         </div>
       ))}
     </div>
@@ -234,7 +234,7 @@ export default function Tutorial({ game, onClose, onPlay }: TutorialProps) {
           <header className="flex shrink-0 items-center justify-between gap-3">
             <div className="min-w-0 leading-tight">
               <h2 className="truncate text-[clamp(14px,3.8dvh,20px)] font-extrabold text-amber-50">Tutorial de {info.name}</h2>
-              <p className="text-[11px] text-amber-100/70">
+              <p className="text-[13px] text-amber-100/70">
                 Paso {index + 1} de {steps.length}
               </p>
             </div>
@@ -253,7 +253,7 @@ export default function Tutorial({ game, onClose, onPlay }: TutorialProps) {
             <div className="flex min-w-0 flex-1 flex-col gap-2 sm:max-w-[46%]">
               <h3 className="text-[clamp(16px,4.4dvh,24px)] font-extrabold leading-tight text-amber-300">{step.title}</h3>
               {step.body.map((paragraph) => (
-                <p key={paragraph} className="text-[clamp(12px,3dvh,15px)] leading-relaxed text-amber-50/95">
+                <p key={paragraph} className="text-[clamp(13px,3dvh,15px)] leading-relaxed text-amber-50/95">
                   {paragraph}
                 </p>
               ))}
