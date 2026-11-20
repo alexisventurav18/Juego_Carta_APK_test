@@ -2,8 +2,10 @@
  * Catálogo y códigos de los avatares. Sin dependencias de React: lo usan la interfaz (dibujo y editor) y el
  * servidor (para dar cara a los bots y validar el avatar que envía cada jugador).
  *
- * Un avatar se guarda como un texto corto, por ejemplo "m3.2.5.1.2.0.1.0.0": género y luego los índices de
- * piel, cabello, color de cabello, ojos, color de ojos, boca, color de boca, bigote y color de bigote.
+ * Un avatar se guarda como un texto corto, por ejemplo "m3.2.5.1.2.0.1.0.0.0.0.0.0": género y luego los índices
+ * de piel, cabello, color de cabello, ojos, color de ojos, boca, color de boca, bigote, color de bigote,
+ * color de camisa, accesorio, barba y fondo. Los códigos viejos de 9 números siguen valiendo: los campos
+ * nuevos toman su valor por defecto.
  */
 
 export type Gender = 'm' | 'f';
@@ -19,6 +21,14 @@ export interface AvatarConfig {
   mouthColor: number;
   mustache: number;
   mustacheColor: number;
+  /** Índice en SHIRT_COLORS. */
+  shirtColor: number;
+  /** Índice en ACCESSORY_STYLES. */
+  accessory: number;
+  /** Índice en BEARD_STYLES (solo hombres, como el bigote). */
+  beard: number;
+  /** Índice en AVATAR_BACKGROUNDS. */
+  background: number;
 }
 
 export interface StyleOption {
@@ -50,6 +60,26 @@ export const HAIR_COLORS = [
 export const EYE_COLORS = ['#2B1B12', '#5E3B1F', '#A07A2E', '#2F7050', '#3A6EB0', '#6D7B84', '#1A1A1A'];
 export const MOUTH_COLORS = ['#B5645A', '#C9504F', '#A03A3A', '#D98A8A', '#8B4A3C', '#E0708C', '#6B2F3A'];
 export const MUSTACHE_COLORS = HAIR_COLORS;
+/** Colores de camisa. El primero (marrón) es el de siempre y sigue siendo el valor por defecto. */
+export const SHIRT_COLORS = ['#6B4020', '#1F3A5F', '#2F7050', '#7C2D2D', '#4C1D95', '#0F766E', '#9C6430', '#374151'];
+
+export interface AvatarBackground {
+  /** Posición dentro del catálogo (es lo que se guarda en el código). */
+  id: number;
+  label: string;
+  /** Paradas del degradado, de arriba a la izquierda a abajo a la derecha. */
+  stops: string[];
+}
+
+/** Fondos del círculo del avatar. El primero (amarillo) es el de siempre y sigue siendo el valor por defecto. */
+export const AVATAR_BACKGROUNDS: AvatarBackground[] = [
+  { id: 0, label: 'Amarillo', stops: ['#FEF3C7', '#FCD34D'] },
+  { id: 1, label: 'Azul', stops: ['#DBEAFE', '#60A5FA'] },
+  { id: 2, label: 'Verde', stops: ['#D1FAE5', '#34D399'] },
+  { id: 3, label: 'Rojo', stops: ['#FEE2E2', '#F87171'] },
+  { id: 4, label: 'Morado', stops: ['#EDE9FE', '#A78BFA'] },
+  { id: 5, label: 'Dominicano', stops: ['#002D62', '#FFFFFF', '#CE1126'] },
+];
 
 export const HAIR_STYLES: StyleOption[] = [
   { id: 0, label: 'Rapado', genders: male },
@@ -99,6 +129,50 @@ export const MUSTACHE_STYLES: StyleOption[] = [
   { id: 5, label: 'Manubrio', genders: male },
 ];
 
+/** Accesorios. El primero (id 0) es "ninguno"; todos se ofrecen a ambos géneros. */
+export const ACCESSORY_STYLES: StyleOption[] = [
+  { id: 0, label: 'Ninguno', genders: both },
+  { id: 1, label: 'Lentes', genders: both },
+  { id: 2, label: 'Lentes de sol', genders: both },
+  { id: 3, label: 'Gorra', genders: both },
+  { id: 4, label: 'Aretes', genders: both },
+];
+
+/** Barbas. Como el bigote, solo el género masculino ofrece las que no son "sin barba". */
+export const BEARD_STYLES: StyleOption[] = [
+  { id: 0, label: 'Sin barba', genders: both },
+  { id: 1, label: 'Barba corta', genders: male },
+  { id: 2, label: 'Barba completa', genders: male },
+  { id: 3, label: 'Chiva', genders: male },
+];
+
+/** Secciones del editor (y del aleatorio con candados): cada una agrupa los campos que se sortean juntos. */
+export type AvatarSection = 'skin' | 'hair' | 'eyes' | 'mouth' | 'mustache' | 'beard' | 'shirt' | 'accessory' | 'background';
+
+export const AVATAR_SECTIONS: AvatarSection[] = [
+  'skin',
+  'hair',
+  'eyes',
+  'mouth',
+  'mustache',
+  'beard',
+  'shirt',
+  'accessory',
+  'background',
+];
+
+export const AVATAR_SECTION_FIELDS: Record<AvatarSection, (keyof AvatarConfig)[]> = {
+  skin: ['skin'],
+  hair: ['hairStyle', 'hairColor'],
+  eyes: ['eyeType', 'eyeColor'],
+  mouth: ['mouthType', 'mouthColor'],
+  mustache: ['mustache', 'mustacheColor'],
+  beard: ['beard'],
+  shirt: ['shirtColor'],
+  accessory: ['accessory'],
+  background: ['background'],
+};
+
 export function optionsFor(catalog: StyleOption[], gender: Gender): StyleOption[] {
   return catalog.filter((option) => option.genders.includes(gender));
 }
@@ -112,7 +186,7 @@ function coerce(catalog: StyleOption[], gender: Gender, id: number): number {
   return validFor(catalog, gender, id) ? id : optionsFor(catalog, gender)[0].id;
 }
 
-/** Ajusta un avatar a las reglas de su género (p. ej. al cambiar de género se descarta el bigote). */
+/** Ajusta un avatar a las reglas de su género (p. ej. al cambiar de género se descarta el bigote y la barba). */
 export function normalizeAvatar(config: AvatarConfig): AvatarConfig {
   const g = config.gender;
   const pick = (value: number, max: number) => (Number.isInteger(value) && value >= 0 && value < max ? value : 0);
@@ -127,10 +201,15 @@ export function normalizeAvatar(config: AvatarConfig): AvatarConfig {
     mouthColor: pick(config.mouthColor, MOUTH_COLORS.length),
     mustache: coerce(MUSTACHE_STYLES, g, config.mustache),
     mustacheColor: pick(config.mustacheColor, MUSTACHE_COLORS.length),
+    shirtColor: pick(config.shirtColor, SHIRT_COLORS.length),
+    accessory: coerce(ACCESSORY_STYLES, g, config.accessory),
+    beard: coerce(BEARD_STYLES, g, config.beard),
+    background: pick(config.background, AVATAR_BACKGROUNDS.length),
   };
 }
 
-const CODE_PATTERN = /^[mf]\d{1,2}(?:\.\d{1,2}){8}$/;
+/** 9 números (código viejo) o 13 (código nuevo): los campos nuevos van al final. */
+const CODE_PATTERN = /^[mf]\d{1,2}(?:\.\d{1,2}){8}(?:\.\d{1,2}){4}$|^[mf]\d{1,2}(?:\.\d{1,2}){8}$/;
 
 export function isAvatarCode(value: unknown): value is string {
   return typeof value === 'string' && value.length <= 40 && CODE_PATTERN.test(value);
@@ -138,7 +217,7 @@ export function isAvatarCode(value: unknown): value is string {
 
 export function encodeAvatar(config: AvatarConfig): string {
   const c = normalizeAvatar(config);
-  return `${c.gender}${c.skin}.${c.hairStyle}.${c.hairColor}.${c.eyeType}.${c.eyeColor}.${c.mouthType}.${c.mouthColor}.${c.mustache}.${c.mustacheColor}`;
+  return `${c.gender}${c.skin}.${c.hairStyle}.${c.hairColor}.${c.eyeType}.${c.eyeColor}.${c.mouthType}.${c.mouthColor}.${c.mustache}.${c.mustacheColor}.${c.shirtColor}.${c.accessory}.${c.beard}.${c.background}`;
 }
 
 /** Lee un código; si no es válido devuelve null. Los índices fuera de rango se corrigen. */
@@ -146,6 +225,8 @@ export function decodeAvatar(code: unknown): AvatarConfig | null {
   if (!isAvatarCode(code)) return null;
   const gender = code[0] as Gender;
   const n = code.slice(1).split('.').map(Number);
+  // Un código viejo trae 9 números: camisa, accesorio, barba y fondo quedan en su valor por defecto (0).
+  const isOld = n.length === 9;
   return normalizeAvatar({
     gender,
     skin: n[0],
@@ -157,6 +238,10 @@ export function decodeAvatar(code: unknown): AvatarConfig | null {
     mouthColor: n[6],
     mustache: n[7],
     mustacheColor: n[8],
+    shirtColor: isOld ? 0 : n[9],
+    accessory: isOld ? 0 : n[10],
+    beard: isOld ? 0 : n[11],
+    background: isOld ? 0 : n[12],
   });
 }
 
@@ -181,10 +266,11 @@ function choose<T>(items: readonly T[], rng: () => number): T {
   return items[Math.floor(rng() * items.length)];
 }
 
-/** Avatar al azar. Sin `gender` también elige el género. El bigote solo sale a una parte de los hombres. */
+/** Avatar al azar. Sin `gender` también elige el género. El bigote y la barba solo salen a una parte de los hombres. */
 export function randomAvatar(rng: () => number = Math.random, gender?: Gender): AvatarConfig {
   const g: Gender = gender ?? (rng() < 0.5 ? 'm' : 'f');
   const mustaches = optionsFor(MUSTACHE_STYLES, g).filter((option) => option.id !== 0);
+  const beards = optionsFor(BEARD_STYLES, g).filter((option) => option.id !== 0);
   const hairColor = Math.floor(rng() * HAIR_COLORS.length);
   // Los tonos de cabello poco comunes (azul, violeta) salen con menos frecuencia.
   const naturalHair = rng() < 0.9 ? Math.floor(rng() * 9) : hairColor;
@@ -199,7 +285,31 @@ export function randomAvatar(rng: () => number = Math.random, gender?: Gender): 
     mouthColor: Math.floor(rng() * MOUTH_COLORS.length),
     mustache: mustaches.length > 0 && rng() < 0.35 ? choose(mustaches, rng).id : 0,
     mustacheColor: naturalHair,
+    shirtColor: Math.floor(rng() * SHIRT_COLORS.length),
+    accessory: rng() < 0.6 ? 0 : 1 + Math.floor(rng() * (ACCESSORY_STYLES.length - 1)),
+    beard: beards.length > 0 && rng() < 0.3 ? choose(beards, rng).id : 0,
+    background: Math.floor(rng() * AVATAR_BACKGROUNDS.length),
   });
+}
+
+/**
+ * Vuelve a sortear un avatar respetando los candados: las secciones bloqueadas conservan su valor actual
+ * y solo se sortean las demás. Con todas bloqueadas devuelve el avatar tal cual (normalizado).
+ */
+export function randomizeAvatarSections(
+  current: AvatarConfig,
+  locked: ReadonlySet<AvatarSection>,
+  rng: () => number = Math.random,
+): AvatarConfig {
+  const fresh = randomAvatar(rng, current.gender);
+  const next: AvatarConfig = { ...current };
+  for (const section of AVATAR_SECTIONS) {
+    if (locked.has(section)) continue;
+    for (const field of AVATAR_SECTION_FIELDS[section]) {
+      next[field] = fresh[field];
+    }
+  }
+  return normalizeAvatar(next);
 }
 
 /** Avatar estable para quien no envió el suyo (p. ej. otro jugador de una sala con un servidor antiguo). */

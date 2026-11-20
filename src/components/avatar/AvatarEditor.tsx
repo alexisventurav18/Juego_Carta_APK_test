@@ -1,8 +1,13 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Dices, X } from 'lucide-react';
+import { Check, Dices, Lock, LockOpen, X } from 'lucide-react';
 import {
   type AvatarConfig,
+  type AvatarSection,
+  ACCESSORY_STYLES,
+  AVATAR_BACKGROUNDS,
+  AVATAR_SECTIONS,
+  BEARD_STYLES,
   decodeAvatar,
   encodeAvatar,
   EYE_COLORS,
@@ -17,6 +22,8 @@ import {
   normalizeAvatar,
   optionsFor,
   randomAvatar,
+  randomizeAvatarSections,
+  SHIRT_COLORS,
   SKIN_TONES,
   type StyleOption,
 } from '@/games/avatar';
@@ -29,7 +36,7 @@ interface AvatarEditorProps {
   onClose: () => void;
 }
 
-type Tab = 'skin' | 'hair' | 'eyes' | 'mouth' | 'mustache';
+type Tab = AvatarSection;
 
 const TAB_LABEL: Record<Tab, string> = {
   skin: 'Piel',
@@ -37,7 +44,43 @@ const TAB_LABEL: Record<Tab, string> = {
   eyes: 'Ojos',
   mouth: 'Boca',
   mustache: 'Bigote',
+  beard: 'Barba',
+  shirt: 'Camisa',
+  accessory: 'Accesorios',
+  background: 'Fondo',
 };
+
+/** Fondos del círculo: cada uno se ve como su degradado, con aro dorado en el elegido. */
+function BackgroundGrid({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (index: number) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label="Fondo del avatar" className="grid grid-cols-3 gap-2">
+      {AVATAR_BACKGROUNDS.map((bg) => (
+        <button
+          key={bg.id}
+          type="button"
+          role="radio"
+          aria-checked={bg.id === value}
+          aria-label={bg.label}
+          title={bg.label}
+          onClick={() => onChange(bg.id)}
+          className={`flex min-h-[52px] touch-manipulation flex-col items-center justify-end gap-0.5 rounded-xl p-1.5 text-[11px] font-bold text-white ring-1 transition-transform [text-shadow:0_1px_2px_rgba(0,0,0,0.7)] focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 active:scale-95 ${
+            bg.id === value ? 'ring-2 ring-amber-300' : 'ring-amber-200/20'
+          }`}
+          style={{ background: `linear-gradient(135deg, ${bg.stops.join(', ')})` }}
+        >
+          {bg.id === value && <Check className="h-4 w-4" aria-hidden />}
+          {bg.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Muestras de color: círculo con aro dorado en el elegido. */
 function Swatches({
@@ -117,10 +160,15 @@ export default function AvatarEditor({ initial, onSave, onClose }: AvatarEditorP
   const [config, setConfig] = useState<AvatarConfig>(() => start ?? randomAvatar(Math.random, 'm'));
   const [step, setStep] = useState<'gender' | 'edit'>(start ? 'edit' : 'gender');
   const [tab, setTab] = useState<Tab>('skin');
+  // Candados del aleatorio: la sección bloqueada no cambia al tocar el dado. Viven solo en el editor.
+  const [locked, setLocked] = useState<Record<Tab, boolean>>(() =>
+    Object.fromEntries(AVATAR_SECTIONS.map((section) => [section, false] as const)) as Record<Tab, boolean>,
+  );
   const titleId = useId();
 
-  const tabs: Tab[] = config.gender === 'm' ? ['skin', 'hair', 'eyes', 'mouth', 'mustache'] : ['skin', 'hair', 'eyes', 'mouth'];
+  const tabs: Tab[] = config.gender === 'm' ? AVATAR_SECTIONS : AVATAR_SECTIONS.filter((id) => id !== 'mustache' && id !== 'beard');
   const activeTab = tabs.includes(tab) ? tab : 'skin';
+  const allLocked = tabs.every((id) => locked[id]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -193,6 +241,33 @@ export default function AvatarEditor({ initial, onSave, onClose }: AvatarEditorP
         />
       </div>
     ),
+    beard: (
+      <div className="space-y-3">
+        <StyleGrid
+          options={optionsFor(BEARD_STYLES, config.gender)}
+          value={config.beard}
+          apply={(id) => withChange({ beard: id })}
+          onChange={(beard) => patch({ beard })}
+        />
+        <Swatches
+          colors={MUSTACHE_COLORS}
+          value={config.mustacheColor}
+          onChange={(mustacheColor) => patch({ mustacheColor })}
+          label="Color de barba y bigote"
+        />
+        <p className="text-xs text-amber-100/60">La barba y el bigote comparten el mismo color.</p>
+      </div>
+    ),
+    shirt: <Swatches colors={SHIRT_COLORS} value={config.shirtColor} onChange={(shirtColor) => patch({ shirtColor })} label="Color de camisa" />,
+    accessory: (
+      <StyleGrid
+        options={optionsFor(ACCESSORY_STYLES, config.gender)}
+        value={config.accessory}
+        apply={(id) => withChange({ accessory: id })}
+        onChange={(accessory) => patch({ accessory })}
+      />
+    ),
+    background: <BackgroundGrid value={config.background} onChange={(background) => patch({ background })} />,
   };
 
   return createPortal(
@@ -241,6 +316,10 @@ export default function AvatarEditor({ initial, onSave, onClose }: AvatarEditorP
                         mouthColor: 0,
                         mustache: 0,
                         mustacheColor: 1,
+                        shirtColor: 0,
+                        accessory: 0,
+                        beard: 0,
+                        background: 0,
                       })}
                       className="block h-full w-full"
                     />
@@ -276,8 +355,17 @@ export default function AvatarEditor({ initial, onSave, onClose }: AvatarEditorP
                 </div>
                 <button
                   type="button"
-                  onClick={() => setConfig((current) => randomAvatar(Math.random, current.gender))}
-                  className="btn-wood flex min-h-[36px] touch-manipulation items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-bold active:scale-95"
+                  onClick={() =>
+                    setConfig((current) =>
+                      randomizeAvatarSections(
+                        current,
+                        new Set(tabs.filter((id) => locked[id])),
+                      ),
+                    )
+                  }
+                  disabled={allLocked}
+                  title={allLocked ? 'Todas las secciones tienen candado' : 'Vuelve a sortear solo las secciones sin candado'}
+                  className="btn-wood flex min-h-[36px] touch-manipulation items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-bold active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Dices className="h-4 w-4" aria-hidden />
                   Aleatorio
@@ -303,15 +391,32 @@ export default function AvatarEditor({ initial, onSave, onClose }: AvatarEditorP
                     role="tab"
                     aria-selected={id === activeTab}
                     onClick={() => setTab(id)}
-                    className={`min-h-[34px] shrink-0 touch-manipulation rounded-lg px-3 text-xs font-bold transition-transform active:scale-95 ${
+                    className={`flex min-h-[34px] shrink-0 touch-manipulation items-center gap-1 rounded-lg px-3 text-xs font-bold transition-transform active:scale-95 ${
                       id === activeTab ? 'btn-gold' : 'btn-wood'
                     }`}
                   >
+                    {locked[id] && <Lock className="h-3 w-3" aria-hidden />}
                     {TAB_LABEL[id]}
                   </button>
                 ))}
               </div>
               <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto rounded-xl bg-black/20 p-2.5 ring-1 ring-amber-200/10">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-amber-100/70">{TAB_LABEL[activeTab]}</span>
+                  <button
+                    type="button"
+                    onClick={() => setLocked((current) => ({ ...current, [activeTab]: !current[activeTab] }))}
+                    aria-pressed={locked[activeTab]}
+                    aria-label={locked[activeTab] ? `Desbloquear ${TAB_LABEL[activeTab]}` : `Bloquear ${TAB_LABEL[activeTab]}`}
+                    title={locked[activeTab] ? 'El dado no cambiará esta sección' : 'El dado no cambiará esta sección'}
+                    className={`flex min-h-[30px] touch-manipulation items-center gap-1.5 rounded-lg px-2.5 text-xs font-bold transition-transform active:scale-95 ${
+                      locked[activeTab] ? 'btn-gold' : 'btn-wood'
+                    }`}
+                  >
+                    {locked[activeTab] ? <Lock className="h-3.5 w-3.5" aria-hidden /> : <LockOpen className="h-3.5 w-3.5" aria-hidden />}
+                    {locked[activeTab] ? 'Bloqueado' : 'Bloquear'}
+                  </button>
+                </div>
                 {sections[activeTab]}
               </div>
             </div>

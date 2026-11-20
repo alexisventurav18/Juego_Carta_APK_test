@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BookOpen, Bot, Coins, DoorOpen, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Users, VolumeX, X, Zap } from 'lucide-react';
+import { BookOpen, Bot, Coins, DoorOpen, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Target, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
 import { createRoom, joinRoom, leaveRoom, quickplayRoom } from '@/lib/rooms';
 import { getMyAvatar, getPlayerId, getStoredName, hasChosenAvatar, resetPlayerIdentity, storeAvatar, storeName } from '@/lib/identity';
 import { claimDaily, useEconomy } from '@/lib/economy';
+import { unclaimedCompleted } from '@/lib/missions';
 import { useFullscreen } from '@/lib/platform';
 import { useMuted } from '@/lib/soundPrefs';
 import { useGameSounds } from '@/hooks/useGameSounds';
@@ -13,6 +14,7 @@ import AvatarEditor from './avatar/AvatarEditor';
 import { useOptions } from './options/OptionsProvider';
 import Tutorial from './tutorial/Tutorial';
 import Store from './Store';
+import MissionsModal from './MissionsModal';
 import { WoodFrame } from './cagao/CardAssets';
 import GameCards from './GameCards';
 import type { OfflineSetup } from './OfflineBotGame';
@@ -85,8 +87,10 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const [editorOpen, setEditorOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
+  const [missionsOpen, setMissionsOpen] = useState(false);
   const [dailyGranted, setDailyGranted] = useState<number | null>(null);
   const economy = useEconomy();
+  const missionsReady = unclaimedCompleted(economy.missions);
   const [avatar, setAvatar] = useState(getMyAvatar);
   const [avatarChosen, setAvatarChosen] = useState(hasChosenAvatar);
   const [busy, setBusy] = useState<'create' | 'join' | 'quickplay' | null>(null);
@@ -286,6 +290,25 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                 <ShoppingBag className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
                 <span>Tienda</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setMissionsOpen(true)}
+                aria-label={
+                  missionsReady > 0
+                    ? `Misiones, tienes ${missionsReady} ${missionsReady === 1 ? 'misión lista' : 'misiones listas'} para reclamar`
+                    : 'Misiones diarias y semanales'
+                }
+                title="Misiones diarias y semanales"
+                className="btn-wood relative flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
+              >
+                <Target className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+                <span>Misiones</span>
+                {missionsReady > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[11px] font-extrabold text-amber-950 ring-2 ring-amber-950/60">
+                    {missionsReady}
+                  </span>
+                )}
+              </button>
               {lastOffline && (
                 <button
                   type="button"
@@ -464,6 +487,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
         )}
       </div>
       {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
+      {missionsOpen && <MissionsModal onClose={() => setMissionsOpen(false)} />}
       {editorOpen && (
         <AvatarEditor
           initial={avatarChosen ? avatar : null}

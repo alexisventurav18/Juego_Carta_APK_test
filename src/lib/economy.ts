@@ -2,6 +2,15 @@ import { useSyncExternalStore } from 'react';
 import type { GameState } from '../games/index';
 import { teamOf, type GameId } from '../games/shared';
 import {
+  applyMatch,
+  claimMission as claimMissionPure,
+  defaultMissions,
+  refreshMissions,
+  type MatchStats,
+  type MissionPeriod,
+  type MissionsState,
+} from './missions';
+import {
   CARD_BACK_THEMES,
   DEFAULT_VISUAL_PREFS,
   MENU_THEMES,
@@ -116,6 +125,8 @@ export interface EconomyState {
   ownedMenus: MenuTheme[];
   /** Partidas ya recompensadas: evita pagar dos veces la misma victoria. */
   awarded: string[];
+  /** Misiones diarias y semanales (progreso y reclamos). */
+  missions: MissionsState;
 }
 
 export function defaultEconomy(): EconomyState {
@@ -129,6 +140,7 @@ export function defaultEconomy(): EconomyState {
     ownedTables: [DEFAULT_VISUAL_PREFS.table],
     ownedMenus: [DEFAULT_VISUAL_PREFS.menu],
     awarded: [],
+    missions: defaultMissions(),
   };
 }
 
@@ -164,7 +176,42 @@ export function migrateEconomy(state: EconomyState, prefs: VisualPrefs): Economy
       prefs.menu,
     ]),
     awarded: state.awarded.slice(-50),
+    missions: sanitizeMissions(state.missions),
   };
+}
+
+/** Acepta las misiones guardadas si tienen forma válida; si no, empieza de cero. Al pasar, las pone al día. */
+function sanitizeMissions(missions: unknown): MissionsState {
+  if (
+    typeof missions !== 'object' ||
+    missions === null ||
+    !Array.isArray((missions as MissionsState).daily) ||
+    !Array.isArray((missions as MissionsState).weekly)
+  ) {
+    return defaultMissions();
+  }
+  const valid = (list: unknown[]): MissionsState['daily'] =>
+    list
+      .filter(
+        (p): p is MissionsState['daily'][number] =>
+          typeof p === 'object' &&
+          p !== null &&
+          typeof (p as { id?: unknown }).id === 'string' &&
+          typeof (p as { progress?: unknown }).progress === 'number',
+      )
+      .map((p) => ({
+        id: p.id,
+        progress: Math.max(0, Math.floor(p.progress)),
+        claimed: p.claimed === true,
+        games: Array.isArray(p.games) ? p.games.filter((g): g is GameId => typeof g === 'string') : [],
+      }));
+  return refreshMissions({
+    dailyKey: typeof (missions as MissionsState).dailyKey === 'string' ? (missions as MissionsState).dailyKey : null,
+    daily: valid((missions as MissionsState).daily),
+    weeklyKey:
+      typeof (missions as MissionsState).weeklyKey === 'string' ? (missions as MissionsState).weeklyKey : null,
+    weekly: valid((missions as MissionsState).weekly),
+  });
 }
 
 export function isOwned(state: EconomyState, category: CosmeticCategory, id: string): boolean {
@@ -311,6 +358,7 @@ export function loadEconomy(raw: string | null, prefs: VisualPrefs): EconomyStat
         ownedTables: Array.isArray(data.ownedTables) ? data.ownedTables : base.ownedTables,
         ownedMenus: Array.isArray(data.ownedMenus) ? data.ownedMenus : base.ownedMenus,
         awarded: Array.isArray(data.awarded) ? data.awarded : [],
+        missions: data.missions !== undefined ? (data.missions as MissionsState) : base.missions,
       },
       prefs,
     );
@@ -349,10 +397,40 @@ export function getEconomy(): EconomyState {
 
 /** Recompensa una partida terminada una sola vez. Devuelve las monedas pagadas, o null. */
 export function awardMatch(matchKey: string, game: GameId, outcome: WinOutcome): number | null {
+  return awardMatchWithStats(matchKey, game, outcome, { game, outcome }).awarded;
+}
+
+/**
+ * Como awardMatch, pero además registra las estadísticas de la partida en las misiones
+ * (capturas y viraos del Casino). Devuelve las monedas pagadas y las misiones que se
+ * completaron con esta partida.
+ */
+export function awardMatchWithStats(
+  matchKey: string,
+  game: GameId,
+  outcome: WinOutcome,
+  stats: MatchStats,
+): { awarded: number | null; completed: import('./missions').MissionDef[] } {
+  // La huella evita contar dos veces la misma partida, también en las misiones:
+  // una vista que se actualice varias veces en gameOver no suma progreso extra.
+  if (economy.awarded.includes(matchKey)) return { awarded: null, completed: [] };
   const result = recordWin(economy, game, outcome, matchKey);
-  if (result.awarded === null && result.state === economy) return null;
-  save(result.state);
-  return result.awarded;
+  const beforeMissions = JSON.stringify(result.state.missions);
+  const missions = applyMatch(result.state.missions, stats);
+  const missionsChanged = JSON.stringify(missions.state) !== beforeMissions;
+  if (result.state === economy && !missionsChanged) {
+    return { awarded: result.awarded, completed: [] };
+  }
+  save({ ...result.state, missions: missions.state });
+  return { awarded: result.awarded, completed: missions.completed };
+}
+
+/** Reclama una misión completa: paga sus monedas. Devuelve las monedas otorgadas, o 0. */
+export function claimMissionReward(period: MissionPeriod, id: string): number {
+  const result = claimMissionPure(economy.missions, period, id);
+  if (result.granted <= 0) return 0;
+  save({ ...economy, coins: economy.coins + result.granted, missions: result.state });
+  return result.granted;
 }
 
 /** Recompensa diaria: 50 monedas la primera vez que se abre la app cada día. */

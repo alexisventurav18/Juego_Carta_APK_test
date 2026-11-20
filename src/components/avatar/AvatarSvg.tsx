@@ -1,10 +1,12 @@
 import { useId, type ReactNode } from 'react';
 import {
   type AvatarConfig,
+  AVATAR_BACKGROUNDS,
   EYE_COLORS,
   HAIR_COLORS,
   MOUTH_COLORS,
   MUSTACHE_COLORS,
+  SHIRT_COLORS,
   SKIN_TONES,
 } from '@/games/avatar';
 
@@ -315,6 +317,65 @@ function Mustache({ type, color }: { type: number; color: string }) {
   }
 }
 
+/** Barba. Se dibuja antes de la boca para que la boca quede por encima del vello. */
+function Beard({ type, color }: { type: number; color: string }) {
+  switch (type) {
+    case 1: // barba corta: media luna bajo la boca, pegada a la mandíbula
+      return <path d="M31 57 C33 71 40 78 50 78 C60 78 67 71 69 57 C67 67 60 72 50 72 C40 72 33 67 31 57Z" fill={color} opacity={0.92} />;
+    case 2: // barba completa: banda en la mandíbula con la boca al descubierto
+      return <path d="M27 49 C27 68 36 79 50 79 C64 79 73 68 73 49 L69.5 49 C69.5 64 61 72 50 72 C39 72 30.5 64 30.5 49Z" fill={color} />;
+    case 3: // chiva: parche en la barbilla, bajo la boca
+      return <path d="M43 68.5 C43 76 46 79.5 50 79.5 C54 79.5 57 76 57 68.5 C55 71 53 72 50 72 C47 72 45 71 43 68.5Z" fill={color} />;
+    default:
+      return null;
+  }
+}
+
+/** Accesorios: se dibujan al final para que siempre se vean por encima del cabello. */
+function Accessories({ type, capColor }: { type: number; capColor: string }) {
+  switch (type) {
+    case 1: // lentes
+      return (
+        <g stroke="#1F2937" strokeWidth={1.6} fill="rgba(255,255,255,0.16)">
+          <circle cx={40} cy={50} r={6.8} />
+          <circle cx={60} cy={50} r={6.8} />
+          <path d="M46.8 49.5 Q50 47.5 53.2 49.5" fill="none" />
+          <path d="M33.2 49 L28 47.5 M66.8 49 L72 47.5" fill="none" />
+        </g>
+      );
+    case 2: // lentes de sol
+      return (
+        <g>
+          <ellipse cx={40} cy={50} rx={7.4} ry={5.6} fill="#111827" />
+          <ellipse cx={60} cy={50} rx={7.4} ry={5.6} fill="#111827" />
+          <path d="M47.4 49.5 Q50 47.8 52.6 49.5" fill="none" stroke="#111827" strokeWidth={1.8} />
+          <path d="M35.5 48.2 L38.5 46.6 M64.5 48.2 L61.5 46.6" stroke="#fff" strokeWidth={1} strokeLinecap="round" opacity={0.55} />
+        </g>
+      );
+    case 3: {
+      // gorra: cúpula sobre la cabeza y visera hacia el frente, del color de la camisa
+      const dark = shade(capColor, -0.28);
+      return (
+        <g>
+          <path d="M25 48 C25 22 37 13 50 13 C63 13 75 22 75 48 C68 40 60 36 50 36 C40 36 32 40 25 48Z" fill={capColor} />
+          <ellipse cx={50} cy={38.5} rx={27.5} ry={5.5} fill={dark} />
+          <path d="M50 13 L50 36 M38 17 C40 26 44 32 48 34 M62 17 C60 26 56 32 52 34" fill="none" stroke={dark} strokeWidth={1} strokeLinecap="round" opacity={0.6} />
+          <circle cx={50} cy={13} r={2.4} fill={dark} />
+        </g>
+      );
+    }
+    case 4: // aretes: gotas doradas en el lóbulo de cada oreja
+      return (
+        <g fill="#F5C542" stroke="#B45309" strokeWidth={0.4}>
+          <circle cx={26.5} cy={58.5} r={1.9} />
+          <circle cx={73.5} cy={58.5} r={1.9} />
+        </g>
+      );
+    default:
+      return null;
+  }
+}
+
 interface AvatarSvgProps {
   config: AvatarConfig;
   className?: string;
@@ -332,6 +393,8 @@ export default function AvatarSvg({ config, className, title }: AvatarSvgProps) 
   const browColor = shade(hairColor, -0.2);
   const eyeColor = EYE_COLORS[config.eyeColor];
   const mouthColor = MOUTH_COLORS[config.mouthColor];
+  const shirtColor = SHIRT_COLORS[config.shirtColor];
+  const background = AVATAR_BACKGROUNDS[config.background];
 
   return (
     <svg
@@ -344,8 +407,9 @@ export default function AvatarSvg({ config, className, title }: AvatarSvgProps) 
     >
       <defs>
         <linearGradient id={`bg${uid}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FEF3C7" />
-          <stop offset="1" stopColor="#FCD34D" />
+          {background.stops.map((stop, index) => (
+            <stop key={stop} offset={background.stops.length === 1 ? 0 : index / (background.stops.length - 1)} stopColor={stop} />
+          ))}
         </linearGradient>
       </defs>
       <rect width="100" height="100" fill={`url(#bg${uid})`} />
@@ -353,8 +417,8 @@ export default function AvatarSvg({ config, className, title }: AvatarSvgProps) 
       {hair.back}
 
       {/* Hombros y cuello */}
-      <path d="M8 100 C10 83 28 77 50 77 C72 77 90 83 92 100Z" fill="#6B4020" />
-      <path d="M38 77 C42 83 58 83 62 77 C58 80 42 80 38 77Z" fill="#4A2A12" opacity={0.7} />
+      <path d="M8 100 C10 83 28 77 50 77 C72 77 90 83 92 100Z" fill={shirtColor} />
+      <path d="M38 77 C42 83 58 83 62 77 C58 80 42 80 38 77Z" fill={shade(shirtColor, -0.35)} opacity={0.7} />
       <rect x={42} y={62} width={16} height={19} rx={5} fill={skinDark} />
       <path d="M40 78 Q50 90 60 78 L60 82 Q50 92 40 82Z" fill={skin} opacity={0} />
 
@@ -380,10 +444,12 @@ export default function AvatarSvg({ config, className, title }: AvatarSvgProps) 
       <Eye type={config.eyeType} cx={40} color={eyeColor} flip={false} />
       <Eye type={config.eyeType} cx={60} color={eyeColor} flip />
       <path d="M48 55.4 Q50 58.6 52.2 55.4" fill="none" stroke={skinDark} strokeWidth={1.4} strokeLinecap="round" />
+      <Beard type={config.beard} color={MUSTACHE_COLORS[config.mustacheColor]} />
       <Mouth type={config.mouthType} color={mouthColor} />
       <Mustache type={config.mustache} color={MUSTACHE_COLORS[config.mustacheColor]} />
 
       {hair.front}
+      <Accessories type={config.accessory} capColor={shirtColor} />
     </svg>
   );
 }
