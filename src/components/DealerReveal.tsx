@@ -8,6 +8,7 @@ import {
   dealerDrawSteps,
 } from '@/lib/dealerDraw';
 import type { Player } from '@/games/shared';
+import { CONFETTI_COLORS } from '../lib/dominicanPalette';
 import { PANEL_BUTTON } from './wood/styles';
 
 interface DealerRevealProps {
@@ -16,7 +17,7 @@ interface DealerRevealProps {
   onDone: () => void;
 }
 
-const CONFETTI_COLORS = ['bg-amber-400', 'bg-lime-500', 'bg-orange-400', 'bg-rose-500', 'bg-yellow-200'];
+/** Confeti con los colores de la bandera dominicana + ámbar. */
 const CONFETTI_COUNT = 28;
 
 function makeConfetti() {
@@ -71,11 +72,12 @@ export default function DealerReveal({ players, dealer, onDone }: DealerRevealPr
           <span
             key={piece.id}
             aria-hidden="true"
-            className={`absolute top-0 block rounded-sm ${piece.color}`}
+            className="absolute top-0 block rounded-sm"
             style={{
               left: `${piece.left}%`,
               width: piece.size,
               height: piece.size * 0.4,
+              backgroundColor: piece.color,
               animation: `confetti-fall ${piece.duration}s linear ${piece.delay}s infinite`,
             }}
           />

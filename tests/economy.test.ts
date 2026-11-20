@@ -46,10 +46,10 @@ describe('economía: saldo inicial y catálogo', () => {
     assert.equal(isOwned(eco, 'cardBack', 'dominicano-bandera'), false);
   });
 
-  it('el catálogo cubre los 6 dorsos, las 6 mesas y los 5 fondos, solo con arte existente', () => {
-    assert.equal(SHOP_ITEMS.filter((i) => i.category === 'cardBack').length, 6);
-    assert.equal(SHOP_ITEMS.filter((i) => i.category === 'table').length, 6);
-    assert.equal(SHOP_ITEMS.filter((i) => i.category === 'menu').length, 5);
+  it('el catálogo cubre los 8 dorsos, las 8 mesas y los 6 fondos, solo con arte existente o gradientes CSS', () => {
+    assert.equal(SHOP_ITEMS.filter((i) => i.category === 'cardBack').length, 8);
+    assert.equal(SHOP_ITEMS.filter((i) => i.category === 'table').length, 8);
+    assert.equal(SHOP_ITEMS.filter((i) => i.category === 'menu').length, 6);
     assert.equal(shopPrice('cardBack', 'cacao'), 0);
     assert.equal(shopPrice('cardBack', 'dominicano-bandera'), 400);
     assert.equal(shopPrice('table', 'tropical'), 350);

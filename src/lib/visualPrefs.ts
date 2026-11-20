@@ -1,12 +1,13 @@
 import { useSyncExternalStore } from 'react';
 import type { GameId } from '../games/shared';
+import { DOMINICAN_PALETTE } from './dominicanPalette';
 import { publicAsset } from './publicAsset';
 
 const STORAGE_KEY = 'cartas-dominicanas:visual-prefs';
 
-export type CardBackTheme = 'cacao' | 'azul' | 'rojo' | 'madera-turquesa' | 'dominicano-azul' | 'dominicano-bandera';
-export type TableTheme = 'madera' | 'verde' | 'azul' | 'rojo' | 'bandera' | 'tropical';
-export type MenuTheme = 'madera' | 'verde' | 'azul' | 'playa-ilustrada' | 'atardecer-tropical';
+export type CardBackTheme = 'cacao' | 'azul' | 'rojo' | 'madera-turquesa' | 'dominicano-azul' | 'dominicano-bandera' | 'larimar' | 'ambar';
+export type TableTheme = 'madera' | 'verde' | 'azul' | 'rojo' | 'bandera' | 'tropical' | 'mar-caribe' | 'cana';
+export type MenuTheme = 'madera' | 'verde' | 'azul' | 'playa-ilustrada' | 'atardecer-tropical' | 'palmeras';
 
 export interface VisualPrefs {
   cardBack: CardBackTheme;
@@ -27,6 +28,8 @@ export const CARD_BACK_THEMES: { id: CardBackTheme; label: string; color: string
   { id: 'madera-turquesa', label: 'Madera turquesa', color: '#4b2a1c' },
   { id: 'dominicano-azul', label: 'Dominicano azul', color: '#173a70' },
   { id: 'dominicano-bandera', label: 'Bandera dominicana', color: '#e8e1cf' },
+  { id: 'larimar', label: 'Larimar', color: DOMINICAN_PALETTE.azulLarimar },
+  { id: 'ambar', label: 'Ámbar', color: DOMINICAN_PALETTE.ambar },
 ];
 
 export const TABLE_THEMES: { id: TableTheme; label: string; color: string; image: string }[] = [
@@ -39,34 +42,53 @@ export const TABLE_THEMES: { id: TableTheme; label: string; color: string; image
   {
     id: 'verde',
     label: 'Fieltro verde',
-    color: '#17603b',
-    image: 'radial-gradient(ellipse at 50% 40%, #25834f 0%, #17603b 60%, #0b3824 100%)',
+    color: DOMINICAN_PALETTE.verdePalma,
+    image: 'radial-gradient(ellipse at 50% 40%, #2e9e57 0%, #1b7a3d 60%, #0e4a26 100%)',
   },
   {
     id: 'azul',
     label: 'Fieltro azul',
-    color: '#24577e',
-    image: 'radial-gradient(ellipse at 50% 40%, #3479a6 0%, #24577e 60%, #12334d 100%)',
+    color: DOMINICAN_PALETTE.azulBandera,
+    image: 'radial-gradient(ellipse at 50% 40%, #1e5aa8 0%, #002d62 60%, #001a3d 100%)',
   },
   {
     id: 'rojo',
     label: 'Fieltro rojo',
-    color: '#7e1f2a',
-    image: 'radial-gradient(ellipse at 50% 40%, #a8323e 0%, #7e1f2a 60%, #4a1018 100%)',
+    color: DOMINICAN_PALETTE.rojoBandera,
+    image: 'radial-gradient(ellipse at 50% 40%, #e0475a 0%, #ce1126 60%, #7a0a17 100%)',
   },
   {
     id: 'bandera',
     label: 'Bandera',
-    color: '#172c55',
+    color: DOMINICAN_PALETTE.azulBandera,
     image: `url("${publicAsset('images/temas/mesas/mesa-bandera.webp')}")`,
   },
   {
     id: 'tropical',
     label: 'Tropical',
-    color: '#17603b',
+    color: DOMINICAN_PALETTE.verdePalma,
     image: `url("${publicAsset('images/temas/mesas/mesa-tropical.webp')}")`,
   },
+  {
+    id: 'mar-caribe',
+    label: 'Mar Caribe',
+    color: DOMINICAN_PALETTE.turquesaCaribe,
+    image: 'radial-gradient(ellipse at 50% 40%, #2ec4d4 0%, #0ea5b7 60%, #065a66 100%)',
+  },
+  {
+    id: 'cana',
+    label: 'Caña',
+    color: DOMINICAN_PALETTE.verdePalma,
+    image: 'radial-gradient(ellipse at 50% 40%, #2ec4b6 0%, #1b7a3d 55%, #0b3d20 100%)',
+  },
 ];
+
+/**
+ * Fondos de menú con foto clara (cielo y arena luminosos): la cruz blanca
+ * apenas se distingue sobre ellos, así que mientras esté equipado uno de
+ * estos dos el menú usa la variante oscura de la cruz (azul bandera).
+ */
+export const DARK_CROSS_MENU_THEMES: readonly MenuTheme[] = ['playa-ilustrada', 'atardecer-tropical'];
 
 export const MENU_THEMES: { id: MenuTheme; label: string; color: string; image: string }[] = [
   {
@@ -78,14 +100,14 @@ export const MENU_THEMES: { id: MenuTheme; label: string; color: string; image: 
   {
     id: 'verde',
     label: 'Verde',
-    color: '#102d20',
-    image: 'radial-gradient(ellipse at 50% 35%, #245b3a, #102d20 75%)',
+    color: '#0e3a22',
+    image: 'radial-gradient(ellipse at 50% 35%, #2e7a4c, #0e3a22 75%)',
   },
   {
     id: 'azul',
     label: 'Azul',
-    color: '#10233c',
-    image: 'radial-gradient(ellipse at 50% 35%, #244b70, #10233c 75%)',
+    color: '#0a1f3d',
+    image: 'radial-gradient(ellipse at 50% 35%, #1e5aa8, #0a1f3d 75%)',
   },
   {
     id: 'playa-ilustrada',
@@ -98,6 +120,12 @@ export const MENU_THEMES: { id: MenuTheme; label: string; color: string; image: 
     label: 'Atardecer tropical',
     color: '#3e2446',
     image: `url("${publicAsset('images/temas/menu/atardecer-tropical.webp')}")`,
+  },
+  {
+    id: 'palmeras',
+    label: 'Palmeras',
+    color: '#0b2e4f',
+    image: 'radial-gradient(ellipse at 50% 0%, #2ec4d4 0%, transparent 55%), linear-gradient(180deg, #002d62 0%, #0b4a6b 50%, #1b7a3d 100%)',
   },
 ];
 
@@ -114,10 +142,10 @@ export interface GameEnvironment {
 }
 
 export const GAME_ENVIRONMENTS: Record<GameId, GameEnvironment> = {
-  casino: { table: 'verde', accent: '#f5c542' },
-  tresydos: { table: 'azul', accent: '#5db4ff' },
-  cagao: { table: 'rojo', accent: '#ff6b6b' },
-  robaito: { table: 'tropical', accent: '#4ade80' },
+  casino: { table: 'verde', accent: DOMINICAN_PALETTE.ambar },
+  tresydos: { table: 'azul', accent: DOMINICAN_PALETTE.azulLarimar },
+  cagao: { table: 'rojo', accent: DOMINICAN_PALETTE.rojoBandera },
+  robaito: { table: 'tropical', accent: DOMINICAN_PALETTE.turquesaCaribe },
 };
 
 function isOneOf<T extends string>(value: unknown, values: readonly T[]): value is T {

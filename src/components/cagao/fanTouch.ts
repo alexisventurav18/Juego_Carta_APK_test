@@ -48,6 +48,26 @@ export function resolveActivation(
   return null;
 }
 
+/**
+ * Igual que `resolveActivation`, pero para abanicos que se identifican por
+ * índice (OpponentFan: las cartas del rival van boca abajo). Un toque casi
+ * quieto jala la carta que se pulsó, aunque el dedo derive unos píxeles y
+ * al soltar caiga sobre la vecina; solo un deslizamiento de verdad jala la
+ * carta que quedó bajo el dedo.
+ */
+export function resolveIndexActivation(
+  movedPx: number,
+  pointerType: string,
+  pressedIndex: number,
+  indexUnderFinger: number | null,
+  threshold: number = DRAG_THRESHOLD,
+): number | null {
+  const target = resolveReleaseTarget(movedPx, pointerType, threshold);
+  if (target === 'pressed') return pressedIndex;
+  if (target === 'under-finger') return indexUnderFinger ?? pressedIndex;
+  return null;
+}
+
 /** ¿Este movimiento empieza un arrastre hacia la mesa? */
 export function wantsDrag(dx: number, dy: number, pointerType: string, threshold: number = DRAG_THRESHOLD): boolean {
   if (Math.hypot(dx, dy) <= threshold) return false;

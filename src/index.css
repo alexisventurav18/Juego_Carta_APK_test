@@ -612,6 +612,86 @@ button,
   background-size: cover;
 }
 
+/* Cruz blanca de la bandera dominicana como marca de agua: dos barras
+   que se cruzan al centro del fondo. Solo vive en el fondo (mesa, menú y
+   sala de espera), nunca sobre las cartas, y es lo bastante tenue para no
+   dañar la legibilidad: opacidad 0.09, visible a simple vista sobre los
+   fondos oscuros. Sobre las fotos claras del menú se usa la variante
+   oscura (.dominican-cross--dark, azul bandera). El color se puede teñir
+   con --dominican-cross-rgb (canales "r g b"); por defecto blanco. */
+.dominican-cross {
+  --dominican-cross-rgb: 255 255 255;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgb(var(--dominican-cross-rgb) / 0.09), rgb(var(--dominican-cross-rgb) / 0.09)),
+    linear-gradient(rgb(var(--dominican-cross-rgb) / 0.09), rgb(var(--dominican-cross-rgb) / 0.09));
+  background-size: 78% 13%, 13% 78%;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* La cruz "respira": su brillo sube y baja despacio, sin competir con las
+     cartas ni con los textos. */
+  animation: dominican-cross-breathe 7s ease-in-out infinite;
+}
+
+/* Variante oscura de la cruz para los fondos de menú con foto clara
+   (playa y atardecer): el mismo trazo, teñida de azul bandera con
+   --dominican-cross-rgb y un poco más marcada (0.14), porque el blanco
+   se pierde sobre el cielo claro. */
+.dominican-cross--dark {
+  background-image:
+    linear-gradient(rgb(var(--dominican-cross-rgb) / 0.14), rgb(var(--dominican-cross-rgb) / 0.14)),
+    linear-gradient(rgb(var(--dominican-cross-rgb) / 0.14), rgb(var(--dominican-cross-rgb) / 0.14));
+}
+
+/* Respiración lenta de la cruz: entre 0.75 y 1 de opacidad del div (la cruz
+   efectiva oscila entre ~0.07 y 0.09 de blanco). */
+@keyframes dominican-cross-breathe {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+/* Resplandor que se desplaza despacio por el fondo: luces tenues en colores
+   de bandera que flotan sobre el fondo sin tocar el contenido. Solo se
+   mueve con transform, nunca con layout. */
+.dominican-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 45% 35% at 22% 18%, rgb(0 45 98 / 0.22), transparent 70%),
+    radial-gradient(ellipse 40% 32% at 85% 85%, rgb(206 17 38 / 0.16), transparent 70%),
+    radial-gradient(ellipse 35% 30% at 72% 22%, rgb(232 160 32 / 0.12), transparent 70%);
+  animation: dominican-glow-drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes dominican-glow-drift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1); }
+  to { transform: translate3d(2%, 1.5%, 0) scale(1.04); }
+}
+
+/* Brillo suave del halo del modo sobre el fieltro de la mesa: respira
+   despacio sin distraer de las cartas. */
+@keyframes table-halo-breathe {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.table-halo-breathe {
+  animation: table-halo-breathe 8s ease-in-out infinite;
+}
+
+/* Movimiento reducido: los fondos quedan fijos, con la cruz y el brillo en
+   su estado de reposo. */
+@media (prefers-reduced-motion: reduce) {
+  .dominican-cross,
+  .dominican-glow,
+  .table-halo-breathe {
+    animation: none;
+  }
+}
+
 /* Panel oscuro para ventanas, resultados y avisos. */
 .wood-panel {
   background: linear-gradient(180deg, #4a2a12, #2f1809);

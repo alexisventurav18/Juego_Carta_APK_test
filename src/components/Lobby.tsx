@@ -2,7 +2,9 @@ import { useRef, useState, type CSSProperties, type FormEvent, type ReactNode } 
 import { BarChart3, BookOpen, Bot, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Target, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
+import { DOMINICAN_PALETTE, hexToRgbChannels } from '@/lib/dominicanPalette';
 import { createRoom, joinRoom, leaveRoom, quickplayRoom } from '@/lib/rooms';
+import { DARK_CROSS_MENU_THEMES, useVisualPrefs } from '@/lib/visualPrefs';
 import { getMyAvatar, getPlayerId, getStoredName, hasChosenAvatar, resetPlayerIdentity, storeAvatar, storeName } from '@/lib/identity';
 import { isDailyAvailableNow, useEconomy } from '@/lib/economy';
 import { unclaimedCompleted } from '@/lib/missions';
@@ -110,6 +112,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
     lastOffline ? { [lastOffline.game]: lastOffline.playerCount - 1 } : {},
   );
   const { muted } = useMuted();
+  const { prefs } = useVisualPrefs();
   const options = useOptions();
   const fullscreen = useFullscreen();
   const { playSound } = useGameSounds();
@@ -118,6 +121,9 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const trimmedName = name.trim();
   const bots = botCounts[game] ?? info.soloPlayerCount - 1;
   const botChoices = botOptions(game);
+  /** En los fondos de menú con foto clara la cruz blanca no se distingue:
+      ahí va oscura, teñida de azul bandera. */
+  const darkCross = DARK_CROSS_MENU_THEMES.includes(prefs.menu);
 
   const selectGame = (id: GameId) => {
     if (id !== game) playSound('cardSlide');
@@ -212,6 +218,15 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
     <div className="wood-stage lobby-stage fixed inset-0 overflow-hidden" style={FRAME_VARS}>
       {/* Marco a sangre: llega a los bordes físicos de la pantalla; solo el contenido esquiva el notch. */}
       <WoodFrame />
+      {/* Cruz dominicana como marca de agua del fondo del menú: blanca salvo
+          en las fotos claras, donde va oscura (azul bandera). */}
+      <div
+        aria-hidden
+        className={darkCross ? 'dominican-cross dominican-cross--dark' : 'dominican-cross'}
+        style={darkCross ? { '--dominican-cross-rgb': hexToRgbChannels(DOMINICAN_PALETTE.azulBandera) } as CSSProperties : undefined}
+      />
+      {/* Resplandor animado en colores de bandera sobre el fondo del menú. */}
+      <div aria-hidden className="dominican-glow" />
       <div className="absolute" style={{ top: 'var(--sat)', right: 'var(--sar)', bottom: 'var(--sab)', left: 'var(--sal)' }}>
         {/* El relleno lateral también mira el ancho: en vertical el marco (que
             escala con la altura) se comería media pantalla. */}

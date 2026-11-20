@@ -1,6 +1,6 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
 import { fanMargin, fanPose } from './fanLayout';
-import { DRAG_THRESHOLD, resolveActivation, wantsDrag } from './fanTouch';
+import { DRAG_THRESHOLD, resolveActivation, resolveIndexActivation, wantsDrag } from './fanTouch';
 import PlayingCard from './PlayingCard';
 import type { Card, Point } from './types';
 
@@ -309,15 +309,27 @@ interface OpponentFanProps {
 /**
  * Cartas boca abajo de un rival. Cuando te toca robarle, el abanico late en dorado; pasar el ratón o
  * deslizar el dedo sube la carta hacia el centro, y soltar/tocar la jala a tu mano.
+ * Un toque casi quieto jala la carta que se pulsó, no la que quedó bajo el dedo al soltar: las zonas
+ * de toque se solapan y una deriva de pocos píxeles no debe acabar jalando la vecina. Solo un
+ * deslizamiento de verdad jala la carta que quedó bajo el dedo.
  */
 export function OpponentFan({ count, heightVar, avail, rotation, active, label, onPick, containerRef }: OpponentFanProps) {
   const [hover, setHover] = useState<number | null>(null);
+  /** Carta que se está pulsando: su zona de toque sube por encima de las vecinas mientras el gesto siga
+      siendo un toque (así el dedo no "pierde" la carta al derivar unos píxeles); al deslizar o soltar, baja. */
+  const [pressIndex, setPressIndex] = useState<number | null>(null);
   // Solo cuenta como jalar si el toque empezó sobre el abanico (no si llegas arrastrando desde fuera).
   const armed = useRef(false);
+  const press = useRef<{ index: number | null; sx: number; sy: number } | null>(null);
 
   const indexUnder = (x: number, y: number): number | null => {
     const raw = document.elementFromPoint(x, y)?.closest('[data-opp-index]')?.getAttribute('data-opp-index');
     return raw === null || raw === undefined ? null : Number(raw);
+  };
+
+  const clearPress = () => {
+    press.current = null;
+    setPressIndex(null);
   };
 
   return (
@@ -333,23 +345,39 @@ export function OpponentFan({ count, heightVar, avail, rotation, active, label, 
       }}
       onPointerCancel={() => {
         armed.current = false;
+        clearPress();
         setHover(null);
       }}
       onPointerDown={(e) => {
         if (!active) return;
         armed.current = true;
-        setHover(indexUnder(e.clientX, e.clientY));
+        const index = indexUnder(e.clientX, e.clientY);
+        press.current = { index, sx: e.clientX, sy: e.clientY };
+        setPressIndex(index);
+        setHover(index);
+        e.currentTarget.setPointerCapture(e.pointerId);
       }}
       onPointerMove={(e) => {
         if (!active) return;
+        const p = press.current;
+        if (p && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > DRAG_THRESHOLD) setPressIndex(null);
         if (e.pointerType === 'mouse' || e.buttons > 0 || e.pressure > 0) setHover(indexUnder(e.clientX, e.clientY));
       }}
       onPointerUp={(e) => {
         if (!active || !armed.current) return;
         armed.current = false;
-        const index = indexUnder(e.clientX, e.clientY);
+        const p = press.current;
+        clearPress();
         if (e.pointerType !== 'mouse') setHover(null);
-        if (index !== null) onPick(index);
+        // Si el toque empezó en un hueco entre cartas no hay pulsada que respetar: vale la de la suelta.
+        if (p === null || p.index === null) {
+          const index = indexUnder(e.clientX, e.clientY);
+          if (index !== null) onPick(index);
+          return;
+        }
+        const moved = Math.hypot(e.clientX - p.sx, e.clientY - p.sy);
+        const target = resolveIndexActivation(moved, e.pointerType, p.index, indexUnder(e.clientX, e.clientY));
+        if (target !== null) onPick(target);
       }}
     >
       {active && <span aria-hidden className="gold-glow pointer-events-none absolute -inset-[48%] rounded-full" />}
@@ -379,7 +407,7 @@ export function OpponentFan({ count, heightVar, avail, rotation, active, label, 
               className={`absolute inset-0 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 ${
                 active ? 'pointer-events-auto' : 'pointer-events-none'
               }`}
-              style={{ ...poseStyle, zIndex: 1000 + i }}
+              style={{ ...poseStyle, zIndex: pressIndex === i ? 5000 : 1000 + i }}
             />
             <div
               data-opp-lift

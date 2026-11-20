@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { DRAG_THRESHOLD, resolveActivation, resolveReleaseTarget, wantsDrag } from '../src/components/cagao/fanTouch';
+import { DRAG_THRESHOLD, resolveActivation, resolveIndexActivation, resolveReleaseTarget, wantsDrag } from '../src/components/cagao/fanTouch';
 
 describe('abanico: un toque casi quieto activa la carta pulsada', () => {
   it('con el dedo, soltar sobre la vecina tras derivar unos píxeles activa la pulsada', () => {
@@ -39,6 +39,26 @@ describe('abanico: moverse mucho con el ratón sin arrastrar no activa nada', ()
   it('un movimiento largo de ratón no es un toque', () => {
     assert.equal(resolveReleaseTarget(11, 'mouse'), 'none');
     assert.equal(resolveActivation(40, 'mouse', 'c2', 'c3'), null);
+  });
+});
+
+describe('robarle al rival (OpponentFan): un toque casi quieto jala la carta pulsada', () => {
+  it('con el dedo, soltar sobre la vecina tras derivar unos píxeles jala la pulsada', () => {
+    // Se pulsó la carta 1 del rival, el dedo derivó 6 px y al soltar cayó sobre la 2.
+    assert.equal(resolveIndexActivation(6, 'touch', 1, 2), 1);
+    assert.equal(resolveIndexActivation(0, 'touch', 1, 2), 1);
+  });
+
+  it('un deslizamiento de verdad jala la carta bajo el dedo', () => {
+    assert.equal(resolveIndexActivation(40, 'touch', 1, 2), 2);
+  });
+
+  it('si al soltar tras deslizar no hay carta bajo el dedo, se usa la pulsada', () => {
+    assert.equal(resolveIndexActivation(40, 'touch', 1, null), 1);
+  });
+
+  it('moverse mucho con el ratón sin arrastrar no jala nada', () => {
+    assert.equal(resolveIndexActivation(40, 'mouse', 1, 2), null);
   });
 });
 

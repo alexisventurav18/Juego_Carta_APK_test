@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Coins, Gift, Sparkles, X } from 'lucide-react';
 import { claimDailyPrize, DAILY_WHEEL_PRIZES, rollDailyPrize } from '@/lib/economy';
+import { DOMINICAN_PALETTE, WHEEL_COLORS } from '../lib/dominicanPalette';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { vibrate } from '@/lib/haptics';
 
-/** Colores de los segmentos, en el mismo orden que DAILY_WHEEL_PRIZES. */
-const SEGMENT_COLORS = ['#b45309', '#15803d', '#1d4ed8', '#7c3aed', '#b91c1c'];
+/** Colores de los segmentos, en el mismo orden que DAILY_WHEEL_PRIZES: bandera + ámbar, en ciclo. */
+const SEGMENT_COLORS = WHEEL_COLORS;
 
 /** Vueltas completas antes de frenar en el premio. */
 const FULL_SPINS = 5;
@@ -118,7 +119,17 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
                 className="absolute inset-0"
                 style={{ transform: `rotate(${i * step + step / 2}deg)` }}
               >
-                <span className="absolute left-1/2 top-[10%] -translate-x-1/2 whitespace-nowrap text-[clamp(0.65rem,3dvh,0.875rem)] font-extrabold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+                {/* La etiqueta es blanca, salvo en el segmento blanco de la
+                    bandera, donde va en azul bandera para que se lea. */}
+                <span
+                  className="absolute left-1/2 top-[10%] -translate-x-1/2 whitespace-nowrap text-[clamp(0.65rem,3dvh,0.875rem)] font-extrabold drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
+                  style={{
+                    color:
+                      SEGMENT_COLORS[i % SEGMENT_COLORS.length] === DOMINICAN_PALETTE.blanco
+                        ? DOMINICAN_PALETTE.azulBandera
+                        : '#ffffff',
+                  }}
+                >
                   {prizeItem.label}
                 </span>
               </span>
