@@ -66,6 +66,11 @@ interface CasinoTableProps {
   resultFooter?: ReactNode;
   /** Revancha inmediata en la pantalla de fin de partida (solo sin conexión). */
   onRematch?: () => void;
+  /**
+   * Aviso de cuándo se está repartiendo en pantalla: mientras el reparto está activo nadie
+   * juega (ni el humano, que ya lo bloquea la mesa, ni los bots, que esperan a que termine).
+   */
+  onDealingChange?: (dealing: boolean) => void;
 }
 
 /** Cartas de la mesa suelta y dentro de combinaciones. */
@@ -89,16 +94,23 @@ function isCasinoPointCard(card: { rank: number; suit: string }): boolean {
  * toca las cartas de la mesa que quieres, y pulsa el botón; o arrastra la carta a la mesa (y suéltala
  * sobre una carta de la mesa para capturarla).
  */
-export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter, onRematch }: CasinoTableProps) {
+export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter, onRematch, onDealingChange }: CasinoTableProps) {
   const [cardId, setCardId] = useState<string | null>(null);
   const [capturedOpen, setCapturedOpen] = useState(false);
   const [tableIds, setTableIds] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
-  const deal = useDealIntro(state.roundNo, state.players.length);
+  const [dealerOpen, setDealerOpen] = useState(state.roundNo === 1 && !state.players.some(isBotPlayer));
+  // El reparto espera a que se cierre el sorteo del repartidor: así se ve repartir en pantalla
+  // en vez de pasar por detrás del sorteo.
+  const deal = useDealIntro(state.roundNo, state.players.length, 4, 4, !dealerOpen);
+  // El reparto en pantalla también bloquea a los bots: la mesa avisa a quien la monta (sin
+  // conexión o en sala) de cuándo se está repartiendo, y esa persona no pide jugadas de bot.
+  useEffect(() => {
+    onDealingChange?.(deal.dealing);
+  }, [deal.dealing, onDealingChange]);
   const deckDisplayCount = deal.dealing
     ? state.deck.length + Math.max(0, deal.dealSteps - Math.min(deal.revealed, deal.dealSteps))
     : state.deck.length;
-  const [dealerOpen, setDealerOpen] = useState(state.roundNo === 1 && !state.players.some(isBotPlayer));
   const [endNoticeDismissedRound, setEndNoticeDismissedRound] = useState<number | null>(null);
   const [closingDismissedRound, setClosingDismissedRound] = useState<number | null>(null);
   const [pointCardId, setPointCardId] = useState<string | null>(null);

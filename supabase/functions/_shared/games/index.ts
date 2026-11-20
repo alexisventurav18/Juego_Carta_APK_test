@@ -24,9 +24,9 @@ export const GAMES: Record<GameId, GameInfo> = {
   casino: {
     id: 'casino',
     name: 'Casino',
-    tagline: 'Captura cartas sumando o igualando valores y gana puntos por los premios clave.',
+    tagline: 'Captura cartas y suma puntos.',
     playerCounts: [2, 4],
-    playerCountLabel: '2 o 4 jugadores (en parejas)',
+    playerCountLabel: '2 o 4 en parejas',
     maxPlayers: 4,
     soloPlayerCount: 4,
     quickRules: [
@@ -55,7 +55,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   tresydos: {
     id: 'tresydos',
     name: 'Tres y Dos',
-    tagline: 'Roba, bota y canta el 3 y 2: una tercia y un par en tu mano.',
+    tagline: 'Roba, bota y canta el 3 y 2.',
     playerCounts: [2, 3, 4],
     playerCountLabel: 'De 2 a 4 jugadores',
     maxPlayers: 4,
@@ -79,7 +79,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   cagao: {
     id: 'cagao',
     name: 'El Cagao',
-    tagline: 'Empareja todas tus cartas y no te quedes con el A♠: ese es El Cagao.',
+    tagline: 'Empareja cartas y evita el A♠.',
     playerCounts: [2, 3, 4, 5, 6],
     playerCountLabel: 'De 2 a 6 jugadores',
     maxPlayers: 6,
@@ -103,7 +103,7 @@ export const GAMES: Record<GameId, GameInfo> = {
   robaito: {
     id: 'robaito',
     name: 'El Robaíto',
-    tagline: 'Levanta cartas de la mesa o róbale el paquete a tu rival si igualas su carta de arriba.',
+    tagline: 'Roba paquetes o levanta cartas.',
     playerCounts: [2, 3, 4],
     playerCountLabel: 'De 2 a 4 jugadores',
     maxPlayers: 4,

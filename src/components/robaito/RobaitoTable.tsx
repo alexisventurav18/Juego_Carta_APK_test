@@ -42,6 +42,11 @@ export interface RobaitoTableProps {
   resultFooter?: ReactNode;
   /** Revancha inmediata en la pantalla de fin de partida (solo sin conexión). */
   onRematch?: () => void;
+  /**
+   * Aviso de cuándo se está repartiendo en pantalla: mientras el reparto está activo nadie
+   * juega (ni el humano, que ya lo bloquea la mesa, ni los bots, que esperan a que termine).
+   */
+  onDealingChange?: (dealing: boolean) => void;
 }
 
 const VARS = {
@@ -87,7 +92,7 @@ function describeEvent(event: RobaitoEvent, seat: number, names: string[]): stri
  * los otros juegos. Toca una carta para elegirla (se marca qué se llevaría) y tócala otra vez, pulsa el botón
  * o arrástrala al centro para jugarla.
  */
-export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter, onRematch }: RobaitoTableProps) {
+export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter, onRematch, onDealingChange }: RobaitoTableProps) {
   const game = useRobaitoGame({ state, seat, onMove });
   const { event } = game;
   const winReward = useWinReward(state, seat);
@@ -99,7 +104,12 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
   const tableRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const pileRefs = useRef(new Map<number, HTMLElement>());
-  const deal = useDealIntro(state.roundNo, seats, HAND_SIZE, TABLE_SIZE);
+  const deal = useDealIntro(state.roundNo, seats, HAND_SIZE, TABLE_SIZE, !dealerOpen);
+  // El reparto en pantalla también bloquea a los bots: la mesa avisa a quien la monta (sin
+  // conexión o en sala) de cuándo se está repartiendo, y esa persona no pide jugadas de bot.
+  useEffect(() => {
+    onDealingChange?.(deal.dealing);
+  }, [deal.dealing, onDealingChange]);
   const { flights, spawn, endFlight, registerAnchor, anchorCenter } = useFlights();
   const { playSound } = useGameSounds();
 

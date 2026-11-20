@@ -7,6 +7,7 @@ import { isBotPlayer } from '@/games/shared';
 import { useElCagaoGame } from '@/hooks/useElCagaoGame';
 import { useWinReward } from '@/hooks/useWinReward';
 import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
+import { useCagaoDealIntro } from '../useDealIntro';
 import DealerReveal from '../DealerReveal';
 import DefeatNotice from '../DefeatNotice';
 import VictoryCelebration from '../VictoryCelebration';
@@ -36,6 +37,11 @@ export interface GameTableProps {
   resultFooter?: ReactNode;
   /** Revancha inmediata en la pantalla de fin de partida (solo sin conexión). */
   onRematch?: () => void;
+  /**
+   * Aviso de cuándo se está repartiendo en pantalla: mientras el reparto está activo nadie
+   * juega (ni el humano, que ya lo bloquea la mesa, ni los bots, que esperan a que termine).
+   */
+  onDealingChange?: (dealing: boolean) => void;
 }
 
 /** Giro estable (±14°) a partir del id de la carta, para que la pila de pares se vea natural. */
@@ -56,11 +62,21 @@ export default function GameTable({
   notice,
   resultFooter,
   onRematch,
+  onDealingChange,
 }: GameTableProps) {
   const game = useElCagaoGame({ state, seat, onMove });
   const { event } = game;
   const winReward = useWinReward(state, seat);
   const [dealerOpen, setDealerOpen] = useState(state.roundNo === 1 && !state.players.some(isBotPlayer));
+  // Intro de reparto (El Cagao no tenía): se baraja y la mano de cada jugador aparece en su
+  // oleada, con el mazo visible en el centro. Empieza al cerrarse el sorteo del repartidor, y
+  // mientras dura nadie juega: ni el humano ni los bots.
+  const deal = useCagaoDealIntro(state.roundNo, state.players.length, !dealerOpen);
+  useEffect(() => {
+    onDealingChange?.(deal.dealing);
+  }, [deal.dealing, onDealingChange]);
+  /** Tu turno, pero nunca mientras se reparte. */
+  const myTurn = game.myTurn && !deal.dealing;
   const [endNoticeDismissed, setEndNoticeDismissed] = useState(false);
   const [pairsOpen, setPairsOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -132,6 +148,8 @@ export default function GameTable({
   /** Baja el par de una carta de tu mano y hace volar las dos hacia la pila central. */
   const pairWithFlight = useCallback(
     (card: Card): boolean => {
+      // Mientras se reparte no se baja nada: la mano todavía no se ve completa.
+      if (deal.dealing) return false;
       const twin = game.twinOf(card.id);
       const pile = centerOf(pileRef.current);
       const origins = twin
@@ -157,29 +175,34 @@ export default function GameTable({
       });
       return true;
     },
-    [game, spawn],
+    [game, spawn, deal.dealing],
   );
 
   const pickFromSeat = (s: number, index: number) => {
-    if (game.myTurn && game.stealableSeats.includes(s)) game.drawAt(index, s);
+    if (myTurn && game.stealableSeats.includes(s)) game.drawAt(index, s);
   };
 
   // Los avisos de instrucciones salen solo al inicio de la partida (hasta que termina tu primer turno).
-  const showStartHint = useStartHint(game.myTurn, state.roundNo, game.gameOver || game.iAmOut);
+  const showStartHint = useStartHint(myTurn, state.roundNo, game.gameOver || game.iAmOut);
 
   const hint = (() => {
+    if (deal.dealing) {
+      if (deal.shuffling) return 'Barajando el mazo...';
+      if (deal.dealingTo !== null) return `Repartiendo a ${names[deal.dealingTo]}...`;
+      return 'Repartiendo las cartas...';
+    }
     if (game.pairing) {
       if (game.pairableIds.size > 0) return 'Baja tus pares: toca una carta con pareja o arrástrala a la mesa.';
       return '¡Listo! Esperando a que los demás bajen sus pares...';
     }
     if (!game.playing) return '';
     if (game.iAmOut) return '¡Te salvaste! Mira cómo termina la partida.';
-    if (game.myTurn) return 'Tu turno: elige a quién robarle una carta. ¡A ciegas!';
+    if (myTurn) return 'Tu turno: elige a quién robarle una carta. ¡A ciegas!';
     if (game.stealableSeats.includes(seat)) return `${names[state.turn]} está eligiendo a quién robarle...`;
     return `${names[state.turn]} está robando una carta...`;
   })();
 
-  const turnLabel = game.gameOver ? 'Fin' : game.pairing ? 'Bajando pares' : game.myTurn ? 'Tu turno' : names[state.turn];
+  const turnLabel = deal.dealing ? 'Reparto' : game.gameOver ? 'Fin' : game.pairing ? 'Bajando pares' : myTurn ? 'Tu turno' : names[state.turn];
   // Aviso persistente mientras tengas el A♠: si te quedas con él al final, pierdes.
   const hasCagao = game.playing && !game.iAmOut && game.hand.some((card) => card.id === CAGAO_CARD_ID);
   const lastPairs = state.pairs.slice(-4);
@@ -192,11 +215,12 @@ export default function GameTable({
       seat={s}
       name={state.players[s].name}
       avatar={resolveAvatarCode(state.players[s], s === seat)}
-      count={state.hands[s].length}
-      isTurn={game.playing && state.turn === s}
+      // El abanico del rival aparece en su oleada del reparto, no de golpe al empezar.
+      count={deal.isSeatDealt(s) ? state.hands[s].length : 0}
+      isTurn={game.playing && !deal.dealing && state.turn === s}
       isVictim={game.victimSeat === s}
       out={state.hands[s].length === 0 && !game.pairing}
-      pickable={game.myTurn && game.stealableSeats.includes(s)}
+      pickable={myTurn && game.stealableSeats.includes(s)}
       onPick={pickFromSeat}
       registerAnchor={registerAnchor}
     />
@@ -222,7 +246,7 @@ export default function GameTable({
       // Con tres rivales arriba (6 jugadores) cada abanico cede ancho para que las placas no se recorten.
       vars={{ '--top-avail': game.layout.top.length >= 3 ? '13dvw' : '28dvw' } as CSSProperties}
       topCenter={game.layout.top.map((s) => renderSeat(s, 'top'))}
-      topRight={<TurnSound label={turnLabel} myTurn={game.myTurn} showFlow />}
+      topRight={<TurnSound label={turnLabel} myTurn={myTurn} showFlow />}
       left={game.layout.left !== null && renderSeat(game.layout.left, 'left')}
       right={game.layout.right !== null && renderSeat(game.layout.right, 'right')}
       center={
@@ -258,6 +282,26 @@ export default function GameTable({
               </div>
             </div>
           </div>
+
+          {/* Mazo del reparto: se baraja (se sacude a cada paso) y de ahí salen las manos, una por oleada. */}
+          {deal.dealing && (
+            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+              <span
+                key={deal.shuffling ? deal.shuffleFrame : 'reparto'}
+                className={`relative block ${deal.shuffling ? 'card-wiggle' : ''}`}
+                role="img"
+                aria-label="Barajando y repartiendo las cartas"
+              >
+                <span className="absolute inset-0 translate-x-[3px] -translate-y-[3px]">
+                  <PlayingCard faceDown heightVar="--ph" />
+                </span>
+                <span className="absolute inset-0 translate-x-[1.5px] -translate-y-[1.5px]">
+                  <PlayingCard faceDown heightVar="--ph" />
+                </span>
+                <PlayingCard faceDown heightVar="--ph" />
+              </span>
+            </div>
+          )}
 
           {/* Aviso de la última jugada */}
           {event && game.playing && (
@@ -300,7 +344,7 @@ export default function GameTable({
         <SeatPlaque
           name={state.players[seat].name}
           avatar={resolveAvatarCode(state.players[seat], true)}
-          isTurn={game.myTurn}
+          isTurn={myTurn}
           out={game.iAmOut}
           isMe
         />
@@ -322,14 +366,15 @@ export default function GameTable({
               </p>
             )}
             <HandFan
-            cards={game.shownHand}
+            // Tu mano aparece en tu oleada del reparto, no de golpe al empezar.
+            cards={deal.isSeatDealt(seat) ? game.shownHand : []}
             heightVar="--ch"
             avail="min(56dvw, 620px)"
             markedIds={game.pairableIds}
             twinOf={game.twinOf}
             highlightId={game.newCardId}
-            interactive={game.pairing}
-            canDrag={(card) => game.pairableIds.has(card.id)}
+            interactive={game.pairing && !deal.dealing}
+            canDrag={(card) => !deal.dealing && game.pairableIds.has(card.id)}
             dropRef={boardRef}
             onTap={pairWithFlight}
             onDrop={(card) => pairWithFlight(card)}
@@ -348,7 +393,7 @@ export default function GameTable({
             <button
               type="button"
               onClick={game.pairAll}
-              disabled={game.pairableIds.size === 0}
+              disabled={deal.dealing || game.pairableIds.size === 0}
               className="min-h-[44px] w-full touch-manipulation rounded-lg bg-gradient-to-b from-amber-300 to-amber-500 px-2 py-2 text-[11px] font-extrabold leading-tight text-stone-900 shadow ring-1 ring-amber-100/60 transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 sm:text-xs"
             >
               Bajar todos los pares
@@ -357,7 +402,7 @@ export default function GameTable({
           <button
             type="button"
             onClick={game.shuffleHand}
-            disabled={game.hand.length < 2}
+            disabled={deal.dealing || game.hand.length < 2}
             className="flex min-h-[44px] w-full touch-manipulation items-center justify-center gap-1.5 rounded-lg bg-black/45 px-2 py-2 text-[11px] font-bold text-amber-50 ring-1 ring-amber-200/40 transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 sm:text-xs"
           >
             <Shuffle className="h-3.5 w-3.5" aria-hidden />

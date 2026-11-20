@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { createGameState, createSoloPlayers, GAMES, isGameFinished, type GameState } from '@/games';
 import { botStep, botTickDelay } from '@/games/bots';
@@ -49,6 +49,16 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
   const botRetryTimerRef = useRef<number | null>(null);
   const BOT_MAX_RETRIES = 3;
   const BOT_RETRY_MS = 2500;
+  // Reparto en pantalla: la mesa avisa de cuándo se está repartiendo y mientras dura ningún
+  // bot juega (el humano ya lo bloquea la mesa). Sin este bloqueo el bot movía a ~1 s de
+  // empezar, con el reparto aún en pantalla, y el humano no llegaba a ver sus cartas.
+  const dealingRef = useRef(false);
+  const [dealing, setDealing] = useState(false);
+  const handleDealingChange = useCallback((value: boolean) => {
+    if (dealingRef.current === value) return;
+    dealingRef.current = value;
+    setDealing(value);
+  }, []);
 
   // Los bots juegan solos cuando les toca: cualquier cambio del estado reinicia la espera.
   useEffect(() => {
@@ -56,7 +66,7 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
   }, [state]);
 
   useEffect(() => {
-    const delay = botTickDelay(state);
+    const delay = botTickDelay(state, dealing);
     if (delay === null) return;
     const timer = window.setTimeout(() => {
       const step = botStep(state);
@@ -80,7 +90,7 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
         botRetryTimerRef.current = null;
       }
     };
-  }, [state, botRetries]);
+  }, [state, botRetries, dealing]);
 
   useEffect(() => {
     if (!notice) return;
@@ -110,6 +120,7 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
     onLeave,
     notice,
     roomLabel: `${GAMES[game].name} · contra bots · sin conexión`,
+    onDealingChange: handleDealingChange,
     onRematch: rematch,
     resultFooter: isGameFinished(state) ? (
       <button type="button" onClick={rematch} className={PANEL_BUTTON}>

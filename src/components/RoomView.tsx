@@ -9,6 +9,8 @@ import { botTickDelay } from '@/games/bots';
 import { hostSeat, isBotPlayer, type Player } from '@/games/shared';
 import { getPlayerId } from '@/lib/identity';
 import { abandonNoticeText, detectAbandonedPlayers } from '@/lib/abandonedPlayers';
+import { setMusicTheme } from '@/lib/music';
+import { themeForGame } from '@/lib/musicThemes';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { abandonRoom, botTick, fetchRoom, leaveRoom, requestStart, type RoomConnectionStatus, type RoomRow, type RoomSubscription, sendMove, subscribeToRoom } from '@/lib/rooms';
 import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
@@ -65,6 +67,16 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   // Aviso de abandono: nombres de los humanos sustituidos por un bot desde
   // que se está en la sala. Persiste hasta que el jugador lo cierra.
   const [abandonedNames, setAbandonedNames] = useState<string[]>([]);
+  // Reparto en pantalla: la mesa avisa de cuándo se está repartiendo y mientras dura ningún
+  // bot juega (el humano ya lo bloquea la mesa). Sin este bloqueo el bot movía a ~1 s de
+  // empezar, con el reparto aún en pantalla.
+  const dealingRef = useRef(false);
+  const [dealing, setDealing] = useState(false);
+  const handleDealingChange = useCallback((value: boolean) => {
+    if (dealingRef.current === value) return;
+    dealingRef.current = value;
+    setDealing(value);
+  }, []);
   // Jugadores de la última sala vista: contra ellos se compara cada sala
   // nueva para detectar el abandono.
   const prevPlayersRef = useRef<Player[] | null>(null);
@@ -156,6 +168,13 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
+
+  // Música de fondo de la sala: el tema del modo de juego. Cambiar de tema es barato (no hace nada si
+  // ya suena ese), así que se revisa con cada sala nueva que llega por sondeo o por Realtime.
+  const roomGame = room?.game;
+  useEffect(() => {
+    if (roomGame) setMusicTheme(themeForGame(roomGame));
+  }, [roomGame]);
 
   // Cuando un asiento que era humano pasa a ser bot, el jugador que queda se
   // entera con un banner (no solo con el cambio de nombre en la mesa). Se
@@ -265,7 +284,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       botVersionRef.current = room.version;
       if (botRetries !== 0) setBotRetries(0);
     }
-    const delay = botTickDelay(room.state);
+    const delay = botTickDelay(room.state, dealing);
     if (delay === null) return;
     const timer = setTimeout(() => {
       botTick(room.id, room.version)
@@ -287,7 +306,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         botRetryTimerRef.current = null;
       }
     };
-  }, [room, playerId, acceptRow, botRetries]);
+  }, [room, playerId, acceptRow, botRetries, dealing]);
 
   if (loadError) {
     return (
@@ -378,6 +397,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       connection,
       onRetry: retryConnection,
       notice,
+      onDealingChange: handleDealingChange,
       resultFooter:
         // Jugar otra partida lo ofrece el anfitrión efectivo: si quien creó la
         // sala abandonó, el primer humano que queda hereda el papel.

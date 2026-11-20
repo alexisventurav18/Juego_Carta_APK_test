@@ -213,9 +213,13 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
       {/* Marco a sangre: llega a los bordes físicos de la pantalla; solo el contenido esquiva el notch. */}
       <WoodFrame />
       <div className="absolute" style={{ top: 'var(--sat)', right: 'var(--sar)', bottom: 'var(--sab)', left: 'var(--sal)' }}>
-        <div className="absolute inset-[calc(var(--frame)+4px)] flex flex-col gap-[1.6dvh] px-[calc(var(--corner)*0.9)] pb-[calc(var(--corner)*0.25)] pt-[calc(var(--corner)*0.2)]">
-          {/* Barra superior: perfil, título y ajustes */}
-          <header className="flex shrink-0 items-center justify-between gap-3">
+        {/* El relleno lateral también mira el ancho: en vertical el marco (que
+            escala con la altura) se comería media pantalla. */}
+        <div className="absolute inset-[calc(var(--frame)+4px)] flex flex-col gap-[1.6dvh] px-[clamp(8px,4vw,calc(var(--corner)*0.9))] pb-[calc(var(--corner)*0.25)] pt-[calc(var(--corner)*0.2)]">
+          {/* Barra superior: perfil, título y ajustes. En pantallas angostas el
+              título ocupa su propia fila arriba; en horizontal corto la barra
+              derecha colapsa a solo iconos para no apretarlo nunca. */}
+          <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
             <div className="wood-block flex min-w-0 max-w-[34%] items-center gap-2 rounded-xl py-1 pl-1 pr-2">
               <button
                 type="button"
@@ -254,17 +258,19 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
               )}
             </div>
 
-            <div className="flex min-w-0 flex-col items-center text-center leading-none">
-              <h1 className="flex items-center gap-2 text-[clamp(15px,4.6dvh,28px)] font-extrabold uppercase tracking-[0.12em] text-amber-50">
+            {/* Título con espacio reservado: flex-1 en horizontal, fila propia
+                en vertical; nunca se parte ni se solapa con los controles. */}
+            <div className="order-first flex min-w-0 basis-full flex-col items-center text-center leading-none min-[640px]:order-none min-[640px]:basis-auto min-[640px]:flex-1">
+              <h1 className="flex w-full min-w-0 items-center justify-center gap-2 whitespace-nowrap text-[clamp(15px,4.6dvh,28px)] font-extrabold uppercase tracking-[0.12em] text-amber-50 max-[640px]:text-[20px]">
                 <Spade className="h-[1em] w-[1em] shrink-0 text-amber-300" aria-hidden />
-                Cartas Dominicanas
+                <span className="min-w-0 truncate">Cartas Dominicanas</span>
               </h1>
-              <p className="mt-1 text-[12px] text-amber-100/70 [@media(max-height:400px)]:hidden">
+              <p className="mt-1 text-[12px] text-amber-100/70 [@media(max-height:500px)]:hidden">
                 Elige tu juego y a la mesa
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
               {dailyAvailable && (
                 <button
                   type="button"
@@ -274,7 +280,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                   className="btn-gold relative flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-extrabold transition-transform active:scale-95"
                 >
                   <Gift className="h-4 w-4 shrink-0 animate-pulse" aria-hidden />
-                  <span className="hidden min-[760px]:inline">Rueda</span>
+                  <span className="hidden min-[760px]:inline [@media(max-height:500px)]:hidden">Rueda</span>
                 </button>
               )}
               <button type="button" onClick={() => setProfileOpen(true)} aria-label="Mi perfil y estadísticas" title="Mi perfil" className={ICON_BTN}>
@@ -298,7 +304,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                 className="btn-wood flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
               >
                 <ShoppingBag className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-                <span>Tienda</span>
+                <span className="max-[760px]:hidden [@media(max-height:500px)]:hidden">Tienda</span>
               </button>
               <button
                 type="button"
@@ -312,7 +318,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                 className="btn-wood relative flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
               >
                 <Target className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-                <span>Misiones</span>
+                <span className="max-[760px]:hidden [@media(max-height:500px)]:hidden">Misiones</span>
                 {missionsReady > 0 && (
                   <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[11px] font-extrabold text-amber-950 ring-2 ring-amber-950/60">
                     {missionsReady}
@@ -327,7 +333,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                   className="btn-gold flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-extrabold transition-transform active:scale-95"
                 >
                   <Zap className="h-4 w-4 shrink-0" aria-hidden />
-                  Jugar rápido
+                  <span className="max-[760px]:hidden [@media(max-height:500px)]:hidden">Jugar rápido</span>
                 </button>
               )}
               <button type="button" onClick={() => setPanel('rules')} aria-label={`Reglas de ${info.name}`} title="Reglas" className={ICON_BTN}>
@@ -347,7 +353,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                   onClick={fullscreen.toggle}
                   aria-label={fullscreen.active ? 'Salir de pantalla completa' : 'Pantalla completa'}
                   title={fullscreen.active ? 'Salir de pantalla completa' : 'Pantalla completa'}
-                  className={ICON_BTN}
+                  className={`${ICON_BTN} max-[560px]:hidden`}
                 >
                   {fullscreen.active ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </button>
@@ -359,7 +365,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           <GameCards games={GAME_ORDER} selected={game} onSelect={selectGame} />
 
           {/* Configuración de la partida: cuántos bots y el tutorial */}
-          <div className="flex shrink-0 items-center justify-center gap-[clamp(8px,2dvw,20px)]">
+          <div className="flex shrink-0 flex-wrap items-center justify-center gap-[clamp(8px,2dvw,20px)]">
             <div className="wood-block flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-1">
               <Users className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
               <span className="text-[clamp(13px,2.8dvh,14px)] font-bold text-amber-50">Bots</span>
@@ -383,7 +389,9 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                   );
                 })}
               </div>
-              <span className="hidden max-w-[16rem] truncate text-[13px] text-amber-100/70 min-[760px]:inline [@media(max-height:340px)]:hidden">
+              {/* La leyenda cabe entera en dos líneas: sin truncar, la tarjeta
+                  del modo ya dice los jugadores pero aquí explica los equipos. */}
+              <span className="hidden max-w-[19rem] text-left text-[13px] leading-snug text-amber-100/70 line-clamp-2 min-[760px]:inline [@media(max-height:340px)]:hidden">
                 {botCaption(game, bots)}
               </span>
             </div>
@@ -398,23 +406,25 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
             </button>
           </div>
 
-          {/* Acciones del juego elegido: contra bots, sala en línea o unirse */}
-          <footer className="flex w-full shrink-0 items-stretch justify-center gap-[clamp(6px,1.4dvw,14px)]">
-            <button type="button" onClick={startOffline} className={`${BTN} min-w-0 max-w-[22rem] flex-[2] btn-gold font-extrabold`}>
+          {/* Acciones del juego elegido: contra bots, sala en línea o unirse.
+              En vertical, la acción principal ocupa su fila y las tres
+              secundarias comparten la siguiente con el mismo ancho. */}
+          <footer className="flex w-full shrink-0 flex-wrap items-stretch justify-center gap-[clamp(6px,1.4dvw,14px)]">
+            <button type="button" onClick={startOffline} className={`${BTN} min-w-0 max-w-[22rem] basis-full btn-gold font-extrabold min-[640px]:basis-0 min-[640px]:flex-[2]`}>
               <Bot className="h-4 w-4 shrink-0" />
               <span className="truncate">Jugar {info.name} contra {bots} {bots === 1 ? 'bot' : 'bots'}</span>
             </button>
-            <button type="button" onClick={handleQuickplay} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[14rem] flex-1 btn-leaf font-bold`}>
-              <Globe className="h-4 w-4 shrink-0" />
-              <span className="truncate">{busy === 'quickplay' ? 'Buscando...' : 'Jugar online'}</span>
+            <button type="button" onClick={handleQuickplay} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[13rem] flex-1 btn-leaf font-bold`}>
+              <Globe className="h-4 w-4 shrink-0 max-[640px]:hidden" />
+              <span className="truncate max-[640px]:text-[12px]">{busy === 'quickplay' ? 'Buscando...' : 'Jugar online'}</span>
             </button>
-            <button type="button" onClick={handleCreate} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[14rem] flex-1 btn-wood font-bold`}>
-              <Spade className="h-4 w-4 shrink-0" />
-              <span className="truncate">{busy === 'create' ? 'Creando...' : 'Crear sala'}</span>
+            <button type="button" onClick={handleCreate} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[13rem] flex-1 btn-wood font-bold`}>
+              <Spade className="h-4 w-4 shrink-0 max-[640px]:hidden" />
+              <span className="truncate max-[640px]:text-[12px]">{busy === 'create' ? 'Creando...' : 'Crear sala'}</span>
             </button>
-            <button type="button" onClick={() => setPanel('join')} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[12rem] flex-1 btn-wood font-bold`}>
-              <DoorOpen className="h-4 w-4 shrink-0" />
-              <span className="truncate">Unirse</span>
+            <button type="button" onClick={() => setPanel('join')} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[13rem] flex-1 btn-wood font-bold`}>
+              <DoorOpen className="h-4 w-4 shrink-0 max-[640px]:hidden" />
+              <span className="truncate max-[640px]:text-[12px]">Unirse</span>
             </button>
           </footer>
 

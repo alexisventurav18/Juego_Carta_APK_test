@@ -7,6 +7,7 @@ import {
   applyTresYDosMove,
   chooseTresYDosMove,
   createTresYDosGame,
+  dealTresYDosHands,
   isFullHouse,
   nextDealerSeat,
   rankCounts,
@@ -363,5 +364,54 @@ describe('Tres y Dos: el bot no regala el descarte', () => {
     });
     const move = chooseTresYDosMove(state);
     assert.deepEqual(move, { type: 'discard', cardId: 'picas-3' });
+  });
+});
+
+describe('Tres y Dos: reparto imparcial y sin mano hecha', () => {
+  it('reparte round-robin: 5 cartas por asiento, el resto en Monte y Pozo, las 52 distintas', () => {
+    for (const n of [2, 3, 4]) {
+      const { hands, rest } = dealTresYDosHands(n);
+      assert.equal(hands.length, n);
+      assert.ok(hands.every((h) => h.length === 5));
+      assert.equal(rest.length, 52 - 5 * n);
+      const all = [...hands.flat(), ...rest];
+      assert.equal(new Set(all.map((x) => x.id)).size, 52);
+    }
+  });
+
+  it('ningún asiento recibe manos hechas con más frecuencia que otro (20.000 repartos)', () => {
+    // Una mano de 5 cartas es tercia + par con probabilidad 3744 / C(52,5) ≈ 0,144%.
+    // Con 20.000 repartos cada asiento debería rondar esa tasa: el margen [0,02%, 0,30%]
+    // está a más de 4 desviaciones típicas, así que el test no es flaky, pero un sesgo
+    // que doblara la tasa de un asiento sí lo haría fallar.
+    const DEALS = 20000;
+    const SEATS = 4;
+    const counts = [0, 0, 0, 0];
+    for (let i = 0; i < DEALS; i++) {
+      const { hands } = dealTresYDosHands(SEATS);
+      hands.forEach((hand, seat) => {
+        if (isFullHouse(hand)) counts[seat] += 1;
+      });
+    }
+    for (const [seat, count] of counts.entries()) {
+      const rate = count / DEALS;
+      assert.ok(
+        rate >= 0.0002 && rate <= 0.003,
+        `asiento ${seat}: ${count}/${DEALS} manos hechas (${(rate * 100).toFixed(3)}%), se esperaba ~0,144%`,
+      );
+    }
+  });
+
+  it('nadie empieza con la partida ganada: 2.000 partidas sin mano hecha al repartir', () => {
+    // Sin la regla de volver a repartir, en 2.000 partidas de 4 jugadores (8.000 manos)
+    // habría una mano hecha con probabilidad ~99,999%. Con la regla, sobrevivir a 5
+    // rebarajados es ~1 entre 100.000 millones por partida.
+    for (let i = 0; i < 2000; i++) {
+      const state = createTresYDosGame(players(4), 0);
+      assert.ok(
+        state.hands.every((hand) => !isFullHouse(hand)),
+        `partida ${i}: un asiento recibió tercia + par al repartir`,
+      );
+    }
   });
 });

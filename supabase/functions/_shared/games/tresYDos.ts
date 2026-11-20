@@ -73,6 +73,28 @@ export function winningDiscardIds(hand: Card[], forbiddenId: string | null = nul
     .map((card) => card.id);
 }
 
+/** Veces que se vuelve a barajar y repartir si alguien recibe una mano hecha (ver dealRound). */
+export const MAX_DEAL_ATTEMPTS = 5;
+
+export interface TresYDosDeal {
+  hands: Card[][];
+  /** Lo que queda del mazo tras repartir: la primera carta es la del Pozo, el resto es el Monte. */
+  rest: Card[];
+}
+
+/**
+ * Reparte 5 cartas por jugador, una carta a la vez en turno (round-robin), de un mazo barajado:
+ * primero una a cada asiento, luego la segunda, y así. Es el mismo orden en que la animación
+ * reparte en pantalla, y cada asiento recibe una mano uniformemente aleatoria: ningún asiento
+ * está favorecido.
+ */
+export function dealTresYDosHands(seats: number): TresYDosDeal {
+  const cards = shuffle(americanDeck());
+  const hands: Card[][] = Array.from({ length: seats }, () => []);
+  cards.slice(0, seats * HAND_SIZE).forEach((card, i) => hands[i % seats].push(card));
+  return { hands, rest: cards.slice(seats * HAND_SIZE) };
+}
+
 function dealRound(base: {
   players: Player[];
   dealer: number;
@@ -80,9 +102,15 @@ function dealRound(base: {
   wins: number[];
 }): TresYDosState {
   const seats = base.players.length;
-  const cards = shuffle(americanDeck());
-  const hands = Array.from({ length: seats }, (_, seat) => cards.slice(seat * HAND_SIZE, (seat + 1) * HAND_SIZE));
-  const rest = cards.slice(seats * HAND_SIZE);
+  // Una mano hecha al repartir (tercia + par) gana la ronda en el primer turno: si le toca a un
+  // bot, parece que "gana desde el comienzo". Se vuelve a barajar y repartir para que nadie
+  // empiece con la partida ganada; con el tope se acepta el reparto tal cual (casi imposible:
+  // la probabilidad de mano hecha es ~0,14% por mano).
+  let dealt = dealTresYDosHands(seats);
+  for (let attempt = 1; attempt < MAX_DEAL_ATTEMPTS && dealt.hands.some(isFullHouse); attempt++) {
+    dealt = dealTresYDosHands(seats);
+  }
+  const { hands, rest } = dealt;
   return {
     game: 'tresydos',
     phase: 'playing',

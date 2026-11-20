@@ -7,6 +7,8 @@ import OfflineBotGame, { type OfflineSetup } from '@/components/OfflineBotGame';
 import { OptionsProvider } from '@/components/options/OptionsProvider';
 import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
 import { getResumableRoomId, storeRoomId } from '@/lib/identity';
+import { setMusicTheme } from '@/lib/music';
+import { themeForGame } from '@/lib/musicThemes';
 import { leaveRoomBestEffort } from '@/lib/rooms';
 import { MENU_THEMES, TABLE_THEMES, useVisualPrefs } from '@/lib/visualPrefs';
 
@@ -83,6 +85,13 @@ export default function App() {
     setRoomId(null);
     setOfflineGame(setup);
   };
+
+  // Música de fondo: cada modo tiene su tema y el menú el suyo. Al entrar en una sala en línea el tema
+  // lo pone RoomView con el juego de la sala; al salir de la partida se vuelve al tema del menú.
+  useEffect(() => {
+    if (offlineGame) setMusicTheme(themeForGame(offlineGame.game));
+    else if (!roomId) setMusicTheme('lobby');
+  }, [offlineGame, roomId]);
 
   // Al cerrar la aplicación (pagehide) se avisa al servidor para liberar el
   // asiento y se borra la sala guardada: al volver a abrir, el juego no

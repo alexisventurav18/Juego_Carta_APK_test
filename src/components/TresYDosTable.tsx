@@ -41,6 +41,11 @@ interface TresYDosTableProps {
   resultFooter?: ReactNode;
   /** Revancha inmediata en la pantalla de fin de partida (solo sin conexión). */
   onRematch?: () => void;
+  /**
+   * Aviso de cuándo se está repartiendo en pantalla: mientras el reparto está activo nadie
+   * juega (ni el humano, que ya lo bloquea la mesa, ni los bots, que esperan a que termine).
+   */
+  onDealingChange?: (dealing: boolean) => void;
 }
 
 /** Cartas visibles bajo la de arriba del Pozo, para dar sensación de pila. */
@@ -64,6 +69,7 @@ export default function TresYDosTable({
   notice,
   resultFooter,
   onRematch,
+  onDealingChange,
 }: TresYDosTableProps) {
   const [cardId, setCardId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -72,7 +78,12 @@ export default function TresYDosTable({
   const deckRef = useRef<HTMLDivElement>(null);
   const pileRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
-  const deal = useDealIntro(state.roundNo, state.players.length, HAND_SIZE, 1);
+  const deal = useDealIntro(state.roundNo, state.players.length, HAND_SIZE, 1, !dealerOpen);
+  // El reparto en pantalla también bloquea a los bots: la mesa avisa a quien la monta (sin
+  // conexión o en sala) de cuándo se está repartiendo, y esa persona no pide jugadas de bot.
+  useEffect(() => {
+    onDealingChange?.(deal.dealing);
+  }, [deal.dealing, onDealingChange]);
   const { flights, spawn, endFlight, registerAnchor, anchorCenter } = useFlights();
   const { playSound } = useGameSounds();
 
