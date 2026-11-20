@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import Lobby from '@/components/Lobby';
 import OrientationGuard from '@/components/OrientationGuard';
 import RoomView from '@/components/RoomView';
+import SplashScreen from '@/components/SplashScreen';
 import OfflineBotGame, { type OfflineSetup } from '@/components/OfflineBotGame';
 import { OptionsProvider } from '@/components/options/OptionsProvider';
 import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
@@ -14,6 +15,8 @@ export default function App() {
   );
   const [roomId, setRoomId] = useState<string | null>(() => (inviteCode ? null : getStoredRoomId()));
   const [offlineGame, setOfflineGame] = useState<OfflineSetup | null>(null);
+  // Pantalla de bienvenida: se muestra al abrir la app y se retira sola.
+  const [booted, setBooted] = useState(false);
   const { prefs: visualPrefs } = useVisualPrefs();
 
   const enterRoom = (id: string) => {
@@ -44,6 +47,9 @@ export default function App() {
       {/* El bloqueo de orientación es silencioso y puede fallar: en vertical se
           muestra el aviso "Gira tu teléfono" en lugar de una mesa cortada. */}
       <OrientationGuard />
+      {!booted ? (
+        <SplashScreen onDone={() => setBooted(true)} />
+      ) : (
       <div
         className="contents"
         style={{
@@ -66,6 +72,7 @@ export default function App() {
           </div>
         )}
       </div>
+      )}
     </OptionsProvider>
   );
 }

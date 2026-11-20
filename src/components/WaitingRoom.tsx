@@ -6,6 +6,7 @@ import type { Player } from '@/games/shared';
 import { createRoomInviteUrl } from '@/lib/invitation';
 import type { RoomRow } from '@/lib/rooms';
 import Avatar from './avatar/Avatar';
+import MatchmakingAnimation from './MatchmakingAnimation';
 import { resolveAvatarCode } from './avatar/resolve';
 
 interface WaitingRoomProps {
@@ -87,8 +88,9 @@ export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = f
   return (
     <div className="room-waiting-grid mx-auto grid w-full max-w-3xl gap-2 min-[600px]:grid-cols-[1fr_1.2fr] sm:gap-5">
       {matchmaking ? (
-        <div className="room-waiting-info flex flex-col gap-2 self-start wood-panel p-3 sm:gap-4 sm:p-5">
-          <div className="space-y-1">
+        <div className="room-waiting-info flex flex-col items-center gap-2 self-start wood-panel p-3 sm:gap-4 sm:p-5">
+          <MatchmakingAnimation playersFound={room.players.length} maxPlayers={info.maxPlayers} secondsLeft={secondsLeft} />
+          <div className="space-y-1 text-center">
             <p className="text-xs font-bold text-amber-200 sm:text-sm">Buscando jugadores en línea…</p>
             <p className="text-xs text-amber-100/85 sm:text-sm">
               {secondsLeft > 0
@@ -117,7 +119,7 @@ export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = f
             <p className="text-xs font-bold text-amber-200 sm:text-sm">Sala de {info.name}</p>
             <p className="text-xs text-amber-100/85 sm:text-sm">Comparte este código con tus amigos para que entren.</p>
           </div>
-        <div className="space-y-2">
+        <div className="room-waiting-code space-y-2">
           <p className="font-mono text-[clamp(1.5rem,8vw,2.25rem)] font-semibold tracking-[0.2em] text-amber-300 sm:tracking-[0.3em]">{room.code}</p>
           <button
             type="button"
