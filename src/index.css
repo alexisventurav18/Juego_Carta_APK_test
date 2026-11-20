@@ -808,10 +808,10 @@ button,
   /* Banda del modo: solo el nombre; la descripción se esconde en horizontal
      corto para no robarle altura a los paneles. */
   .room-waiting-mode-banner {
-    padding: 4px 8px;
+    padding: 3px 8px;
   }
 
-  .room-waiting-mode-banner p:last-child {
+  .room-waiting-mode-tagline {
     display: none;
   }
 
@@ -843,6 +843,11 @@ button,
     min-height: 0;
     flex: 1;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    /* La banda del modo es solo una línea fina: su fila es `auto` y la de
+       los paneles se queda con el resto (`1fr`). Sin esto, el `stretch` del
+       grid repartía la altura libre entre las dos filas y la banda crecía
+       hasta ~120 px en horizontal corto, desplazando los paneles hacia abajo. */
+    grid-template-rows: auto minmax(0, 1fr);
     gap: clamp(6px, 1.4vw, 14px);
   }
 

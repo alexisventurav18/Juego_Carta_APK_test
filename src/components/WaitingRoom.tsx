@@ -92,14 +92,14 @@ export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = f
       {/* Banda del modo: el color del juego que se va a jugar tiñe la sala. */}
       <div
         aria-hidden
-        className="room-waiting-mode-banner flex flex-col items-center justify-center rounded-xl px-3 py-2 text-center ring-1 ring-white/20 min-[600px]:col-span-2"
+        className="room-waiting-mode-banner flex flex-col items-center justify-center rounded-xl px-3 py-1 text-center ring-1 ring-white/20 min-[600px]:col-span-2"
         style={{
           background: `linear-gradient(90deg, ${env.accent}66, ${env.accent}26 55%, ${env.accent}66)`,
           boxShadow: `0 0 24px ${env.accent}55`,
         }}
       >
-        <p className="text-sm font-extrabold tracking-wide text-white sm:text-base">{info.name}</p>
-        <p className="text-[11px] text-white/85 sm:text-xs">{info.tagline}</p>
+        <p className="room-waiting-mode-name text-xs font-extrabold leading-tight tracking-wide text-white sm:text-sm">{info.name}</p>
+        <p className="room-waiting-mode-tagline text-[11px] leading-tight text-white/85 sm:text-xs">{info.tagline}</p>
       </div>
       {matchmaking ? (
         <div className="room-waiting-info flex flex-col items-center gap-2 self-start wood-panel p-3 sm:gap-4 sm:p-5">
