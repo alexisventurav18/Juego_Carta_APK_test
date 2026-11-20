@@ -199,9 +199,14 @@ function immediateGain(state: CasinoState, next: CasinoState, ctx: Context): num
   return gain;
 }
 
+/**
+ * Cartas comprometidas en combinaciones del equipo (propias o del compañero):
+ * son cartas que el equipo ya tiene casi en la pila, así que ampliar la
+ * combinación del compañero también suma.
+ */
 function buildStake(state: CasinoState, ctx: Context): number {
   return state.builds
-    .filter((build) => build.owner === ctx.seat)
+    .filter((build) => teamOf(build.owner) === ctx.team)
     .reduce((sum, build) => sum + worthOf(build.cards, ctx.mine), 0);
 }
 

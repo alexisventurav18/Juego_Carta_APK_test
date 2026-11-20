@@ -470,7 +470,10 @@ function convertCombination(
 ): MoveResult<CasinoState> {
   const build = state.builds.find((b) => b.id === buildId);
   if (!build) return { error: 'Esa combinación ya no está en la mesa.' };
-  if (convertValue(card, build, state.hands[seat]) === null) {
+  // Si la sumatoria es del compañero, es él quien guarda la carta para
+  // llevársela: convertirla en pares no cambia su valor.
+  const partnerBuild = build.owner !== seat && teamOf(build.owner) === teamOf(seat);
+  if (convertValue(card, build, state.hands[seat], partnerBuild) === null) {
     return {
       error: 'No puedes sumar esta carta al par: necesitas una carta de su mismo valor y que te quede en mano otra de ese valor.',
     };
@@ -491,9 +494,11 @@ function expandCombination(
   const build = state.builds.find((b) => b.id === buildId);
   if (!build) return { error: 'Esa combinación ya no está en la mesa.' };
   const loose = state.table.filter((c) => tableIds.includes(c.id));
-  if (loose.length === 0 || loose.length !== tableIds.length) {
+  if (loose.length !== tableIds.length) {
     return { error: 'Elige cartas sueltas de la mesa para ampliar la combinación.' };
   }
+  // Ampliar un par con la carta sola (sin cartas sueltas) también vale si la
+  // carta vale lo mismo que el par; `expansionValue` lo comprueba.
   const pairsValue = expansionToPairsValue(card, build, loose, state.hands[seat].filter((c) => c.id !== card.id));
   const value = pairsValue ?? expansionValue(card, build, loose, state.hands[seat]);
   if (value === null) {
@@ -558,11 +563,17 @@ export function formationMoves(state: CasinoState, seat: number): CasinoMove[] {
       }
     }
     for (const build of state.builds) {
+      const partnerBuild = build.owner !== seat && teamOf(build.owner) === teamOf(seat);
       if (raiseValue(card, build, rest) !== null) {
         moves.push({ type: 'raise', cardId: card.id, buildId: build.id });
       }
-      if (convertValue(card, build, rest) !== null) {
+      if (convertValue(card, build, rest, partnerBuild) !== null) {
         moves.push({ type: 'convert', cardId: card.id, buildId: build.id });
+      }
+      // Añadir una carta suelta a un par (sin cartas sueltas de la mesa): la
+      // carta sola tiene que valer lo mismo que el par.
+      if (expansionValue(card, build, [], rest) !== null) {
+        moves.push({ type: 'expand', cardId: card.id, buildId: build.id, tableIds: [] });
       }
     }
   }

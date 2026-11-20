@@ -102,6 +102,7 @@ const CASINO: TutorialStep[] = [
     body: [
       'Si no puedes capturar, tienes tres opciones: Tirar tu carta a la mesa (arrástrala), Sumar para juntar tu carta con cartas sueltas y formar una combinación, o Hacer par.',
       'Una combinación vale lo que suman sus cartas y te la llevas después con otra carta de ese valor. Pero ojo: si el rival se la lleva primero, es suya.',
+      'A un par le puedes seguir añadiendo cartas mientras mantenga su valor, y si la combinación es de tu compañero también puedes ayudarle: él guarda la carta para llevársela.',
     ],
   },
   {

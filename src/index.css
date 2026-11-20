@@ -735,52 +735,52 @@ button,
 
   .round-result-panel-compact {
     min-height: 0;
-    gap: clamp(4px, 1.2dvh, 8px);
+    gap: clamp(8px, 2dvh, 14px);
     overflow: hidden;
-    padding: clamp(7px, 1.8dvh, 12px);
+    padding: clamp(12px, 3dvh, 20px);
   }
 
   .round-result-panel-compact > * + * {
-    margin-top: clamp(4px, 1.2dvh, 8px) !important;
+    margin-top: clamp(8px, 2dvh, 14px) !important;
   }
 
   .round-result-panel-compact h2 {
-    font-size: clamp(13px, 3.2dvh, 17px);
+    font-size: clamp(17px, 4.4dvh, 24px);
     line-height: 1.15;
   }
 
   .round-result-panel-compact > div:nth-of-type(2) {
     min-height: 0;
-    gap: clamp(4px, 1vw, 8px);
+    gap: clamp(8px, 1.6vw, 14px);
   }
 
   .round-result-panel-compact > div:nth-of-type(2) > div {
     min-height: 0;
-    padding: clamp(5px, 1.4dvh, 9px);
+    padding: clamp(8px, 2.2dvh, 14px);
   }
 
   .round-result-panel-compact ul {
-    margin-top: clamp(3px, 0.8dvh, 6px);
-    font-size: clamp(9px, 2.2dvh, 12px);
-    line-height: 1.1;
+    margin-top: clamp(6px, 1.4dvh, 10px);
+    font-size: clamp(12px, 3dvh, 16px);
+    line-height: 1.25;
   }
 
   .round-result-panel-compact ul > li + li {
-    margin-top: clamp(2px, 0.5dvh, 4px);
+    margin-top: clamp(4px, 1dvh, 8px);
   }
 
   .round-result-panel-compact ul li > span > span + span {
-    font-size: clamp(8px, 1.8dvh, 10px);
+    font-size: clamp(10px, 2.4dvh, 13px);
   }
 
   .round-result-panel-compact button {
-    min-height: clamp(30px, 8dvh, 36px);
-    padding: 4px 10px;
-    font-size: clamp(10px, 2.2dvh, 12px);
+    min-height: clamp(34px, 9dvh, 44px);
+    padding: 6px 14px;
+    font-size: clamp(12px, 2.8dvh, 15px);
   }
 
   .round-result-panel-compact > p {
-    font-size: clamp(9px, 2.1dvh, 11px);
+    font-size: clamp(12px, 2.8dvh, 15px);
   }
 }
 

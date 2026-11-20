@@ -130,17 +130,29 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
   const sumValue = noBuildSelected ? formationValue('sum', card, selectedLoose, handAfter) : null;
   const pairsValue = noBuildSelected ? formationValue('pairs', card, selectedLoose, handAfter) : null;
   const raiseTarget =
-    canFormCombination && selectedBuilds.length === 1 && selectedLoose.length === 0 ? selectedBuilds[0] : null;
+    // Subir solo vale para sumatorias: un par no se sube, se le añaden cartas del mismo valor (Ampliar).
+    canFormCombination && selectedBuilds.length === 1 && selectedLoose.length === 0 && selectedBuilds[0].kind === 'sum'
+      ? selectedBuilds[0]
+      : null;
   const raisedValue = raiseTarget && card ? raiseValue(card, raiseTarget, handAfter) : null;
   const expandTarget =
-    canFormCombination && selectedBuilds.length === 1 && selectedLoose.length > 0 ? selectedBuilds[0] : null;
+    // Ampliar vale con cartas sueltas, y también con la carta sola sobre un par del mismo valor.
+    canFormCombination && selectedBuilds.length === 1 && (selectedLoose.length > 0 || selectedBuilds[0].kind === 'pairs')
+      ? selectedBuilds[0]
+      : null;
+  // Si la combinación es del compañero, es él quien guarda la carta para
+  // llevársela: no hace falta tener otra en la mano para convertirla en pares.
+  // (Ampliar un par no necesita este permiso: el par mantiene su valor y lo
+  // puede llevarse cualquiera que tenga una.)
+  const partnerRaiseBuild =
+    raiseTarget !== null && raiseTarget.owner !== seat && teamOf(raiseTarget.owner) === teamOf(seat);
   const expandedPairsValue = expandTarget && card
     ? expansionToPairsValue(card, expandTarget, selectedLoose, handAfter)
     : null;
   const expandedValue = expandTarget && card
     ? expandedPairsValue ?? expansionValue(card, expandTarget, selectedLoose, handAfter)
     : null;
-  const convertedValue = raiseTarget && card ? convertValue(card, raiseTarget, handAfter) : null;
+  const convertedValue = raiseTarget && card ? convertValue(card, raiseTarget, handAfter, partnerRaiseBuild) : null;
   const mergeCard =
     sumValue !== null
       ? (state.table.find((c) => captureValues(c).includes(sumValue) && !tableIds.includes(c.id)) ?? null)
@@ -369,9 +381,12 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
       : 'Elige una carta de tu mano o arrástrala a la mesa.';
     if (captureReady) return 'Listo: te llevas las cartas seleccionadas.';
     if (expandedValue !== null) {
-      return expandTarget?.kind === 'pairs'
-        ? `Puedes apilar tu carta y las cartas sueltas sobre el par de ${expandedValue}.`
-        : `Puedes ampliar la combinación a ${expandedValue} con tu carta y las cartas sueltas.`;
+      if (expandTarget?.kind === 'pairs') {
+        return selectedLoose.length === 0
+          ? `Puedes añadir tu carta al par de ${expandedValue}.`
+          : `Puedes apilar tu carta y las cartas sueltas sobre el par de ${expandedValue}.`;
+      }
+      return `Puedes ampliar la combinación a ${expandedValue} con tu carta y las cartas sueltas.`;
     }
     if (raisedValue !== null) return `Puedes subir la combinación a ${raisedValue} con tu carta.`;
     if (convertedValue !== null) {
@@ -464,7 +479,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
         key={`score-${team}`}
         title={teamName(state.players, team)}
         style={{ boxShadow: `inset 0 0 0 2px ${color.main}, inset 0 -4px 8px rgb(0 0 0 / 0.45), 0 3px 8px rgb(0 0 0 / 0.5)` }}
-        className="wood-block pointer-events-none relative z-30 flex w-[clamp(66px,11.5dvw,100px)] shrink-0 flex-col rounded-lg px-1.5 py-0.5"
+        className="wood-block pointer-events-none relative z-30 flex w-[clamp(88px,13.5dvw,128px)] shrink-0 flex-col rounded-lg px-1.5 py-0.5"
       >
         <span className="flex items-center justify-between gap-1 text-[12px] font-semibold leading-tight text-amber-100">
           <span className="flex min-w-0 items-center gap-1 truncate">
@@ -658,7 +673,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
                   Subir
                 </button>
                 <button type="button" onClick={convert} disabled={convertedValue === null} className={TB_FORM}>
-                  {raiseTarget?.kind === 'pairs' ? 'Pares' : 'Convertir'}
+                  Convertir
                 </button>
               </>
             )}
@@ -737,7 +752,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
 
           {state.summary && state.phase !== 'playing' && !showEndNotice && (
             <div className="casino-round-result-overlay fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/65 p-2 sm:p-3">
-              <div className="casino-round-result-frame max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-2xl space-y-2 overflow-y-auto sm:space-y-3">
+              <div className="casino-round-result-frame max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-3xl space-y-2 overflow-y-auto sm:space-y-3">
                 <RoundResultPanel
                   title={
                     state.phase === 'gameOver' && state.winnerTeam !== null

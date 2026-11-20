@@ -264,6 +264,29 @@ function pairsValue(card: Card, looseCards: Card[]): number | null {
   return null;
 }
 
+/**
+ * ¿Pueden estas cartas repartirse en grupos que sumen `target` cada uno? A
+ * diferencia de `pairsValue`, el valor objetivo viene dado (el de un par ya
+ * formado): sirve para ampliar un par con una o varias cartas nuevas, en uno o
+ * varios grupos, sin cambiar su valor. Un As puede valer 1 o 14 y cada carta
+ * solo cabe en un grupo, así que una carta suelta de valor 12 no forma dos
+ * grupos de 6: hace falta poder repartirlas de verdad.
+ */
+function canFormPairsGroups(cards: Card[], target: number): boolean {
+  if (cards.length === 0 || target < 2) return false;
+  const assignments = cards.reduce<number[][]>(
+    (current, currentCard) => current.flatMap((values) => captureValues(currentCard).map((value) => [...values, value])),
+    [[]],
+  );
+  for (const values of assignments) {
+    const total = values.reduce((sum, value) => sum + value, 0);
+    if (total % target !== 0) continue;
+    const groups = total / target;
+    if (groups >= 1 && groups <= values.length && canSplitIntoGroups(values, target, groups)) return true;
+  }
+  return false;
+}
+
 export function formationValue(
   kind: FormationKind,
   card: Card,
@@ -287,13 +310,19 @@ export function expansionValue(
   looseCards: Card[],
   handAfter: Card[],
 ): number | null {
+  if (build.kind === 'pairs') {
+    // Ampliar un par: la carta jugada (sola o con cartas sueltas de la mesa)
+    // debe repartirse en uno o varios grupos del mismo valor del par, sin
+    // cambiarlo. Sin cartas sueltas, la carta sola tiene que valer lo mismo
+    // que el par (por ejemplo, una Q sobre un par de 12).
+    // No se exige guardar otra carta del valor: el par mantiene su valor, así
+    // que lo puede llevarse cualquiera que tenga una (el compañero, sin ir más
+    // lejos); el riesgo de dejarlo huérfano es del jugador que lo amplía.
+    if (!canFormPairsGroups([card, ...looseCards], build.value)) return null;
+    return build.value;
+  }
   if (looseCards.length === 0) return null;
   const totals = possibleTotals([card, ...looseCards]);
-  if (build.kind === 'pairs') {
-    // Apilar sobre un par: tu carta y las sueltas deben sumar justo el valor del par
-    // (2 + 3 sobre un par de 5). El valor del par no cambia.
-    return totals.includes(build.value) && handCanCapture(handAfter, build.value) ? build.value : null;
-  }
   return totals.map((value) => build.value + value).find(
     (value) => value <= MAX_CAPTURE_VALUE && handCanCapture(handAfter, value),
   ) ?? null;
@@ -329,7 +358,9 @@ export function expansionToPairsValue(
   return null;
 }
 
-export function convertValue(card: Card, build: Build, handAfter: Card[]): number | null {
+export function convertValue(card: Card, build: Build, handAfter: Card[], partnerBuild = false): number | null {
   if (!captureValues(card).includes(build.value)) return null;
-  return handCanCapture(handAfter, build.value) ? build.value : null;
+  // Convertir una sumatoria en pares no cambia su valor: si es del compañero,
+  // es él quien guarda la carta para llevársela en su turno.
+  return handCanCapture(handAfter, build.value) || partnerBuild ? build.value : null;
 }

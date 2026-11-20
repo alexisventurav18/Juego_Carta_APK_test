@@ -8,10 +8,13 @@ import {
   closingNeeds,
   createCasinoGame,
   decideWinner,
+  formationMoves,
   scoreRound,
 } from '../src/games/casino';
 import { casinoBotMove } from '../src/games/casinoBot';
 import {
+  canBeCapture,
+  canBePairsFormation,
   captureOptions,
   convertValue,
   expansionToPairsValue,
@@ -23,6 +26,7 @@ import {
   tableItems,
   type Build,
 } from '../src/games/casinoCapture';
+import { applyGameMove, ENGINE_INTERNAL_ERROR } from '../src/games/engine';
 import type { Player } from '../src/games/shared';
 
 const deck = americanDeck();
@@ -332,6 +336,167 @@ describe('decideWinner', () => {
   it('gana quien llega a 21', () => assert.equal(decideWinner([21, 19], [4, 1]), 0));
   it('si ambos llegan, gana el de más puntos', () => assert.equal(decideWinner([21, 23], [4, 6]), 1));
   it('a igualdad total, gana quien más sumó en la ronda', () => assert.equal(decideWinner([21, 21], [1, 3]), 1));
+  it('a igualdad total y de ronda, gana quien más cartas capturó', () => {
+    assert.equal(decideWinner([21, 21], [3, 3], { captured: [30, 22], spades: [7, 6] }), 0);
+    assert.equal(decideWinner([21, 21], [3, 3], { captured: [22, 30], spades: [6, 7] }), 1);
+  });
+  it('a igualdad de cartas, gana quien más picas capturó', () => {
+    assert.equal(decideWinner([21, 21], [3, 3], { captured: [26, 26], spades: [6, 7] }), 1);
+    assert.equal(decideWinner([21, 21], [3, 3], { captured: [26, 26], spades: [7, 6] }), 0);
+  });
+  it('sin datos de desempate, el empate exacto sigue sin ganador', () => {
+    assert.equal(decideWinner([21, 21], [3, 3]), null);
+  });
+});
+
+describe('ronda sin capturador (cartas sobrantes)', () => {
+  it('las cartas de la mesa se las lleva el equipo del repartidor', () => {
+    const table = pile(0, 27);
+    const drop = byId('picas-1');
+    const state: CasinoState = {
+      game: 'casino',
+      phase: 'playing',
+      players: players(2),
+      deck: [],
+      hands: [[drop], []],
+      table,
+      builds: [],
+      buildSeq: 0,
+      captured: [[], []],
+      viraos: [0, 0],
+      scores: [0, 0],
+      turn: 0,
+      dealer: 1,
+      roundNo: 1,
+      lastCapturer: null,
+      lastCapture: null,
+      summary: null,
+      winnerTeam: null,
+    };
+    const result = applyCasinoMove(state, 0, { type: 'play', cardId: drop.id, captureIds: [] });
+    assert.ok('state' in result);
+    if ('state' in result) {
+      assert.equal(result.state.phase, 'roundEnd');
+      // 27 cartas de la mesa + la carta dejada: todas para el equipo del repartidor (asiento 1).
+      assert.equal(result.state.captured[1].flatMap((group) => group.cards).length, 28);
+      assert.equal(result.state.captured[0].flatMap((group) => group.cards).length, 0);
+      // Mayoría de cartas (3) + 1 as.
+      assert.deepEqual(result.state.scores, [0, 4]);
+    }
+  });
+});
+
+describe('formaciones en mesas grandes (suma mayor que 42)', () => {
+  it('el bot enumera pares de 14 con seis grupos (mesa de 84)', () => {
+    const loose = [
+      byId('picas-13'),
+      byId('corazones-12'),
+      byId('diamantes-11'),
+      byId('treboles-10'),
+      byId('picas-9'),
+      byId('corazones-8'),
+      byId('diamantes-6'),
+      byId('treboles-5'),
+      byId('picas-4'),
+      byId('corazones-3'),
+      byId('diamantes-2'),
+      byId('treboles-1'),
+    ];
+    const state: CasinoState = {
+      game: 'casino',
+      phase: 'playing',
+      players: players(2),
+      deck: [byId('treboles-13')],
+      hands: [
+        [byId('corazones-1'), byId('diamantes-1')],
+        [byId('corazones-13')],
+      ],
+      table: loose,
+      builds: [],
+      buildSeq: 0,
+      captured: [[], []],
+      viraos: [0, 0],
+      scores: [0, 0],
+      turn: 0,
+      dealer: 1,
+      roundNo: 1,
+      lastCapturer: null,
+      lastCapture: null,
+      summary: null,
+      winnerTeam: null,
+    };
+    // Suma mínima de la mesa: 84. Con el As de corazones (14) y el As de diamantes
+    // en mano para llevarse el par, las 12 cartas forman 7 grupos de 14.
+    assert.equal(formationValue('pairs', byId('corazones-1'), loose, [byId('diamantes-1')]), 14);
+    assert.equal(canBePairsFormation(byId('corazones-1'), loose, [byId('diamantes-1')]), true);
+    const moves = formationMoves(state, 0);
+    assert.ok(
+      moves.some(
+        (move) => move.type === 'build' && move.kind === 'pairs' && move.tableIds.length === loose.length,
+      ),
+      'el bot debe ver la formación de pares con las 12 cartas de la mesa',
+    );
+  });
+
+  it('los filtros de enumeración nunca descartan una captura válida', () => {
+    const fourKings = tableItems(
+      [byId('picas-13'), byId('corazones-13'), byId('diamantes-13'), byId('treboles-13')],
+      [],
+    );
+    assert.equal(canBeCapture(byId('corazones-13'), fourKings), true);
+    assert.equal(canBeCapture(byId('corazones-1'), fourKings), false);
+    const sevenAndThree = tableItems([byId('picas-7'), byId('treboles-3')], []);
+    assert.equal(canBeCapture(byId('corazones-10'), sevenAndThree), true);
+    assert.equal(canBeCapture(byId('corazones-10'), tableItems([byId('picas-7'), byId('treboles-4')], [])), false);
+    assert.equal(
+      canBePairsFormation(byId('corazones-5'), [byId('picas-13'), byId('treboles-13')], [byId('diamantes-5')]),
+      false,
+    );
+  });
+});
+
+describe('bot sin cartas en mano', () => {
+  it('devuelve un error en lugar de romper al leer la mano vacía', () => {
+    const state: CasinoState = {
+      game: 'casino',
+      phase: 'playing',
+      players: players(2),
+      deck: [],
+      hands: [[], []],
+      table: [byId('corazones-5')],
+      builds: [],
+      buildSeq: 0,
+      captured: [[], []],
+      viraos: [0, 0],
+      scores: [0, 0],
+      turn: 0,
+      dealer: 1,
+      roundNo: 1,
+      lastCapturer: null,
+      lastCapture: null,
+      summary: null,
+      winnerTeam: null,
+    };
+    const result = casinoBotMove(state);
+    assert.ok('error' in result);
+    if ('error' in result) assert.equal(result.error, 'El bot no tiene cartas para jugar.');
+  });
+});
+
+describe('applyGameMove y errores internos', () => {
+  it('una excepción del motor no se disfraza de jugada no válida', () => {
+    const state = createCasinoGame(players(2), 0);
+    const broken = { ...state, hands: null } as unknown as CasinoState;
+    const result = applyGameMove(broken, state.turn, { type: 'play', cardId: 'corazones-5', captureIds: [] });
+    assert.ok('error' in result);
+    if ('error' in result) assert.equal(result.error, ENGINE_INTERNAL_ERROR);
+  });
+  it('una jugada mal formada sigue diciendo "Jugada no válida."', () => {
+    const state = createCasinoGame(players(2), 0);
+    const result = applyGameMove(state, 0, { type: 42 });
+    assert.ok('error' in result);
+    if ('error' in result) assert.equal(result.error, 'Jugada no válida.');
+  });
 });
 
 function players(n: number): Player[] {
@@ -406,5 +571,160 @@ describe('partidas completas con el bot', () => {
       for (const s of rounds) if (s.summary?.needs?.some((n) => n !== null)) closingSeen++;
     }
     assert.ok(closingSeen > 0, 'ninguna simulación llegó al cierre obligatorio');
+  });
+});
+
+describe('ampliar pares y combinaciones del compañero', () => {
+  // Partida de 4: los asientos 0 y 2 son compañeros; 1 y 3, los rivales.
+  const makeState4 = (hands: Card[][], table: Card[], builds: Build[], turn = 0): CasinoState => ({
+    game: 'casino',
+    phase: 'playing',
+    players: players(4),
+    deck: [byId('picas-13'), byId('treboles-13'), byId('corazones-13'), byId('diamantes-13')],
+    hands,
+    table,
+    builds,
+    buildSeq: builds.length,
+    captured: [[], []],
+    viraos: [0, 0],
+    scores: [0, 0],
+    turn,
+    dealer: 3,
+    roundNo: 1,
+    lastCapturer: null,
+    lastCapture: null,
+    summary: null,
+    winnerTeam: null,
+  });
+  // Par de 12 con dos grupos: 5+7 y Q.
+  const pair12: Build = {
+    id: 'build-0',
+    kind: 'pairs',
+    value: 12,
+    cards: [byId('picas-5'), byId('diamantes-7'), byId('treboles-12')],
+    owner: 0,
+  };
+  // Par de 6 con dos grupos: 3+3 y 6.
+  const pair6: Build = {
+    id: 'build-0',
+    kind: 'pairs',
+    value: 6,
+    cards: [byId('picas-3'), byId('diamantes-3'), byId('treboles-6')],
+    owner: 0,
+  };
+
+  it('permite añadir una carta sola a un par del mismo valor aunque no quede otra en mano', () => {
+    const queen = byId('picas-12');
+    assert.equal(expansionValue(queen, pair12, [], []), 12);
+    const result = applyCasinoMove(
+      makeState4([[queen], [byId('corazones-13')], [byId('treboles-13')], [byId('diamantes-13')]], [], [pair12]),
+      0,
+      { type: 'expand', cardId: queen.id, buildId: 'build-0', tableIds: [] },
+    );
+    assert.ok('state' in result);
+    if ('state' in result) {
+      assert.equal(result.state.builds[0].kind, 'pairs');
+      assert.equal(result.state.builds[0].value, 12);
+      assert.equal(result.state.builds[0].cards.length, 4);
+      assert.equal(result.state.table.length, 0);
+    }
+  });
+
+  it('rechaza añadir una carta sola que no vale lo del par', () => {
+    assert.equal(expansionValue(byId('corazones-13'), pair12, [], []), null);
+    assert.equal(expansionValue(byId('corazones-6'), pair12, [], []), null);
+  });
+
+  it('permite añadir varios grupos a un par en un solo turno', () => {
+    // 6 en mano + 6 suelto = dos grupos nuevos de 6.
+    assert.equal(expansionValue(byId('corazones-6'), pair6, [byId('treboles-6')], []), 6);
+    // Q en mano + 5 y 7 sueltos = dos grupos nuevos de 12.
+    assert.equal(expansionValue(byId('corazones-12'), pair12, [byId('picas-5'), byId('diamantes-7')], []), 12);
+    // 6 en mano + dos 6 sueltos = tres grupos nuevos de 6.
+    assert.equal(expansionValue(byId('corazones-6'), pair6, [byId('treboles-6'), byId('picas-6')], []), 6);
+  });
+
+  it('rechaza ampliar un par si las cartas no se reparten en grupos de su valor', () => {
+    assert.equal(expansionValue(byId('corazones-6'), pair12, [byId('picas-5')], []), null);
+    assert.equal(expansionValue(byId('corazones-6'), pair12, [byId('treboles-6'), byId('picas-5')], []), null);
+    assert.equal(expansionValue(byId('corazones-12'), pair12, [byId('picas-6')], []), null);
+  });
+
+  it('formationMoves ofrece añadir la carta sola al par', () => {
+    const queen = byId('picas-12');
+    const state = makeState4(
+      [[queen], [byId('corazones-13')], [byId('treboles-13')], [byId('diamantes-13')]],
+      [],
+      [pair12],
+    );
+    const moves = formationMoves(state, 0);
+    assert.ok(
+      moves.some(
+        (m) => m.type === 'expand' && m.cardId === queen.id && m.buildId === 'build-0' && m.tableIds.length === 0,
+      ),
+    );
+  });
+
+  it('el compañero puede convertir una sumatoria en pares sin tener la carta de cierre', () => {
+    const sum10: Build = {
+      id: 'build-0',
+      kind: 'sum',
+      value: 10,
+      cards: [byId('diamantes-7'), byId('treboles-3')],
+      owner: 2,
+    };
+    const ten = byId('corazones-10');
+    assert.equal(convertValue(ten, sum10, [byId('picas-3')], false), null);
+    assert.equal(convertValue(ten, sum10, [byId('picas-3')], true), 10);
+    const result = applyCasinoMove(
+      makeState4(
+        [[ten, byId('picas-3')], [byId('corazones-13')], [byId('treboles-10')], [byId('diamantes-13')]],
+        [],
+        [sum10],
+      ),
+      0,
+      { type: 'convert', cardId: ten.id, buildId: 'build-0' },
+    );
+    assert.ok('state' in result);
+    if ('state' in result) {
+      assert.equal(result.state.builds[0].kind, 'pairs');
+      assert.equal(result.state.builds[0].value, 10);
+    }
+  });
+
+  it('convertir la sumatoria de un rival sigue exigiendo la carta de cierre', () => {
+    const sum10: Build = {
+      id: 'build-0',
+      kind: 'sum',
+      value: 10,
+      cards: [byId('diamantes-7'), byId('treboles-3')],
+      owner: 1,
+    };
+    const ten = byId('corazones-10');
+    assert.equal(convertValue(ten, sum10, [byId('picas-3')], false), null);
+    const result = applyCasinoMove(
+      makeState4(
+        [[ten, byId('picas-3')], [byId('treboles-10')], [byId('corazones-13')], [byId('diamantes-13')]],
+        [],
+        [sum10],
+      ),
+      0,
+      { type: 'convert', cardId: ten.id, buildId: 'build-0' },
+    );
+    assert.ok('error' in result);
+  });
+
+  it('subir la sumatoria del compañero sigue exigiendo la carta del nuevo valor', () => {
+    const sum5: Build = {
+      id: 'build-0',
+      kind: 'sum',
+      value: 5,
+      cards: [byId('diamantes-2'), byId('treboles-3')],
+      owner: 2,
+    };
+    // Subir de 5 a 9 con un 4 sin tener un 9 en mano no vale, aunque sea del compañero:
+    // el valor cambia y la carta que guardaba el compañero (un 5) ya no lo cierra.
+    assert.equal(raiseValue(byId('corazones-4'), sum5, [byId('picas-3')]), null);
+    assert.equal(raiseValue(byId('corazones-4'), sum5, [byId('picas-9')]), 9);
   });
 });

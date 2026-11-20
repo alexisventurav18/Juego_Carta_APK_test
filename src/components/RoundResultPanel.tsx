@@ -14,21 +14,21 @@ interface RoundResultPanelProps {
 
 export default function RoundResultPanel({ title, lines, totals, teamNames, compact = false, onNextRound, waitingFor }: RoundResultPanelProps) {
   return (
-    <section className={`wood-panel space-y-2 p-3 sm:space-y-4 sm:p-6 ${compact ? 'round-result-panel-compact' : ''}`}>
+    <section className={`wood-panel space-y-3 p-4 sm:space-y-4 sm:p-6 ${compact ? 'round-result-panel-compact' : ''}`}>
       <div className="flex items-center gap-2">
-        <Trophy className="h-4 w-4 shrink-0 text-amber-300 sm:h-5 sm:w-5" />
-        <h2 className="min-w-0 text-base font-extrabold text-amber-50 sm:text-lg">{title}</h2>
+        <Trophy className="h-5 w-5 shrink-0 text-amber-300 sm:h-6 sm:w-6" />
+        <h2 className="min-w-0 text-lg font-extrabold text-amber-50 sm:text-xl">{title}</h2>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         {([0, 1] as const).map((team) => (
-          <div key={team} className="min-w-0 rounded-xl bg-black/30 p-2 ring-1 ring-amber-200/20 sm:p-4">
+          <div key={team} className="min-w-0 rounded-xl bg-black/30 p-3 ring-1 ring-amber-200/20 sm:p-4">
             <div className="flex items-center justify-between gap-1.5">
-              <span className="min-w-0 truncate text-xs font-bold text-amber-50 sm:text-sm">{teamNames[team]}</span>
-              <span className="shrink-0 text-xs font-extrabold text-amber-300 sm:text-sm">
+              <span className="min-w-0 truncate text-sm font-bold text-amber-50 sm:text-base">{teamNames[team]}</span>
+              <span className="shrink-0 text-sm font-extrabold text-amber-300 sm:text-base">
                 {totals[team] >= 0 ? `+${totals[team]}` : totals[team]}
               </span>
             </div>
-            <ul className="mt-2 space-y-1 text-[11px] leading-tight text-amber-100/80 sm:mt-3 sm:space-y-1.5 sm:text-sm sm:leading-normal">
+            <ul className="mt-2 space-y-1.5 text-sm leading-snug text-amber-100/80 sm:mt-3 sm:space-y-2 sm:text-base sm:leading-normal">
               {lines[team].length === 0 && <li>Sin puntos esta ronda</li>}
               {lines[team].map((line) => (
                 <li key={line.label} className="flex items-start justify-between gap-1.5">
@@ -37,7 +37,7 @@ export default function RoundResultPanel({ title, lines, totals, teamNames, comp
                       {line.label}
                     </span>
                     {line.detail && (
-                      <span className={`block text-[10px] sm:text-xs ${line.muted ? 'text-amber-300' : 'text-amber-100/60'}`}>
+                      <span className={`block text-xs sm:text-sm ${line.muted ? 'text-amber-300' : 'text-amber-100/60'}`}>
                         {line.detail}
                       </span>
                     )}
@@ -59,7 +59,7 @@ export default function RoundResultPanel({ title, lines, totals, teamNames, comp
         </div>
       )}
       {!onNextRound && waitingFor && (
-        <p className="text-center text-sm text-amber-100/70">Esperando a {waitingFor} para repartir la siguiente ronda.</p>
+        <p className="text-center text-base text-amber-100/70">Esperando a {waitingFor} para repartir la siguiente ronda.</p>
       )}
     </section>
   );

@@ -166,7 +166,7 @@ describe('el As como 14', () => {
 });
 
 describe('condición de cierre y compromiso', () => {
-  it('escenario 4: armar una suma o apilar sobre un par sin la carta de cierre en mano es ilegal', () => {
+  it('escenario 4: armar una suma sin la carta de cierre en mano es ilegal; apilar sobre un par no la exige', () => {
     // Armar 3 + 4 = 7 sin tener un 7 en la mano.
     const armar = makeState({ hands: [['treboles-3', 'diamantes-9'], ['corazones-13']], table: ['picas-4'] });
     assert.match(
@@ -174,14 +174,26 @@ describe('condición de cierre y compromiso', () => {
       /no es válida/,
     );
 
-    // Apilar 2 + 3 sobre un par de 5 sin otro 5 en la mano.
+    // Apilar 2 + 3 sobre un par de 5 sin otro 5 en la mano: el par mantiene su
+    // valor, así que vale (lo puede llevarse cualquiera que tenga un 5).
     const apilar = makeState({
       hands: [['diamantes-2', 'picas-13'], ['corazones-13']],
       table: ['treboles-3'],
       builds: [build('b1', 'pairs', 5, 0, 'picas-5', 'corazones-5')],
     });
+    const next = play(apilar, 0, { type: 'expand', cardId: 'diamantes-2', buildId: 'b1', tableIds: ['treboles-3'] });
+    assert.equal(next.builds[0].kind, 'pairs');
+    assert.equal(next.builds[0].value, 5);
+    assert.equal(next.builds[0].cards.length, 4);
+
+    // Pero apilar cartas que no suman el valor del par sigue siendo ilegal.
+    const malApilado = makeState({
+      hands: [['diamantes-2', 'picas-13'], ['corazones-13']],
+      table: ['treboles-4'],
+      builds: [build('b1', 'pairs', 5, 0, 'picas-5', 'corazones-5')],
+    });
     assert.match(
-      errorOf(apilar, 0, { type: 'expand', cardId: 'diamantes-2', buildId: 'b1', tableIds: ['treboles-3'] }),
+      errorOf(malApilado, 0, { type: 'expand', cardId: 'diamantes-2', buildId: 'b1', tableIds: ['treboles-4'] }),
       /No puedes ampliar/,
     );
   });

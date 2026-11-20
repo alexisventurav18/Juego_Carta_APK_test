@@ -62,7 +62,7 @@ export function TurnSound({ label, myTurn, showFlow = false }: TurnSoundProps) {
       {myTurn && <span aria-hidden className="turn-screen-glow" />}
       <span
         aria-live="polite"
-        className={`max-w-[7rem] truncate rounded-full px-2.5 py-1.5 text-[13px] font-bold leading-none ${
+        className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[13px] font-bold leading-none ${
           myTurn
             ? 'turn-chip-myturn bg-amber-400 text-stone-900'
             : 'bg-black/40 text-amber-50 ring-1 ring-amber-200/30'
