@@ -2,7 +2,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, BellOff, Lock, Music, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { useGameSounds } from '@/hooks/useGameSounds';
-import { isOwned, shopPrice, useEconomy, type CosmeticCategory } from '@/lib/economy';
+import { buyCosmetic, isOwned, shopPrice, useEconomy, type CosmeticCategory } from '@/lib/economy';
 import { requestNotificationPermission } from '@/lib/notify';
 import { usePrefs } from '@/lib/soundPrefs';
 import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
@@ -138,6 +138,14 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
   const { prefs, update } = usePrefs();
   const { prefs: visualPrefs, update: updateVisual } = useVisualPrefs();
   const economy = useEconomy();
+  /** Tema bloqueado que se tocó: el aviso ofrece comprarlo aquí mismo. */
+  const [lockedOffer, setLockedOffer] = useState<{
+    category: CosmeticCategory;
+    id: string;
+    label: string;
+    price: number;
+    patch: Parameters<typeof updateVisual>[0];
+  } | null>(null);
   const [lockedNotice, setLockedNotice] = useState<string | null>(null);
   const { playSound } = useGameSounds();
   const titleId = useId();
@@ -161,8 +169,8 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
 
   /**
    * Los temas de pago solo se pueden equipar si ya son del jugador; si no,
-   * se avisa del precio y de que se compran en la Tienda (antes se podían
-   * equipar gratis desde aquí, sin pasar por la tienda).
+   * se ofrece comprarlos aquí mismo (antes solo se avisaba del precio y
+   * había que ir a la Tienda). Comprar también equipa el tema.
    */
   const tryEquip = (
     category: CosmeticCategory,
@@ -171,16 +179,37 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
     patch: Parameters<typeof updateVisual>[0],
   ) => {
     if (isOwned(economy, category, id)) {
+      setLockedOffer(null);
       setLockedNotice(null);
       updateVisual(patch);
       return;
     }
     const price = shopPrice(category, id);
-    setLockedNotice(
-      price !== null
-        ? `«${label}» cuesta ${price} monedas — cómpralo en la Tienda.`
-        : `«${label}» no está disponible.`,
-    );
+    if (price === null) {
+      setLockedOffer(null);
+      setLockedNotice(`«${label}» no está disponible.`);
+      return;
+    }
+    setLockedNotice(null);
+    setLockedOffer({ category, id, label, price, patch });
+  };
+
+  /** Compra el tema bloqueado que se tocó y lo equipa al momento. */
+  const buyLocked = () => {
+    if (!lockedOffer) return;
+    const result = buyCosmetic(lockedOffer.category, lockedOffer.id);
+    if (!result.ok) {
+      setLockedOffer(null);
+      setLockedNotice(
+        result.reason === 'funds'
+          ? `Te faltan ${lockedOffer.price - economy.coins} monedas para «${lockedOffer.label}». Gana partidas para conseguirlas.`
+          : `«${lockedOffer.label}» no está disponible.`,
+      );
+      return;
+    }
+    updateVisual(lockedOffer.patch);
+    setLockedOffer(null);
+    setLockedNotice(`¡Compraste y equipaste «${lockedOffer.label}»!`);
   };
 
   /** Precio en monedas si la opción no es del jugador; null si ya es suya. */
@@ -274,6 +303,23 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
               <p role="status" className="rounded-lg bg-amber-300/15 px-2 py-1.5 text-[11px] font-semibold text-amber-200 ring-1 ring-amber-300/40">
                 {lockedNotice}
               </p>
+            )}
+            {lockedOffer && (
+              <div role="status" className="flex items-center justify-between gap-2 rounded-lg bg-amber-300/15 px-2 py-1.5 ring-1 ring-amber-300/40">
+                <p className="text-[11px] font-semibold text-amber-200">
+                  «{lockedOffer.label}» cuesta {lockedOffer.price} monedas.
+                </p>
+                <button
+                  type="button"
+                  onClick={buyLocked}
+                  disabled={economy.coins < lockedOffer.price}
+                  className="btn-gold min-h-[36px] shrink-0 touch-manipulation rounded-lg px-3 text-xs font-extrabold transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {economy.coins < lockedOffer.price
+                    ? `Te faltan ${lockedOffer.price - economy.coins}`
+                    : 'Comprar y equipar'}
+                </button>
+              </div>
             )}
             <div className="space-y-3">
               <div>

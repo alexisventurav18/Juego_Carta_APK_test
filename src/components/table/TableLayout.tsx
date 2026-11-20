@@ -34,6 +34,8 @@ interface TableLayoutProps {
   sideCols?: string;
   /** Alto de las tres filas: rivales de arriba, tablero y tu zona. */
   rows?: string;
+  /** Color de acento del modo que se juega: tiñe el brillo detrás del tablero. */
+  accent?: string;
 }
 
 /**
@@ -55,8 +57,12 @@ export default function TableLayout({
   bottomRight,
   overlays,
   vars,
-  sideCols = '19%',
-  rows = '24%_minmax(0,1fr)_36%',
+  // El tablero central es lo más grande posible: las columnas laterales y las
+  // filas de arriba y abajo solo ocupan lo que necesitan los rivales y tu mano,
+  // para que el fondo de mesa se vea bien.
+  sideCols = '16%',
+  rows = '21%_minmax(0,1fr)_32%',
+  accent,
 }: TableLayoutProps) {
   // La mesa ocupa toda la pantalla: se bloquea el scroll de la página mientras está abierta.
   useEffect(() => {
@@ -74,6 +80,15 @@ export default function TableLayout({
     >
       {/* Marco a sangre: la madera llega hasta los bordes físicos de la pantalla (sin franjas negras). */}
       <WoodFrame />
+
+      {/* Brillo del modo que se juega: un halo suave con el color del juego detrás del tablero. */}
+      {accent && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: `radial-gradient(ellipse at 50% 45%, ${accent}33 0%, transparent 65%)` }}
+        />
+      )}
 
       {/* Rejilla de la mesa: el contenido se sangra hacia dentro lo justo para esquivar el notch y las esquinas. */}
       <div

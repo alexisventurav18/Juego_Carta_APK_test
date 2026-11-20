@@ -5,6 +5,7 @@ import { HAND_SIZE, nextDealerSeat, TARGET_WINS, type TresYDosMove, type TresYDo
 import { isBotPlayer } from '@/games/shared';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { useWinReward } from '@/hooks/useWinReward';
+import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
 import DealerReveal from './DealerReveal';
 import DefeatNotice from './DefeatNotice';
 import { DorsoUI } from './CartaUI';
@@ -257,6 +258,7 @@ export default function TresYDosTable({
 
   return (
     <TableLayout
+      accent={GAME_ENVIRONMENTS[state.game].accent}
       centerRef={boardRef}
       bottomCenterRef={mineRef}
       vars={CENTER_VARS}
@@ -281,7 +283,7 @@ export default function TresYDosTable({
           {/* Tablero de madera en perspectiva 2.5D, igual que El Cagao */}
           <div aria-hidden className="pointer-events-none absolute inset-0 [perspective:1100px]">
             <div
-              className={`cagao-board absolute inset-x-[1%] inset-y-[3%] rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
+              className={`cagao-board absolute inset-0 rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
                 dragging && discardStep ? 'cagao-board-drop' : ''
               }`}
             />

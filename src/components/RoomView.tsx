@@ -9,6 +9,7 @@ import { botTickDelay } from '@/games/bots';
 import { isBotPlayer } from '@/games/shared';
 import { getPlayerId } from '@/lib/identity';
 import { abandonRoom, botTick, fetchRoom, leaveRoom, requestStart, type RoomConnectionStatus, type RoomRow, type RoomSubscription, sendMove, subscribeToRoom } from '@/lib/rooms';
+import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
 import { CHAT_TOAST_MS, isAllowedChatSender, type RoomChatMessage } from '@/lib/roomChat';
 import RoomChat from './RoomChat';
 import { OptionsButton } from './table/chips';
@@ -419,7 +420,12 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   }
 
   return (
-    <div className="wood-stage safe-screen overflow-y-auto room-waiting-screen">
+    <div
+      className="wood-stage safe-screen overflow-y-auto room-waiting-screen"
+      style={{
+        backgroundImage: `radial-gradient(ellipse at 50% 0%, ${GAME_ENVIRONMENTS[room.game].accent}40 0%, transparent 55%), radial-gradient(ellipse at 50% 35%, #4a2a12, #1e0e05 75%)`,
+      }}
+    >
       <div className="room-waiting-content mx-auto w-full max-w-6xl px-3 py-2 sm:px-6 sm:py-5">
       <header className="room-waiting-header mb-2 flex items-center justify-between gap-2 sm:mb-6 sm:gap-4">
         <button

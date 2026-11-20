@@ -284,7 +284,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                 className="btn-wood flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
               >
                 <ShoppingBag className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-                <span className="hidden min-[900px]:inline">Tienda</span>
+                <span>Tienda</span>
               </button>
               {lastOffline && (
                 <button

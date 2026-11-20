@@ -24,6 +24,7 @@ import type { Card } from '@/games/cards';
 import { isBotPlayer, teamName, teamOf } from '@/games/shared';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { useWinReward } from '@/hooks/useWinReward';
+import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
 import { useNotificationsOn } from '@/lib/soundPrefs';
 import CapturedPile from './CapturedPile';
 import CaptureFlight from './CaptureFlight';
@@ -493,8 +494,9 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
   return (
     <TableLayout
       vars={{ '--ch': 'clamp(54px, 21.3dvh, 143px)' } as CSSProperties}
-      sideCols="21%"
-      rows="22%_minmax(0,1fr)_36%"
+      sideCols="17%"
+      rows="21%_minmax(0,1fr)_32%"
+      accent={GAME_ENVIRONMENTS[state.game].accent}
       centerRef={boardRef}
       bottomCenterRef={mineRef}
       topLeft={
@@ -526,7 +528,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           {/* Tablero de madera en perspectiva 2.5D: solo el fondo se inclina; las cartas quedan planas para tocarlas bien. */}
           <div aria-hidden className="pointer-events-none absolute inset-0 [perspective:1100px]">
             <div
-              className={`cagao-board absolute inset-x-[1%] inset-y-[3%] rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
+              className={`cagao-board absolute inset-0 rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
                 dragging && myTurn ? 'cagao-board-drop' : ''
               }`}
             />

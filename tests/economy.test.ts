@@ -42,15 +42,28 @@ describe('economía: saldo inicial y catálogo', () => {
     assert.equal(isOwned(eco, 'cardBack', 'dominicano-bandera'), false);
   });
 
-  it('el catálogo cubre los 6 dorsos, las 5 mesas y los 5 fondos, solo con arte existente', () => {
+  it('el catálogo cubre los 6 dorsos, las 6 mesas y los 5 fondos, solo con arte existente', () => {
     assert.equal(SHOP_ITEMS.filter((i) => i.category === 'cardBack').length, 6);
-    assert.equal(SHOP_ITEMS.filter((i) => i.category === 'table').length, 5);
+    assert.equal(SHOP_ITEMS.filter((i) => i.category === 'table').length, 6);
     assert.equal(SHOP_ITEMS.filter((i) => i.category === 'menu').length, 5);
     assert.equal(shopPrice('cardBack', 'cacao'), 0);
     assert.equal(shopPrice('cardBack', 'dominicano-bandera'), 400);
     assert.equal(shopPrice('table', 'tropical'), 350);
     assert.equal(shopPrice('menu', 'playa-ilustrada'), 350);
     assert.equal(shopPrice('table', 'no-existe'), null);
+  });
+
+  it('una victoria en Casino (100 monedas) alcanza para el primer nivel de pago (100)', () => {
+    assert.equal(shopPrice('table', 'verde'), 100);
+    assert.equal(shopPrice('table', 'azul'), 100);
+    assert.equal(shopPrice('cardBack', 'azul'), 100);
+    assert.equal(shopPrice('menu', 'verde'), 100);
+    assert.equal(shopPrice('table', 'rojo'), 150);
+    const eco = { ...defaultEconomy(), coins: winRewardAmount('casino', 'win', 0) };
+    const result = buyItem(eco, 'table', 'verde');
+    assert.equal(result.ok, true);
+    assert.equal(result.state.coins, 0);
+    assert.ok(isOwned(result.state, 'table', 'verde'));
   });
 });
 
@@ -79,7 +92,7 @@ describe('economía: comprar', () => {
     const again = buyItem(bought.state, 'menu', 'azul');
     assert.equal(again.ok, false);
     if (!again.ok) assert.equal(again.reason, 'owned');
-    assert.equal(again.state.coins, 350);
+    assert.equal(again.state.coins, 400);
   });
 
   it('un artículo desconocido no se cobra', () => {

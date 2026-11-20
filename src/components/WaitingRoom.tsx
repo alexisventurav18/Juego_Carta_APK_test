@@ -8,6 +8,7 @@ import type { RoomRow } from '@/lib/rooms';
 import Avatar from './avatar/Avatar';
 import MatchmakingAnimation from './MatchmakingAnimation';
 import { resolveAvatarCode } from './avatar/resolve';
+import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
 
 interface WaitingRoomProps {
   room: RoomRow;
@@ -22,6 +23,7 @@ interface WaitingRoomProps {
 export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = false, onLeave }: WaitingRoomProps) {
   const isHost = room.players[0]?.id === myId;
   const info = GAMES[room.game];
+  const env = GAME_ENVIRONMENTS[room.game];
   const canStart = canStartGame(room.game, room.players.length);
   const slots = Math.max(info.maxPlayers - room.players.length, 0);
   const [copied, setCopied] = useState(false);
@@ -87,6 +89,18 @@ export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = f
 
   return (
     <div className="room-waiting-grid mx-auto grid w-full max-w-3xl gap-2 min-[600px]:grid-cols-[1fr_1.2fr] sm:gap-5">
+      {/* Banda del modo: el color del juego que se va a jugar tiñe la sala. */}
+      <div
+        aria-hidden
+        className="rounded-xl px-3 py-2 text-center ring-1 ring-white/20 min-[600px]:col-span-2"
+        style={{
+          background: `linear-gradient(90deg, ${env.accent}66, ${env.accent}26 55%, ${env.accent}66)`,
+          boxShadow: `0 0 24px ${env.accent}55`,
+        }}
+      >
+        <p className="text-sm font-extrabold tracking-wide text-white sm:text-base">{info.name}</p>
+        <p className="text-[11px] text-white/85 sm:text-xs">{info.tagline}</p>
+      </div>
       {matchmaking ? (
         <div className="room-waiting-info flex flex-col items-center gap-2 self-start wood-panel p-3 sm:gap-4 sm:p-5">
           <MatchmakingAnimation playersFound={room.players.length} maxPlayers={info.maxPlayers} secondsLeft={secondsLeft} />

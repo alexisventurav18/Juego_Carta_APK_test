@@ -46,10 +46,15 @@ export interface ShopItem {
   price: number;
 }
 
+/**
+ * Precios por nivel: el primer nivel (100) se alcanza con una sola victoria
+ * en Casino (100 monedas), para que la primera compra no pida días de espera.
+ * Los niveles altos (250-400) siguen siendo para jugadores con más partidas.
+ */
 const CARD_BACK_PRICES: Record<CardBackTheme, number> = {
   cacao: 0,
-  azul: 150,
-  rojo: 150,
+  azul: 100,
+  rojo: 100,
   'madera-turquesa': 250,
   'dominicano-azul': 300,
   'dominicano-bandera': 400,
@@ -57,16 +62,17 @@ const CARD_BACK_PRICES: Record<CardBackTheme, number> = {
 
 const TABLE_PRICES: Record<TableTheme, number> = {
   madera: 0,
-  verde: 150,
-  azul: 150,
+  verde: 100,
+  azul: 100,
+  rojo: 150,
   bandera: 300,
   tropical: 350,
 };
 
 const MENU_PRICES: Record<MenuTheme, number> = {
   madera: 0,
-  verde: 150,
-  azul: 150,
+  verde: 100,
+  azul: 100,
   'playa-ilustrada': 350,
   'atardecer-tropical': 350,
 };

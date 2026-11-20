@@ -1,10 +1,11 @@
 import { useSyncExternalStore } from 'react';
+import type { GameId } from '../games/shared';
 import { publicAsset } from './publicAsset';
 
 const STORAGE_KEY = 'cartas-dominicanas:visual-prefs';
 
 export type CardBackTheme = 'cacao' | 'azul' | 'rojo' | 'madera-turquesa' | 'dominicano-azul' | 'dominicano-bandera';
-export type TableTheme = 'madera' | 'verde' | 'azul' | 'bandera' | 'tropical';
+export type TableTheme = 'madera' | 'verde' | 'azul' | 'rojo' | 'bandera' | 'tropical';
 export type MenuTheme = 'madera' | 'verde' | 'azul' | 'playa-ilustrada' | 'atardecer-tropical';
 
 export interface VisualPrefs {
@@ -46,6 +47,12 @@ export const TABLE_THEMES: { id: TableTheme; label: string; color: string; image
     label: 'Fieltro azul',
     color: '#24577e',
     image: 'radial-gradient(ellipse at 50% 40%, #3479a6 0%, #24577e 60%, #12334d 100%)',
+  },
+  {
+    id: 'rojo',
+    label: 'Fieltro rojo',
+    color: '#7e1f2a',
+    image: 'radial-gradient(ellipse at 50% 40%, #a8323e 0%, #7e1f2a 60%, #4a1018 100%)',
   },
   {
     id: 'bandera',
@@ -93,6 +100,25 @@ export const MENU_THEMES: { id: MenuTheme; label: string; color: string; image: 
     image: `url("${publicAsset('images/temas/menu/atardecer-tropical.webp')}")`,
   },
 ];
+
+/**
+ * Entorno de cada modo: el color que tiñe la sala de espera y el brillo de
+ * la mesa mientras se juega ese modo. `table` es la mesa que se sugiere para
+ * el modo (no se impone: la que el jugador compró y equipó siempre manda).
+ */
+export interface GameEnvironment {
+  /** Mesa sugerida para el modo. */
+  table: TableTheme;
+  /** Color de acento del modo (textos, anillos y brillos). */
+  accent: string;
+}
+
+export const GAME_ENVIRONMENTS: Record<GameId, GameEnvironment> = {
+  casino: { table: 'verde', accent: '#f5c542' },
+  tresydos: { table: 'azul', accent: '#5db4ff' },
+  cagao: { table: 'rojo', accent: '#ff6b6b' },
+  robaito: { table: 'tropical', accent: '#4ade80' },
+};
 
 function isOneOf<T extends string>(value: unknown, values: readonly T[]): value is T {
   return typeof value === 'string' && values.includes(value as T);

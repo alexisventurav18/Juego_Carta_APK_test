@@ -64,7 +64,9 @@ export default function Store({ onClose }: { onClose: () => void }) {
       );
       return;
     }
-    setMessage(`¡Compraste ${label}! Tócalo de nuevo para equiparlo.`);
+    // Comprar también equipa: un toque y el fondo ya se ve en toda la app.
+    equip(id);
+    setMessage(`¡Compraste y equipaste ${label}!`);
   };
 
   return (

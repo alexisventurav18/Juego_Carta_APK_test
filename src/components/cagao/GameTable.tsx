@@ -6,6 +6,7 @@ import { CAGAO_CARD_ID, type CagaoMove, type CagaoState } from '@/games/cagao';
 import { isBotPlayer } from '@/games/shared';
 import { useElCagaoGame } from '@/hooks/useElCagaoGame';
 import { useWinReward } from '@/hooks/useWinReward';
+import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
 import DealerReveal from '../DealerReveal';
 import DefeatNotice from '../DefeatNotice';
 import VictoryCelebration from '../VictoryCelebration';
@@ -200,6 +201,7 @@ export default function GameTable({
 
   return (
     <TableLayout
+      accent={GAME_ENVIRONMENTS[state.game].accent}
       topLeft={
         <>
           <LeaveButton onLeave={onLeave} />
@@ -226,7 +228,7 @@ export default function GameTable({
           <div className="absolute inset-0 [perspective:1100px]">
             <div
               ref={boardRef}
-              className={`cagao-board absolute inset-x-[1%] inset-y-[3%] rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
+              className={`cagao-board absolute inset-0 rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
                 dragging && showDropHint ? 'cagao-board-drop' : ''
               }`}
             >

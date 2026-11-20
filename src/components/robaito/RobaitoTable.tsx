@@ -6,6 +6,7 @@ import { isBotPlayer } from '@/games/shared';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { useRobaitoGame } from '@/hooks/useRobaitoGame';
 import { useWinReward } from '@/hooks/useWinReward';
+import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
 import { resolveAvatarCode } from '../avatar/resolve';
 import { DorsoUI } from '../CartaUI';
 import DealerReveal from '../DealerReveal';
@@ -279,6 +280,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
 
   return (
     <TableLayout
+      accent={GAME_ENVIRONMENTS[state.game].accent}
       centerRef={boardRef}
       bottomCenterRef={mineRef}
       vars={VARS}
@@ -305,7 +307,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
           {/* Tablero de madera en perspectiva 2.5D, igual que El Cagao */}
           <div aria-hidden className="pointer-events-none absolute inset-0 [perspective:1100px]">
             <div
-              className={`cagao-board absolute inset-x-[1%] inset-y-[3%] rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
+              className={`cagao-board absolute inset-0 rounded-[3.5%] [transform-origin:50%_100%] [transform:rotateX(16deg)] ${
                 dragging && myTurn ? 'cagao-board-drop' : ''
               }`}
             />
