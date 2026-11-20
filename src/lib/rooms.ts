@@ -3,7 +3,7 @@ import type { GameId, Player } from '@/games/shared';
 import { serverErrorMessage } from './functionsError';
 import { getPlayerId, getPlayerKey } from './identity';
 import { isValidChatPayload, ROOM_CHAT_EVENT, type RoomChatMessage } from './roomChat';
-import { supabase } from './supabase';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from './supabase';
 
 export type RoomStatus = 'waiting' | 'playing';
 
@@ -70,6 +70,39 @@ export function quickplayRoom(game: GameId, player: Player): Promise<RoomRow> {
 /** Salir de una sala en espera (si queda vacía, se borra). */
 export function leaveRoom(roomId: string): Promise<RoomRow> {
   return call({ action: 'leave', roomId });
+}
+
+/**
+ * Abandonar una partida ya empezada: un bot toma tu asiento (con tu mano) y
+ * la partida sigue para los demás; si no queda ningún humano, la sala se
+ * borra. Salir de una sala en espera sigue usando `leaveRoom`.
+ */
+export function abandonRoom(roomId: string): Promise<RoomRow> {
+  return call({ action: 'abandon', roomId });
+}
+
+/**
+ * Aviso de salida al cerrar la app: intenta liberar el asiento aunque la
+ * página se esté cerrando (`keepalive`), sin esperar respuesta. Se usa la
+ * acción `abandon`, que vale tanto en espera como en partida empezada. Si
+ * no llega a enviarse, el cierre definitivo local (no reanudar la sala) ya
+ * impide volver a esa pantalla de carga.
+ */
+export function leaveRoomBestEffort(roomId: string): void {
+  try {
+    void fetch(`${SUPABASE_URL}/functions/v1/${FUNCTION_NAME}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action: 'abandon', roomId, playerId: getPlayerId(), key: getPlayerKey() }),
+      keepalive: true,
+    }).catch(() => undefined);
+  } catch {
+    // Cierre de la app: no hay nada más que hacer.
+  }
 }
 
 export function fetchRoom(roomId: string): Promise<RoomRow> {

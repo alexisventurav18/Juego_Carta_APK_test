@@ -6,4 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 const url = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
+export const SUPABASE_URL = url;
+export const SUPABASE_ANON_KEY = anonKey;
+
 export const supabase = createClient(url, anonKey);

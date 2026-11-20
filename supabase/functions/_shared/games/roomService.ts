@@ -73,6 +73,7 @@ export type RoomRequest =
   | ({ action: 'join'; code: string; name: string; avatar?: string } & Auth)
   | ({ action: 'quickplay'; game: GameId; name: string; avatar?: string } & Auth)
   | ({ action: 'leave'; roomId: string } & Auth)
+  | ({ action: 'abandon'; roomId: string } & Auth)
   | ({ action: 'view'; roomId: string } & Auth)
   | ({ action: 'start'; roomId: string; dealer?: number } & Auth)
   | ({ action: 'move'; roomId: string; move: unknown } & Auth)
@@ -312,6 +313,38 @@ async function leave(store: RoomStore, req: Record<string, unknown>): Promise<Ro
 }
 
 /**
+ * Abandonar una partida: vale en espera y en partida empezada.
+ *
+ * - En espera hace lo mismo que `leave`: quita al jugador (y borra la sala
+ *   si queda vacía).
+ * - En partida empezada un bot toma su asiento, con su misma mano, y la
+ *   partida sigue para los demás: el estado es por asiento, así que cambiar
+ *   solo el jugador de ese asiento no mueve nada. Su clave se borra, así que
+ *   ya no puede volver a entrar. Si no queda ningún humano, la sala se borra
+ *   (sin nadie que pida los turnos de los bots, la partida quedaría colgada).
+ */
+async function abandon(store: RoomStore, req: Record<string, unknown>): Promise<RoomResponse> {
+  const auth = readAuth(req);
+  const stored = await loadById(store, readRoomId(req));
+  const seat = await authenticate(stored, auth);
+  const { room } = stored;
+  if (room.status === 'waiting') return leave(store, req);
+  const withoutLeaver = room.players.filter((p) => p.id !== auth.playerId);
+  if (!withoutLeaver.some((p) => !isBotPlayer(p))) {
+    await store.remove(room.id);
+    return { ok: true, room: { ...toView(stored, seat), players: [], version: room.version + 1 } };
+  }
+  // Un bot nuevo en el asiento del que sale (nombre e id sin repetir).
+  const completed = fillWithBots(room.game, withoutLeaver, withoutLeaver.length + 1);
+  const bot = completed[completed.length - 1];
+  const players = room.players.map((p) => (p.id === auth.playerId ? bot : p));
+  const state = stored.secret.state ? { ...stored.secret.state, players } : null;
+  const keys = { ...stored.secret.keys };
+  delete keys[auth.playerId];
+  return commit(store, stored, { players, state, keys }, seat);
+}
+
+/**
  * Arranque automático de una sala pública en espera. Lo dispara cualquier
  * jugador de la sala al consultarla (view/tick) o al entrar (quickplay): no
  * depende de quién sea el anfitrión. Arranca cuando se llena, o cuando pasa
@@ -412,6 +445,8 @@ export async function handleRequest(store: RoomStore, raw: unknown): Promise<Roo
         return await quickplay(store, req);
       case 'leave':
         return await leave(store, req);
+      case 'abandon':
+        return await abandon(store, req);
       case 'view':
         return await view(store, req);
       case 'start':

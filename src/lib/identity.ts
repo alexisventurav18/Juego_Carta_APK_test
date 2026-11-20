@@ -1,4 +1,4 @@
-import { encodeAvatar, isAvatarCode, randomAvatar } from '@/games/avatar';
+import { encodeAvatar, isAvatarCode, randomAvatar } from '../games/avatar';
 
 const PLAYER_ID_KEY = 'cartas.playerId';
 const PLAYER_SECRET_KEY = 'cartas.playerKey';
@@ -93,6 +93,45 @@ export function getStoredRoomId(): string | null {
 
 export function storeRoomId(roomId: string | null): void {
   writeStorage(ROOM_ID_KEY, roomId);
+}
+
+const SESSION_KEY = 'cartas.sessionAlive';
+
+function readSession(key: string): string | null {
+  try {
+    return typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(key: string, value: string | null): void {
+  try {
+    if (typeof sessionStorage === 'undefined') return;
+    if (value === null) sessionStorage.removeItem(key);
+    else sessionStorage.setItem(key, value);
+  } catch {
+    // Sin almacenamiento de sesión: se trata como sesión nueva.
+  }
+}
+
+/**
+ * Sala guardada que vale para esta sesión de la app, o null si hay que
+ * empezar en el menú.
+ *
+ * Al cerrar la aplicación el proceso muere y `sessionStorage` se vacía, así
+ * que al volver a abrir no se reanuda la última sala (que podía estar
+ * colgada en "Cargando sala..."): se descarta y se arranca en el menú.
+ * Mientras la app siga viva (minimizar y volver, girar el teléfono) la
+ * sesión se mantiene y la sala se reanuda como antes.
+ */
+export function getResumableRoomId(): string | null {
+  if (!readSession(SESSION_KEY)) {
+    writeStorage(ROOM_ID_KEY, null);
+    writeSession(SESSION_KEY, '1');
+    return null;
+  }
+  return getStoredRoomId();
 }
 
 /** Avatar guardado de este jugador, o null si todavía no eligió uno. */

@@ -11,11 +11,19 @@ export const CORNER_BUTTON =
 export const CORNER_CHIP =
   'flex h-10 shrink-0 items-center gap-1 rounded-lg bg-black/40 px-2 text-xs font-bold tabular-nums text-amber-50 ring-1 ring-amber-200/30 active:scale-95';
 
+/** Botón de salir de la partida, con texto para que no pase desapercibido. */
 export function LeaveButton({ onLeave }: { onLeave?: () => void }) {
   if (!onLeave) return null;
   return (
-    <button type="button" onClick={onLeave} aria-label="Salir de la partida" className={CORNER_BUTTON}>
+    <button
+      type="button"
+      onClick={onLeave}
+      aria-label="Salir de la partida"
+      title="Salir de la partida"
+      className="flex h-10 shrink-0 touch-manipulation items-center gap-1.5 rounded-lg bg-black/40 px-2.5 text-xs font-bold text-amber-50 ring-1 ring-amber-200/30 transition-transform active:scale-95"
+    >
       <ArrowLeft className="h-4 w-4" />
+      Salir
     </button>
   );
 }

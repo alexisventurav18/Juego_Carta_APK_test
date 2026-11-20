@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import Lobby from '@/components/Lobby';
 import OrientationGuard from '@/components/OrientationGuard';
 import RoomView from '@/components/RoomView';
@@ -6,14 +6,17 @@ import SplashScreen from '@/components/SplashScreen';
 import OfflineBotGame, { type OfflineSetup } from '@/components/OfflineBotGame';
 import { OptionsProvider } from '@/components/options/OptionsProvider';
 import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
-import { getStoredRoomId, storeRoomId } from '@/lib/identity';
+import { getResumableRoomId, storeRoomId } from '@/lib/identity';
+import { leaveRoomBestEffort } from '@/lib/rooms';
 import { MENU_THEMES, TABLE_THEMES, useVisualPrefs } from '@/lib/visualPrefs';
 
 export default function App() {
   const [inviteCode, setInviteCode] = useState<string | undefined>(() =>
     new URLSearchParams(window.location.search).get('join')?.trim().toUpperCase().slice(0, 8) || undefined,
   );
-  const [roomId, setRoomId] = useState<string | null>(() => (inviteCode ? null : getStoredRoomId()));
+  // Cierre definitivo: al abrir, solo se reanuda la sala si pertenece a la
+  // sesión actual de la app. Si se cerró la aplicación, se empieza en el menú.
+  const [roomId, setRoomId] = useState<string | null>(() => (inviteCode ? null : getResumableRoomId()));
   const [offlineGame, setOfflineGame] = useState<OfflineSetup | null>(null);
   // Pantalla de bienvenida: se muestra al abrir la app y se retira sola.
   const [booted, setBooted] = useState(false);
@@ -41,6 +44,25 @@ export default function App() {
     setRoomId(null);
     setOfflineGame(setup);
   };
+
+  // Al cerrar la aplicación (pagehide) se avisa al servidor para liberar el
+  // asiento y se borra la sala guardada: al volver a abrir, el juego no
+  // reaparece en la última pantalla de carga. Minimizar y volver no dispara
+  // pagehide, así que la partida se conserva al cambiar de app un momento.
+  const roomIdRef = useRef(roomId);
+  useEffect(() => {
+    roomIdRef.current = roomId;
+  }, [roomId]);
+  useEffect(() => {
+    const handlePageHide = () => {
+      const current = roomIdRef.current;
+      if (!current) return;
+      leaveRoomBestEffort(current);
+      storeRoomId(null);
+    };
+    window.addEventListener('pagehide', handlePageHide);
+    return () => window.removeEventListener('pagehide', handlePageHide);
+  }, []);
 
   return (
     <OptionsProvider>

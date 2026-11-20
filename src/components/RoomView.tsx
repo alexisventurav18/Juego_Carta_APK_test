@@ -8,7 +8,7 @@ import type { RobaitoMove } from '@/games/robaito';
 import { botTickDelay } from '@/games/bots';
 import { isBotPlayer } from '@/games/shared';
 import { getPlayerId } from '@/lib/identity';
-import { botTick, fetchRoom, leaveRoom, requestStart, type RoomConnectionStatus, type RoomRow, type RoomSubscription, sendMove, subscribeToRoom } from '@/lib/rooms';
+import { abandonRoom, botTick, fetchRoom, leaveRoom, requestStart, type RoomConnectionStatus, type RoomRow, type RoomSubscription, sendMove, subscribeToRoom } from '@/lib/rooms';
 import { CHAT_TOAST_MS, isAllowedChatSender, type RoomChatMessage } from '@/lib/roomChat';
 import RoomChat from './RoomChat';
 import { OptionsButton } from './table/chips';
@@ -35,6 +35,11 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const [playerId] = useState(getPlayerId);
   const [room, setRoom] = useState<RoomRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Si la sala no carga en 12 s, no se queda en "Cargando sala..." para
+  // siempre: se ofrece reintentar o volver al inicio.
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [leavingGame, setLeavingGame] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [coinOpen, setCoinOpen] = useState(false);
@@ -147,6 +152,12 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     return () => clearTimeout(timer);
   }, [notice]);
 
+  useEffect(() => {
+    if (room || loadError) return undefined;
+    const timer = window.setTimeout(() => setLoadTimedOut(true), 12000);
+    return () => window.clearTimeout(timer);
+  }, [room, loadError]);
+
   // En una sala pública en espera, el servidor arranca la partida sola cuando
   // se llena o pasan ~30 s: se consulta cada 5 s para no perderse el arranque.
   useEffect(() => {
@@ -205,6 +216,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
           versionRef.current = -1;
           setRoom(null);
           setLoadError(null);
+          setLoadTimedOut(false);
           retryConnection();
         }}
         onLeave={onLeave}
@@ -212,6 +224,20 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     );
   }
   if (!room) {
+    if (loadTimedOut) {
+      return (
+        <StatusMessage
+          message="No se pudo cargar la sala. Revisa tu conexión."
+          onRetry={() => {
+            versionRef.current = -1;
+            setRoom(null);
+            setLoadTimedOut(false);
+            retryConnection();
+          }}
+          onLeave={onLeave}
+        />
+      );
+    }
     return (
       <div className="wood-stage safe-screen flex items-center justify-center">
         <p className="text-center text-sm text-amber-100/80">Cargando sala...</p>
@@ -248,15 +274,22 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     void run(() => requestStart(room.id));
   };
 
-  /** Salir de una sala en espera: se avisa al servidor para liberar el asiento (y borrarla si queda vacía). */
+  /** Salir de una sala en espera: se avisa al servidor para liberar el asiento (y borrarla si queda vacía). Si el servidor no responde en 8 s, se vuelve al menú igualmente: no se queda colgado. */
   const leaveWaitingRoom = useCallback(() => {
     if (!room || room.status !== 'waiting') {
       onLeave();
       return;
     }
-    leaveRoom(room.id)
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      onLeave();
+    };
+    void leaveRoom(room.id)
       .catch(() => undefined)
-      .finally(() => onLeave());
+      .finally(finish);
+    window.setTimeout(finish, 8000);
   }, [room, onLeave]);
 
   const startSoloGame = (humanWonToss: boolean) => {
@@ -268,6 +301,34 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const state = room.state;
   const info = GAMES[room.game];
 
+  /**
+   * Salir de una partida en curso: se abandona en el servidor (un bot toma
+   * tu asiento y la partida sigue para los demás) y se vuelve al menú. Si el
+   * servidor no responde en 8 s, se sale igualmente. En sala en espera o con
+   * la partida terminada no hay nada que abandonar: se sale directo.
+   */
+  const leaveGame = useCallback(() => {
+    if (!room || room.status === 'waiting') {
+      leaveWaitingRoom();
+      return;
+    }
+    if (!room.state || isGameFinished(room.state)) {
+      onLeave();
+      return;
+    }
+    setLeavingGame(true);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      onLeave();
+    };
+    void abandonRoom(room.id)
+      .catch(() => undefined)
+      .finally(finish);
+    window.setTimeout(finish, 8000);
+  }, [room, leaveWaitingRoom, onLeave]);
+
   // El chat solo tiene sentido con otro humano en la mesa: contra bots no hay con quién hablar.
   const hasOtherHuman = room.players.some((player) => player.id !== playerId && !isBotPlayer(player));
   const myName = room.players.find((player) => player.id === playerId)?.name ?? '';
@@ -276,7 +337,8 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   if (state !== null && room.status !== 'waiting') {
     const tableProps = {
       seat,
-      onLeave,
+      // El botón "Salir" de la mesa pide confirmación antes de abandonar.
+      onLeave: () => setConfirmLeave(true),
       roomLabel: `${info.name} · Sala ${room.code}`,
       connection,
       onRetry: retryConnection,
@@ -323,6 +385,35 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         {/* Chat de texto: vive aquí, en la rama que envuelve las 4 mesas, así
             funciona igual en Casino, Tres y Dos, El Cagao y El Robaíto. */}
         {hasOtherHuman && <RoomChat toast={chatToast} myId={playerId} myName={myName} onSend={sendChatMessage} />}
+
+        {confirmLeave && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" role="dialog" aria-label="Salir de la partida">
+            <div className="wood-panel w-full max-w-sm space-y-3 p-5 text-center">
+              <h2 className="text-base font-extrabold text-amber-50">¿Salir de la partida?</h2>
+              <p className="text-sm leading-relaxed text-amber-100/85">
+                Un bot tomará tu lugar y la partida seguirá sin ti. No podrás volver a esta partida.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmLeave(false)}
+                  disabled={leavingGame}
+                  className="btn-wood min-h-[44px] flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-transform active:scale-95 disabled:opacity-60"
+                >
+                  Seguir jugando
+                </button>
+                <button
+                  type="button"
+                  onClick={leaveGame}
+                  disabled={leavingGame}
+                  className="btn-gold min-h-[44px] flex-1 rounded-lg px-3 py-2 text-sm font-extrabold transition-transform active:scale-95 disabled:opacity-60"
+                >
+                  {leavingGame ? 'Saliendo…' : 'Salir de la partida'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

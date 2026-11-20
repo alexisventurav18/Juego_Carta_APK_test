@@ -225,3 +225,51 @@ describe('matchmaking: salir de la espera', () => {
     assert.match(await fail(store, { action: 'leave', roomId: room.id, ...PLAYERS[0] }), /empezó/);
   });
 });
+
+describe('abandonar una partida empezada', () => {
+  /** Casino con 2 humanos, arrancado (sin bots): la mesa mínima es de 2. */
+  async function startedTwoHumans(store: RoomStore) {
+    const room = await ok(store, quickplay('casino', 0));
+    await ok(store, quickplay('casino', 1));
+    store.setCreatedAt(room.id, Date.now() - QUICKPLAY_WAIT_MS - 1000);
+    const started = await ok(store, { action: 'view', roomId: room.id, ...PLAYERS[0] });
+    assert.equal(started.status, 'playing');
+    assert.equal(started.players.length, 2);
+    return started;
+  }
+
+  it('un bot toma tu asiento y la partida sigue para los demás', async () => {
+    const store = new MemoryStore();
+    const room = await startedTwoHumans(store);
+    const left = await ok(store, { action: 'abandon', roomId: room.id, ...PLAYERS[0] });
+    assert.equal(left.status, 'playing');
+    assert.equal(left.players.length, 2);
+    assert.match(left.players[0].id, /^bot-/);
+    assert.equal(left.players[1].id, PLAYERS[1].playerId);
+    // Quien salió ya no puede volver a entrar: su clave se borró.
+    assert.match(await fail(store, { action: 'view', roomId: room.id, ...PLAYERS[0] }), /No estás/);
+    // El otro jugador sigue viendo la partida en curso.
+    const stillThere = await ok(store, { action: 'view', roomId: room.id, ...PLAYERS[1] });
+    assert.equal(stillThere.status, 'playing');
+    assert.equal(stillThere.state?.players[0].name, left.players[0].name);
+  });
+
+  it('si abandona el último humano, la sala se borra', async () => {
+    const store = new MemoryStore();
+    const room = await ok(store, quickplay('casino', 0));
+    store.setCreatedAt(room.id, Date.now() - QUICKPLAY_WAIT_MS - 1000);
+    await ok(store, { action: 'view', roomId: room.id, ...PLAYERS[0] });
+    await ok(store, { action: 'abandon', roomId: room.id, ...PLAYERS[0] });
+    assert.equal(await store.findById(room.id), null);
+    assert.match(await fail(store, { action: 'view', roomId: room.id, ...PLAYERS[0] }), /no existe/);
+  });
+
+  it('en espera, abandonar quita al jugador igual que salir', async () => {
+    const store = new MemoryStore();
+    const room = await ok(store, quickplay('casino', 0));
+    await ok(store, quickplay('casino', 1));
+    const left = await ok(store, { action: 'abandon', roomId: room.id, ...PLAYERS[0] });
+    assert.equal(left.players.length, 1);
+    assert.equal(left.players[0].id, PLAYERS[1].playerId);
+  });
+});

@@ -1,8 +1,8 @@
-import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { BookOpen, Bot, Coins, DoorOpen, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
-import { createRoom, joinRoom, quickplayRoom } from '@/lib/rooms';
+import { createRoom, joinRoom, leaveRoom, quickplayRoom } from '@/lib/rooms';
 import { getMyAvatar, getPlayerId, getStoredName, hasChosenAvatar, resetPlayerIdentity, storeAvatar, storeName } from '@/lib/identity';
 import { claimDaily, useEconomy } from '@/lib/economy';
 import { useFullscreen } from '@/lib/platform';
@@ -90,6 +90,9 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const [avatar, setAvatar] = useState(getMyAvatar);
   const [avatarChosen, setAvatarChosen] = useState(hasChosenAvatar);
   const [busy, setBusy] = useState<'create' | 'join' | 'quickplay' | null>(null);
+  // Marca de la búsqueda en curso: si cambia, la búsqueda se canceló y su
+  // resultado (llegue tarde o no) se descarta en lugar de entrar a la sala.
+  const searchRef = useRef(0);
   const [error, setError] = useState<string | null>(null);
   // Cantidad de bots elegida para jugar sin conexión, por juego (si no se tocó, la recomendada).
   // Al abrir, se recupera la de la última partida jugada.
@@ -129,18 +132,33 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
       setPanel(kind === 'join' ? 'join' : null);
       return;
     }
+    const token = ++searchRef.current;
     setBusy(kind);
     setError(null);
     storeName(trimmedName);
     try {
       const roomId = await action({ id: getPlayerId(), name: trimmedName, avatar });
+      if (token !== searchRef.current) {
+        // Se canceló mientras se buscaba: la sala quedó creada con tu asiento,
+        // se libera para no dejarla ocupada y te quedas en el menú.
+        void leaveRoom(roomId).catch(() => undefined);
+        return;
+      }
       onEnter(roomId);
     } catch (err) {
+      if (token !== searchRef.current) return;
       setError(err instanceof Error ? err.message : 'Algo salió mal. Inténtalo de nuevo.');
       setPanel(kind === 'join' ? 'join' : null);
     } finally {
-      setBusy(null);
+      if (token === searchRef.current) setBusy(null);
     }
+  };
+
+  /** Cancela la búsqueda en curso (crear, unirse o "Jugar online") y vuelve al menú. */
+  const cancelSearch = () => {
+    searchRef.current += 1;
+    setBusy(null);
+    setError(null);
   };
 
   const handleCreate = () => run('create', async (player) => (await createRoom(game, player)).id);
@@ -366,6 +384,20 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
               <span className="truncate">Unirse</span>
             </button>
           </footer>
+
+          {/* Mientras se busca partida (crear, unirse u online) se puede cancelar y quedarse en el menú. */}
+          {busy !== null && (
+            <div className="flex shrink-0 justify-center">
+              <button
+                type="button"
+                onClick={cancelSearch}
+                className="btn-wood flex min-h-[40px] touch-manipulation items-center gap-1.5 rounded-lg px-4 text-[13px] font-bold transition-transform active:scale-95"
+              >
+                <X className="h-4 w-4 shrink-0" />
+                Cancelar búsqueda
+              </button>
+            </div>
+          )}
         </div>
 
         {dailyGranted !== null && dailyGranted > 0 && (
