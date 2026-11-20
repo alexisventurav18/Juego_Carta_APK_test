@@ -66,6 +66,59 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     setRetryToken((value) => value + 1);
   };
 
+  /**
+   * Salir de una sala en espera: se avisa al servidor para liberar el asiento (y borrarla si queda vacía). Si el servidor no responde en 8 s, se vuelve al menú igualmente: no se queda colgado.
+   *
+   * OJO: estos dos callbacks son hooks y van ANTES de cualquier `return` del componente. Si se
+   * definen después de los retornos tempranos ("Cargando sala...", error...), la primera vez que
+   * la sala carga se ejecutan más hooks que en el render anterior y React desmonta toda la app
+   * (pantalla marrón en blanco al crear o unirse a una sala).
+   */
+  const leaveWaitingRoom = useCallback(() => {
+    if (!room || room.status !== 'waiting') {
+      onLeave();
+      return;
+    }
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      onLeave();
+    };
+    void leaveRoom(room.id)
+      .catch(() => undefined)
+      .finally(finish);
+    window.setTimeout(finish, 8000);
+  }, [room, onLeave]);
+
+  /**
+   * Salir de una partida en curso: se abandona en el servidor (un bot toma
+   * tu asiento y la partida sigue para los demás) y se vuelve al menú. Si el
+   * servidor no responde en 8 s, se sale igualmente. En sala en espera o con
+   * la partida terminada no hay nada que abandonar: se sale directo.
+   */
+  const leaveGame = useCallback(() => {
+    if (!room || room.status === 'waiting') {
+      leaveWaitingRoom();
+      return;
+    }
+    if (!room.state || isGameFinished(room.state)) {
+      onLeave();
+      return;
+    }
+    setLeavingGame(true);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      onLeave();
+    };
+    void abandonRoom(room.id)
+      .catch(() => undefined)
+      .finally(finish);
+    window.setTimeout(finish, 8000);
+  }, [room, leaveWaitingRoom, onLeave]);
+
   const acceptRow = useCallback((row: RoomRow) => {
     setRoom((prev) => {
       const next = !prev || row.version >= prev.version ? row : prev;
@@ -275,24 +328,6 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     void run(() => requestStart(room.id));
   };
 
-  /** Salir de una sala en espera: se avisa al servidor para liberar el asiento (y borrarla si queda vacía). Si el servidor no responde en 8 s, se vuelve al menú igualmente: no se queda colgado. */
-  const leaveWaitingRoom = useCallback(() => {
-    if (!room || room.status !== 'waiting') {
-      onLeave();
-      return;
-    }
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      onLeave();
-    };
-    void leaveRoom(room.id)
-      .catch(() => undefined)
-      .finally(finish);
-    window.setTimeout(finish, 8000);
-  }, [room, onLeave]);
-
   const startSoloGame = (humanWonToss: boolean) => {
     setCoinOpen(false);
     const dealer = humanWonToss ? room.players.findIndex(isBotPlayer) : seat;
@@ -301,34 +336,6 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
 
   const state = room.state;
   const info = GAMES[room.game];
-
-  /**
-   * Salir de una partida en curso: se abandona en el servidor (un bot toma
-   * tu asiento y la partida sigue para los demás) y se vuelve al menú. Si el
-   * servidor no responde en 8 s, se sale igualmente. En sala en espera o con
-   * la partida terminada no hay nada que abandonar: se sale directo.
-   */
-  const leaveGame = useCallback(() => {
-    if (!room || room.status === 'waiting') {
-      leaveWaitingRoom();
-      return;
-    }
-    if (!room.state || isGameFinished(room.state)) {
-      onLeave();
-      return;
-    }
-    setLeavingGame(true);
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      onLeave();
-    };
-    void abandonRoom(room.id)
-      .catch(() => undefined)
-      .finally(finish);
-    window.setTimeout(finish, 8000);
-  }, [room, leaveWaitingRoom, onLeave]);
 
   // El chat solo tiene sentido con otro humano en la mesa: contra bots no hay con quién hablar.
   const hasOtherHuman = room.players.some((player) => player.id !== playerId && !isBotPlayer(player));
