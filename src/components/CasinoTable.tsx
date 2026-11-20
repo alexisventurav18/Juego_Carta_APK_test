@@ -64,6 +64,8 @@ interface CasinoTableProps {
   notice?: string | null;
   /** Contenido extra del panel de resultados (p. ej. el botón "Jugar otra partida"). */
   resultFooter?: ReactNode;
+  /** Revancha inmediata en la pantalla de fin de partida (solo sin conexión). */
+  onRematch?: () => void;
 }
 
 /** Cartas de la mesa suelta y dentro de combinaciones. */
@@ -87,7 +89,7 @@ function isCasinoPointCard(card: { rank: number; suit: string }): boolean {
  * toca las cartas de la mesa que quieres, y pulsa el botón; o arrastra la carta a la mesa (y suéltala
  * sobre una carta de la mesa para capturarla).
  */
-export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter }: CasinoTableProps) {
+export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter, onRematch }: CasinoTableProps) {
   const [cardId, setCardId] = useState<string | null>(null);
   const [capturedOpen, setCapturedOpen] = useState(false);
   const [tableIds, setTableIds] = useState<string[]>([]);
@@ -721,10 +723,11 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
             (iWon ? (
               <VictoryCelebration
                 rewardCoins={iWon ? winReward : null}
+                onRematch={onRematch}
                 onContinue={() => setEndNoticeDismissedRound(state.roundNo)}
               />
             ) : (
-              <DefeatNotice onContinue={() => setEndNoticeDismissedRound(state.roundNo)} />
+              <DefeatNotice onRematch={onRematch} onContinue={() => setEndNoticeDismissedRound(state.roundNo)} />
             ))}
           {showClosingAlert && (
             <ClosingZoneBanner alerts={closingAlerts} onDismiss={() => setClosingDismissedRound(state.roundNo)} />

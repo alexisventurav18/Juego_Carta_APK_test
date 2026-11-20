@@ -110,6 +110,7 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
     onLeave,
     notice,
     roomLabel: `${GAMES[game].name} · contra bots · sin conexión`,
+    onRematch: rematch,
     resultFooter: isGameFinished(state) ? (
       <button type="button" onClick={rematch} className={PANEL_BUTTON}>
         <RotateCcw className="h-4 w-4" />

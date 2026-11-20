@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Coins, Trophy } from 'lucide-react';
+import { Coins, RotateCcw, Trophy } from 'lucide-react';
 import { useGameSounds } from '@/hooks/useGameSounds';
 
 interface VictoryCelebrationProps {
   onContinue: () => void;
+  /** Revancha inmediata (sin conexión): si se pasa, es el botón principal. */
+  onRematch?: () => void;
   /** Textos opcionales: por defecto son los del Casino (partida por equipos a 21). */
   title?: string;
   message?: string;
@@ -28,6 +30,7 @@ function makePieces() {
 
 export default function VictoryCelebration({
   onContinue,
+  onRematch,
   title = '¡GANASTE!',
   message = 'Tu equipo se llevó la partida. Revisa el desglose de puntos.',
   continueLabel = 'Ver el desglose',
@@ -79,16 +82,33 @@ export default function VictoryCelebration({
             +{rewardCoins} monedas
           </p>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            playSound('click');
-            onContinue();
-          }}
-          className="btn-gold min-h-[44px] rounded-lg px-6 py-3 text-sm font-extrabold shadow-lg transition-transform active:scale-95"
-        >
-          {continueLabel}
-        </button>
+        <div className="flex flex-col items-center gap-2.5">
+          {onRematch && (
+            <button
+              type="button"
+              onClick={() => {
+                playSound('click');
+                onRematch();
+              }}
+              className="btn-gold flex min-h-[48px] items-center gap-2 rounded-lg px-8 py-3 text-base font-extrabold shadow-lg transition-transform active:scale-95"
+            >
+              <RotateCcw className="h-5 w-5" aria-hidden />
+              Revancha
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              playSound('click');
+              onContinue();
+            }}
+            className={`min-h-[44px] rounded-lg px-6 py-3 text-sm font-extrabold shadow-lg transition-transform active:scale-95 ${
+              onRematch ? 'btn-wood font-bold' : 'btn-gold'
+            }`}
+          >
+            {continueLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

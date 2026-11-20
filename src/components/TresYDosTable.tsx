@@ -39,6 +39,8 @@ interface TresYDosTableProps {
   notice?: string | null;
   /** Contenido extra del panel de resultados (p. ej. el botón "Jugar otra partida"). */
   resultFooter?: ReactNode;
+  /** Revancha inmediata en la pantalla de fin de partida (solo sin conexión). */
+  onRematch?: () => void;
 }
 
 /** Cartas visibles bajo la de arriba del Pozo, para dar sensación de pila. */
@@ -61,6 +63,7 @@ export default function TresYDosTable({
   onRetry,
   notice,
   resultFooter,
+  onRematch,
 }: TresYDosTableProps) {
   const [cardId, setCardId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -440,12 +443,14 @@ export default function TresYDosTable({
                 message={`Llegaste a ${TARGET_WINS} rondas ganadas y te llevaste la partida.`}
                 continueLabel="Continuar"
                 rewardCoins={iWon ? winReward : null}
+                onRematch={onRematch}
                 onContinue={() => setEndNoticeDismissedRound(state.roundNo)}
               />
             ) : (
               <DefeatNotice
                 message={`${winnerName} llegó primero a ${TARGET_WINS} rondas ganadas.`}
                 continueLabel="Continuar"
+                onRematch={onRematch}
                 onContinue={() => setEndNoticeDismissedRound(state.roundNo)}
               />
             ))}

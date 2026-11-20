@@ -2,15 +2,19 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   buyItem,
+  claimDailyAmount,
   claimDailyReward,
+  DAILY_WHEEL_PRIZES,
   defaultEconomy,
   DAILY_REWARD_COINS,
   humanOutcome,
+  isDailyAvailable,
   isOwned,
   loadEconomy,
   matchFingerprint,
   migrateEconomy,
   recordWin,
+  rollDailyPrize,
   SHOP_ITEMS,
   shopPrice,
   winRewardAmount,
@@ -153,6 +157,79 @@ describe('economía: victorias, rachas y pago único por partida', () => {
     assert.equal(lost.awarded, null);
     assert.equal(lost.state.streak, 0);
     assert.equal(lost.state.coins, 80);
+  });
+
+  it('cuenta partidas jugadas, derrotas y mejor racha (para el perfil)', () => {
+    const w1 = recordWin(defaultEconomy(), 'casino', 'win', 'p1');
+    const w2 = recordWin(w1.state, 'casino', 'win', 'p2');
+    const w3 = recordWin(w2.state, 'casino', 'win', 'p3');
+    assert.equal(w3.state.gamesPlayed, 3);
+    assert.equal(w3.state.losses, 0);
+    assert.equal(w3.state.bestStreak, 3);
+    const lost = recordWin(w3.state, 'casino', 'loss', 'p4');
+    assert.equal(lost.state.gamesPlayed, 4);
+    assert.equal(lost.state.losses, 1);
+    assert.equal(lost.state.streak, 0);
+    assert.equal(lost.state.bestStreak, 3);
+    // Un guardado viejo (sin los campos nuevos) migra a 0, no a NaN.
+    const old = loadEconomy(JSON.stringify({ ...defaultEconomy(), coins: 10, gamesPlayed: undefined }), {
+      cardBack: 'cacao',
+      table: 'madera',
+      menu: 'madera',
+    });
+    assert.equal(old.gamesPlayed, 0);
+    assert.equal(old.losses, 0);
+    assert.equal(old.bestStreak, 0);
+  });
+});
+
+describe('economía: rueda diaria', () => {
+  it('los segmentos cubren todos los premios y suman 100 de peso', () => {
+    assert.equal(DAILY_WHEEL_PRIZES.reduce((sum, p) => sum + p.weight, 0), 100);
+    assert.deepEqual(
+      DAILY_WHEEL_PRIZES.map((p) => p.amount),
+      [25, 50, 100, 150, 250],
+    );
+  });
+
+  it('el sorteo respeta los pesos (azar inyectado)', () => {
+    assert.equal(rollDailyPrize(() => 0), 25);
+    assert.equal(rollDailyPrize(() => 0.29), 25);
+    assert.equal(rollDailyPrize(() => 0.3), 50);
+    assert.equal(rollDailyPrize(() => 0.69), 50);
+    assert.equal(rollDailyPrize(() => 0.7), 100);
+    assert.equal(rollDailyPrize(() => 0.89), 100);
+    assert.equal(rollDailyPrize(() => 0.9), 150);
+    assert.equal(rollDailyPrize(() => 0.97), 150);
+    assert.equal(rollDailyPrize(() => 0.99), 250);
+  });
+
+  it('el premio medio ronda las 64 monedas y nunca sale de la rueda', () => {
+    let total = 0;
+    const n = 2000;
+    for (let i = 0; i < n; i++) {
+      const prize = rollDailyPrize();
+      assert.ok([25, 50, 100, 150, 250].includes(prize));
+      total += prize;
+    }
+    const mean = total / n;
+    assert.ok(mean > 58 && mean < 71, `media ${mean}`);
+  });
+
+  it('el premio girado se cobra una sola vez al día', () => {
+    const monday = new Date(2026, 10, 16, 9, 0, 0);
+    const eco = defaultEconomy();
+    assert.equal(isDailyAvailable(eco, monday), true);
+    const first = claimDailyAmount(eco, 100, monday);
+    assert.equal(first.granted, 100);
+    assert.equal(first.state.coins, 100);
+    assert.equal(isDailyAvailable(first.state, monday), false);
+    const second = claimDailyAmount(first.state, 250, new Date(2026, 10, 16, 20, 0, 0));
+    assert.equal(second.granted, 0);
+    assert.equal(second.state.coins, 100);
+    const tuesday = claimDailyAmount(second.state, 25, new Date(2026, 10, 17, 9, 0, 0));
+    assert.equal(tuesday.granted, 25);
+    assert.equal(tuesday.state.coins, 125);
   });
 });
 

@@ -40,6 +40,8 @@ export interface RobaitoTableProps {
   notice?: string | null;
   /** Contenido extra del resultado (p. ej. el botón "Jugar otra partida"). */
   resultFooter?: ReactNode;
+  /** Revancha inmediata en la pantalla de fin de partida (solo sin conexión). */
+  onRematch?: () => void;
 }
 
 const VARS = {
@@ -85,7 +87,7 @@ function describeEvent(event: RobaitoEvent, seat: number, names: string[]): stri
  * los otros juegos. Toca una carta para elegirla (se marca qué se llevaría) y tócala otra vez, pulsa el botón
  * o arrástrala al centro para jugarla.
  */
-export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter }: RobaitoTableProps) {
+export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, connection, onRetry, notice, resultFooter, onRematch }: RobaitoTableProps) {
   const game = useRobaitoGame({ state, seat, onMove });
   const { event } = game;
   const winReward = useWinReward(state, seat);
@@ -447,6 +449,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
                 }
                 continueLabel="Continuar"
                 rewardCoins={game.iWon ? winReward : null}
+                onRematch={onRematch}
                 onContinue={() => setEndNoticeDismissed(true)}
               />
             ) : (
@@ -454,6 +457,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
                 title="Perdiste la partida"
                 message={`${winnerNames} ${state.winnerSeats.length > 1 ? 'empataron con' : 'juntó'} ${bestCount} cartas.`}
                 continueLabel="Ver resultados"
+                onRematch={onRematch}
                 onContinue={() => setEndNoticeDismissed(true)}
               />
             ))}

@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BookOpen, Bot, Coins, DoorOpen, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Target, Users, VolumeX, X, Zap } from 'lucide-react';
+import { useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { BarChart3, BookOpen, Bot, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Target, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
 import { createRoom, joinRoom, leaveRoom, quickplayRoom } from '@/lib/rooms';
 import { getMyAvatar, getPlayerId, getStoredName, hasChosenAvatar, resetPlayerIdentity, storeAvatar, storeName } from '@/lib/identity';
-import { claimDaily, useEconomy } from '@/lib/economy';
+import { isDailyAvailableNow, useEconomy } from '@/lib/economy';
 import { unclaimedCompleted } from '@/lib/missions';
 import { useFullscreen } from '@/lib/platform';
 import { useMuted } from '@/lib/soundPrefs';
@@ -15,6 +15,8 @@ import { useOptions } from './options/OptionsProvider';
 import Tutorial from './tutorial/Tutorial';
 import Store from './Store';
 import MissionsModal from './MissionsModal';
+import DailyWheel from './DailyWheel';
+import ProfileModal from './ProfileModal';
 import { WoodFrame } from './cagao/CardAssets';
 import GameCards from './GameCards';
 import type { OfflineSetup } from './OfflineBotGame';
@@ -88,8 +90,12 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
   const [missionsOpen, setMissionsOpen] = useState(false);
-  const [dailyGranted, setDailyGranted] = useState<number | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  // Rueda diaria: se abre sola la primera vez que se entra cada día; si se
+  // cierra sin girar, queda el botón del regalo hasta reclamarla.
+  const [dailyWheelOpen, setDailyWheelOpen] = useState(isDailyAvailableNow);
   const economy = useEconomy();
+  const dailyAvailable = isDailyAvailableNow() && !dailyWheelOpen;
   const missionsReady = unclaimedCompleted(economy.missions);
   const [avatar, setAvatar] = useState(getMyAvatar);
   const [avatarChosen, setAvatarChosen] = useState(hasChosenAvatar);
@@ -107,17 +113,6 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const options = useOptions();
   const fullscreen = useFullscreen();
   const { playSound } = useGameSounds();
-
-  // Recompensa diaria: 50 monedas la primera vez que se entra cada día.
-  useEffect(() => {
-    const granted = claimDaily();
-    if (granted > 0) {
-      setDailyGranted(granted);
-      const timer = window.setTimeout(() => setDailyGranted(null), 6000);
-      return () => window.clearTimeout(timer);
-    }
-    return undefined;
-  }, []);
 
   const info = GAMES[game];
   const trimmedName = name.trim();
@@ -270,6 +265,21 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5">
+              {dailyAvailable && (
+                <button
+                  type="button"
+                  onClick={() => setDailyWheelOpen(true)}
+                  aria-label="Girar la rueda diaria"
+                  title="Rueda diaria: gira y gana monedas"
+                  className="btn-gold relative flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-extrabold transition-transform active:scale-95"
+                >
+                  <Gift className="h-4 w-4 shrink-0 animate-pulse" aria-hidden />
+                  <span className="hidden min-[760px]:inline">Rueda</span>
+                </button>
+              )}
+              <button type="button" onClick={() => setProfileOpen(true)} aria-label="Mi perfil y estadísticas" title="Mi perfil" className={ICON_BTN}>
+                <BarChart3 className="h-4 w-4" />
+              </button>
               <button
                 type="button"
                 onClick={() => setStoreOpen(true)}
@@ -423,14 +433,6 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           )}
         </div>
 
-        {dailyGranted !== null && dailyGranted > 0 && (
-          <p
-            role="status"
-            className="pointer-events-none absolute left-1/2 top-[calc(var(--frame)+4px)] z-40 -translate-x-1/2 rounded-full bg-amber-400/25 px-4 py-2 text-center text-[13px] font-extrabold text-amber-300 ring-1 ring-amber-300/60"
-          >
-            ¡Recompensa diaria! +{dailyGranted} monedas por entrar hoy
-          </p>
-        )}
         {error && (
           <p
             role="alert"
@@ -488,6 +490,19 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
       </div>
       {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
       {missionsOpen && <MissionsModal onClose={() => setMissionsOpen(false)} />}
+      {dailyWheelOpen && <DailyWheel onClose={() => setDailyWheelOpen(false)} />}
+      {profileOpen && (
+        <ProfileModal
+          economy={economy}
+          avatar={avatar}
+          name={name}
+          onClose={() => setProfileOpen(false)}
+          onEditAvatar={() => {
+            setProfileOpen(false);
+            setEditorOpen(true);
+          }}
+        />
+      )}
       {editorOpen && (
         <AvatarEditor
           initial={avatarChosen ? avatar : null}

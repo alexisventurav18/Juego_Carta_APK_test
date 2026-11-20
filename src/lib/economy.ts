@@ -115,8 +115,14 @@ export interface EconomyState {
   coins: number;
   /** Victorias totales (todas las partidas ganadas). */
   wins: number;
+  /** Partidas terminadas (victorias + empates + derrotas). */
+  gamesPlayed: number;
+  /** Derrotas totales. */
+  losses: number;
   /** Victorias consecutivas actuales; se reinicia al perder. */
   streak: number;
+  /** Mejor racha de victorias consecutivas. */
+  bestStreak: number;
   /** Victorias por modo. */
   winsByGame: Record<GameId, number>;
   lastDailyDate: string | null;
@@ -133,7 +139,10 @@ export function defaultEconomy(): EconomyState {
   return {
     coins: 0,
     wins: 0,
+    gamesPlayed: 0,
+    losses: 0,
     streak: 0,
+    bestStreak: 0,
     winsByGame: { casino: 0, tresydos: 0, robaito: 0, cagao: 0 },
     lastDailyDate: null,
     ownedCardBacks: [DEFAULT_VISUAL_PREFS.cardBack],
@@ -160,6 +169,9 @@ export function migrateEconomy(state: EconomyState, prefs: VisualPrefs): Economy
   return {
     ...state,
     coins: Math.max(0, Math.floor(state.coins) || 0),
+    gamesPlayed: Math.max(0, Math.floor(state.gamesPlayed) || 0),
+    losses: Math.max(0, Math.floor(state.losses) || 0),
+    bestStreak: Math.max(0, Math.floor(state.bestStreak) || 0),
     ownedCardBacks: unique([
       ...state.ownedCardBacks.filter((id) => knownCardBacks.includes(id)),
       DEFAULT_VISUAL_PREFS.cardBack,
@@ -260,6 +272,51 @@ export function claimDailyReward(
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Rueda diaria: la recompensa de entrar cada día es un giro con premio */
+/* variable, en vez de 50 fijas. El giro es lo que hace volver mañana: */
+/* no saber qué toca pesa más que la cantidad exacta.                  */
+/* ------------------------------------------------------------------ */
+
+/** Segmentos de la rueda: premio y peso relativo (suman 100). */
+export const DAILY_WHEEL_PRIZES: { amount: number; weight: number; label: string }[] = [
+  { amount: 25, weight: 30, label: '+25' },
+  { amount: 50, weight: 40, label: '+50' },
+  { amount: 100, weight: 20, label: '+100' },
+  { amount: 150, weight: 8, label: '+150' },
+  { amount: 250, weight: 2, label: '¡+250!' },
+];
+
+/** Sortea el premio de la rueda (se puede inyectar el azar en las pruebas). */
+export function rollDailyPrize(random: () => number = Math.random): number {
+  const total = DAILY_WHEEL_PRIZES.reduce((sum, prize) => sum + prize.weight, 0);
+  let roll = random() * total;
+  for (const prize of DAILY_WHEEL_PRIZES) {
+    roll -= prize.weight;
+    if (roll < 0) return prize.amount;
+  }
+  return DAILY_WHEEL_PRIZES[0].amount;
+}
+
+/** ¿Queda la recompensa diaria de hoy por reclamar? */
+export function isDailyAvailable(state: EconomyState, date: Date = new Date()): boolean {
+  return state.lastDailyDate !== todayKey(date);
+}
+
+/** Otorga el premio girado (una sola vez al día). Devuelve lo otorgado, o 0. */
+export function claimDailyAmount(
+  state: EconomyState,
+  amount: number,
+  date: Date = new Date(),
+): { state: EconomyState; granted: number } {
+  const today = todayKey(date);
+  if (state.lastDailyDate === today || amount <= 0) return { state, granted: 0 };
+  return {
+    state: { ...state, coins: state.coins + amount, lastDailyDate: today },
+    granted: amount,
+  };
+}
+
 /** Monedas por una victoria, con el bonus de racha incluido. Un empate paga la mitad. */
 export function winRewardAmount(game: GameId, outcome: WinOutcome, streakBefore: number): number {
   const base = WIN_REWARDS[game];
@@ -317,15 +374,21 @@ export function recordWin(
   if (state.awarded.includes(matchKey)) return { state, awarded: null };
   const awarded = [...state.awarded, matchKey].slice(-50);
   if (outcome === 'loss') {
-    return { state: { ...state, streak: 0, awarded }, awarded: null };
+    return {
+      state: { ...state, streak: 0, gamesPlayed: state.gamesPlayed + 1, losses: state.losses + 1, awarded },
+      awarded: null,
+    };
   }
   const amount = winRewardAmount(game, outcome, state.streak);
+  const newStreak = state.streak + 1;
   return {
     state: {
       ...state,
       coins: state.coins + amount,
       wins: state.wins + 1,
-      streak: state.streak + 1,
+      gamesPlayed: state.gamesPlayed + 1,
+      streak: newStreak,
+      bestStreak: Math.max(state.bestStreak, newStreak),
       winsByGame: { ...state.winsByGame, [game]: state.winsByGame[game] + 1 },
       awarded,
     },
@@ -436,6 +499,18 @@ export function claimMissionReward(period: MissionPeriod, id: string): number {
 /** Recompensa diaria: 50 monedas la primera vez que se abre la app cada día. */
 export function claimDaily(): number {
   const result = claimDailyReward(economy);
+  if (result.granted > 0) save(result.state);
+  return result.granted;
+}
+
+/** ¿Queda la recompensa diaria de hoy por reclamar (para la rueda)? */
+export function isDailyAvailableNow(): boolean {
+  return isDailyAvailable(economy);
+}
+
+/** Otorga el premio que salió en la rueda diaria (una sola vez al día). */
+export function claimDailyPrize(amount: number): number {
+  const result = claimDailyAmount(economy, amount);
   if (result.granted > 0) save(result.state);
   return result.granted;
 }

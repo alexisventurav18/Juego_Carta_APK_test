@@ -34,6 +34,8 @@ export interface GameTableProps {
   notice?: string | null;
   /** Contenido extra del resultado (p. ej. el botón "Jugar otra partida"). */
   resultFooter?: ReactNode;
+  /** Revancha inmediata en la pantalla de fin de partida (solo sin conexión). */
+  onRematch?: () => void;
 }
 
 /** Giro estable (±14°) a partir del id de la carta, para que la pila de pares se vea natural. */
@@ -53,6 +55,7 @@ export default function GameTable({
   onRetry,
   notice,
   resultFooter,
+  onRematch,
 }: GameTableProps) {
   const game = useElCagaoGame({ state, seat, onMove });
   const { event } = game;
@@ -375,6 +378,7 @@ export default function GameTable({
             title="¡Eres El Cagao!"
             message="Te quedaste con el A♠ y no pudiste emparejarlo. ¡Pide la revancha!"
             continueLabel="Continuar"
+            onRematch={onRematch}
             onContinue={() => setEndNoticeDismissed(true)}
           />
         ) : (
@@ -383,6 +387,7 @@ export default function GameTable({
             message={`${loserName} se quedó con El Cagao.`}
             continueLabel="Continuar"
             rewardCoins={game.iLost ? null : winReward}
+            onRematch={onRematch}
             onContinue={() => setEndNoticeDismissed(true)}
           />
         ))}
