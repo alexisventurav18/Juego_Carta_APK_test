@@ -81,9 +81,6 @@ export default function TableLayout({
       {/* Marco a sangre: la madera llega hasta los bordes físicos de la pantalla (sin franjas negras). */}
       <WoodFrame />
 
-      {/* Cruz blanca dominicana como marca de agua del fondo de la mesa. */}
-      <div aria-hidden className="dominican-cross" />
-
       {/* Brillo del modo que se juega: un halo suave con el color del juego detrás del tablero. */}
       {accent && (
         <div

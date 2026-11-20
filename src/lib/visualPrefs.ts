@@ -83,13 +83,6 @@ export const TABLE_THEMES: { id: TableTheme; label: string; color: string; image
   },
 ];
 
-/**
- * Fondos de menú con foto clara (cielo y arena luminosos): la cruz blanca
- * apenas se distingue sobre ellos, así que mientras esté equipado uno de
- * estos dos el menú usa la variante oscura de la cruz (azul bandera).
- */
-export const DARK_CROSS_MENU_THEMES: readonly MenuTheme[] = ['playa-ilustrada', 'atardecer-tropical'];
-
 export const MENU_THEMES: { id: MenuTheme; label: string; color: string; image: string }[] = [
   {
     id: 'madera',

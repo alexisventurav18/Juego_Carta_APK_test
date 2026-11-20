@@ -4,26 +4,26 @@ import { describe, it } from 'node:test';
 import {
   CONFETTI_COLORS,
   DOMINICAN_PALETTE,
-  hexToRgbChannels,
   isValidHex,
   WHEEL_COLORS,
 } from '../src/lib/dominicanPalette';
 import {
   CARD_BACK_THEMES,
-  DARK_CROSS_MENU_THEMES,
   GAME_ENVIRONMENTS,
   MENU_THEMES,
   TABLE_THEMES,
 } from '../src/lib/visualPrefs';
 import { shopPrice } from '../src/lib/economy';
 
-// La cruz no se puede renderizar en Node: RoomView y Lobby usan el alias
-// `@/` en su cadena de imports y el runner tsx no lo resuelve. Se comprueba
-// el marcado en el código fuente, como hace seatPlaque.test.ts.
+// Los componentes no se pueden renderizar en Node: RoomView y Lobby usan el
+// alias `@/` en su cadena de imports y el runner tsx no lo resuelve. Se
+// comprueba el marcado en el código fuente, como hace seatPlaque.test.ts.
 const css = readFileSync('src/index.css', 'utf8');
 const lobby = readFileSync('src/components/Lobby.tsx', 'utf8');
 const roomView = readFileSync('src/components/RoomView.tsx', 'utf8');
 const tableLayout = readFileSync('src/components/table/TableLayout.tsx', 'utf8');
+const visualPrefs = readFileSync('src/lib/visualPrefs.ts', 'utf8');
+const paletteSrc = readFileSync('src/lib/dominicanPalette.ts', 'utf8');
 
 /**
  * Pruebas de la identidad visual dominicana: la paleta canónica, los colores
@@ -138,100 +138,37 @@ describe('temas nuevos de la tienda', () => {
   });
 });
 
-describe('cruz dominicana (marca de agua)', () => {
-  it('hexToRgbChannels convierte cada color de la paleta a "r g b"', () => {
-    assert.equal(hexToRgbChannels('#002D62'), '0 45 98');
-    assert.equal(hexToRgbChannels('#CE1126'), '206 17 38');
-    assert.equal(hexToRgbChannels('#FFFFFF'), '255 255 255');
-    assert.equal(hexToRgbChannels('#E8A020'), '232 160 32');
-    assert.equal(hexToRgbChannels('#0EA5B7'), '14 165 183');
-    for (const color of Object.values(DOMINICAN_PALETTE)) {
-      assert.match(hexToRgbChannels(color), /^\d{1,3} \d{1,3} \d{1,3}$/, color);
+describe('sin cruz dominicana', () => {
+  it('no queda ningún rastro de la cruz en el CSS ni en las pantallas', () => {
+    for (const [name, source] of [
+      ['index.css', css],
+      ['Lobby.tsx', lobby],
+      ['RoomView.tsx', roomView],
+      ['TableLayout.tsx', tableLayout],
+    ] as const) {
+      assert.ok(!source.includes('dominican-cross'), `${name} ya no menciona la cruz`);
     }
+    assert.ok(!css.includes('dominican-cross-breathe'), 'el keyframe de la cruz tampoco queda');
+    assert.ok(!visualPrefs.includes('DARK_CROSS_MENU_THEMES'), 'la lista oscura de la cruz no existe');
+    assert.ok(!paletteSrc.includes('hexToRgbChannels'), 'el ayudante de la cruz no existe');
   });
 
-  it('la cruz es visible a simple vista: opacidad 0.09 en un solo valor', () => {
-    const cross = css.slice(css.indexOf('.dominican-cross'), css.indexOf('.wood-panel'));
-    assert.ok(cross.length > 0, 'se encontró la clase .dominican-cross');
-    assert.ok(cross.includes('/ 0.09'), 'la opacidad es 0.09');
-    assert.ok(!cross.includes('/ 0.05'), 'no queda la opacidad vieja 0.05');
-    assert.ok(cross.includes('--dominican-cross-rgb'), 'el color se puede teñir con la variable');
-    assert.ok(cross.includes('pointer-events: none'), 'la cruz nunca intercepta toques');
-  });
-
-  it('la cruz vive en el menú, en la mesa y en la sala de espera (una por pantalla)', () => {
-    assert.ok(
-      lobby.includes("className={darkCross ? 'dominican-cross dominican-cross--dark' : 'dominican-cross'}"),
-      'el menú lleva la cruz (blanca u oscura según el fondo)',
-    );
-    assert.ok(tableLayout.includes('className="dominican-cross"'), 'la mesa lleva la cruz');
-    assert.ok(roomView.includes('className="dominican-cross"'), 'la sala de espera lleva la cruz');
-    // Una sola por pantalla: WaitingRoom se monta dentro de la pantalla de
-    // RoomView, así que no lleva su propia cruz (duplicaría la marca).
-    const waitingRoom = readFileSync('src/components/WaitingRoom.tsx', 'utf8');
-    assert.ok(!waitingRoom.includes('dominican-cross'), 'WaitingRoom no duplica la cruz');
-  });
-
-  it('la cruz de la sala de espera se tiñe con el acento del modo', () => {
-    assert.ok(
-      roomView.includes("'--dominican-cross-rgb': hexToRgbChannels(GAME_ENVIRONMENTS[room.game].accent)"),
-      'la sala tiñe la cruz con el acento del modo',
-    );
-    assert.ok(roomView.includes("from '@/lib/dominicanPalette'"), 'RoomView importa el ayudante de la paleta');
-  });
-});
-
-describe('cruz oscura en fondos claros del menú', () => {
-  it('la lista oscura son exactamente las dos fotos claras, y solo esas', () => {
-    assert.deepEqual([...DARK_CROSS_MENU_THEMES], ['playa-ilustrada', 'atardecer-tropical']);
-    for (const id of DARK_CROSS_MENU_THEMES) {
-      const theme = MENU_THEMES.find((t) => t.id === id);
-      assert.ok(theme, id);
-      // Son fotos, no gradientes: ahí es donde el blanco se pierde.
-      assert.match(theme!.image, /url\(/, id);
-    }
-    assert.ok(!DARK_CROSS_MENU_THEMES.includes('madera'), 'la madera sigue con cruz blanca');
-    assert.ok(!DARK_CROSS_MENU_THEMES.includes('palmeras'), 'palmeras sigue con cruz blanca');
-  });
-
-  it('el menú usa la variante oscura solo con esos fondos, teñida de azul bandera', () => {
-    assert.ok(lobby.includes('DARK_CROSS_MENU_THEMES.includes(prefs.menu)'), 'el menú decide por el fondo equipado');
-    assert.ok(lobby.includes('dominican-cross--dark'), 'el menú aplica la clase oscura');
-    assert.ok(
-      lobby.includes('hexToRgbChannels(DOMINICAN_PALETTE.azulBandera)'),
-      'la cruz oscura se tiñe de azul bandera',
-    );
-    assert.ok(lobby.includes("from '@/lib/dominicanPalette'"), 'Lobby importa el ayudante de la paleta');
-    assert.ok(lobby.includes("from '@/lib/visualPrefs'"), 'Lobby importa las preferencias visuales');
-  });
-
-  it('la variante oscura existe en CSS y es más marcada que la blanca (0.14 frente a 0.09)', () => {
-    // Con la llave: el nombre también aparece en el comentario de la cruz base.
-    const start = css.indexOf('.dominican-cross--dark {');
-    assert.ok(start >= 0, 'existe la clase .dominican-cross--dark');
-    const dark = css.slice(start, css.indexOf('.dominican-glow', start));
-    assert.ok(dark.includes('/ 0.14'), 'la variante oscura usa 0.14');
-    assert.ok(dark.includes('--dominican-cross-rgb'), 'la variante oscura se tiñe con la variable');
-    // La variante solo cambia la opacidad: el trazo (tamaño y posición) lo
-    // hereda de .dominican-cross, que se aplica junto a ella.
-    assert.ok(!dark.includes('background-size'), 'la variante no redefine el trazo');
-    assert.ok(!dark.includes('background-position'), 'la variante no redefine la posición');
-    // La base sigue en 0.09: la variante no tocó la cruz de los fondos oscuros.
-    const cross = css.slice(css.indexOf('.dominican-cross'), css.indexOf('.wood-panel'));
-    assert.ok(cross.includes('/ 0.09'), 'la cruz base sigue en 0.09');
+  it('la identidad sigue sin la cruz: brillo, halo y colores por modo intactos', () => {
+    assert.ok(css.includes('.dominican-glow'), 'el resplandor sigue en el CSS');
+    assert.ok(css.includes('.table-halo-breathe'), 'el halo de la mesa sigue en el CSS');
+    assert.ok(lobby.includes('className="dominican-glow"'), 'el menú sigue con su resplandor');
+    assert.ok(roomView.includes('className="dominican-glow"'), 'la sala sigue con su resplandor');
   });
 });
 
 describe('fondos animados (identidad dominicana)', () => {
-  it('la cruz respira despacio y el resplandor flota: solo transform/opacity, ciclos lentos', () => {
-    assert.ok(css.includes('@keyframes dominican-cross-breathe'), 'existe la respiración de la cruz');
+  it('el resplandor flota y el halo respira: solo transform/opacity, ciclos lentos', () => {
     assert.ok(css.includes('@keyframes dominican-glow-drift'), 'existe la deriva del resplandor');
     assert.ok(css.includes('@keyframes table-halo-breathe'), 'existe la respiración del halo de la mesa');
-    assert.ok(css.includes('animation: dominican-cross-breathe 7s'), 'la cruz respira en 7 s');
     assert.ok(css.includes('animation: dominican-glow-drift 26s'), 'el resplandor flota en 26 s');
     assert.ok(css.includes('animation: table-halo-breathe 8s'), 'el halo respira en 8 s');
     // Solo transform y opacity en los keyframes: nada que mueva el layout.
-    for (const name of ['dominican-cross-breathe', 'dominican-glow-drift', 'table-halo-breathe']) {
+    for (const name of ['dominican-glow-drift', 'table-halo-breathe']) {
       const start = css.indexOf(`@keyframes ${name}`);
       assert.ok(start >= 0, `se encontró ${name}`);
       const block = css.slice(start, css.indexOf('@media (prefers-reduced-motion', start));
@@ -249,10 +186,9 @@ describe('fondos animados (identidad dominicana)', () => {
     assert.ok(!tableLayout.includes('dominican-glow'), 'la mesa no duplica el resplandor del menú');
   });
 
-  it('prefers-reduced-motion apaga las tres animaciones', () => {
+  it('prefers-reduced-motion apaga las dos animaciones', () => {
     const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
     assert.ok(reduced.length > 0, 'existe el bloque de movimiento reducido');
-    assert.ok(reduced.includes('.dominican-cross'), 'apaga la cruz');
     assert.ok(reduced.includes('.dominican-glow'), 'apaga el resplandor');
     assert.ok(reduced.includes('.table-halo-breathe'), 'apaga el halo');
     assert.ok(reduced.includes('animation: none'), 'las deja sin animación');

@@ -53,16 +53,3 @@ export const WHEEL_COLORS: readonly string[] = [
 export function isValidHex(color: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(color);
 }
-
-/**
- * Convierte un hex `#RRGGBB` a sus canales como `"r g b"`, para usarlo en
- * `rgb(... / alpha)` de CSS. Sirve para teñir la cruz dominicana con el
- * acento del modo sin duplicar su geometría en cada sitio.
- */
-export function hexToRgbChannels(hex: string): string {
-  const clean = hex.replace(/^#/, '');
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `${r} ${g} ${b}`;
-}

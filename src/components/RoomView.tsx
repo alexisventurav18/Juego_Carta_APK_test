@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Bot, LoaderCircle, RotateCcw, Wifi, WifiOff, X } from 'lucide-react';
 import { canStartGame, GAMES, isGameFinished } from '@/games';
 import type { CasinoMove } from '@/games/casino';
@@ -14,7 +14,6 @@ import { themeForGame } from '@/lib/musicThemes';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { abandonRoom, botTick, fetchRoom, leaveRoom, requestStart, type RoomConnectionStatus, type RoomRow, type RoomSubscription, sendMove, subscribeToRoom } from '@/lib/rooms';
 import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
-import { hexToRgbChannels } from '@/lib/dominicanPalette';
 import { CHAT_TOAST_MS, isAllowedChatSender, type RoomChatMessage } from '@/lib/roomChat';
 import RoomChat from './RoomChat';
 import { OptionsButton } from './table/chips';
@@ -505,15 +504,6 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         backgroundImage: `radial-gradient(ellipse at 50% 0%, ${GAME_ENVIRONMENTS[room.game].accent}40 0%, transparent 55%), radial-gradient(ellipse at 50% 35%, #4a2a12, #1e0e05 75%)`,
       }}
     >
-      {/* Cruz dominicana como marca de agua de la sala de espera, teñida con
-          el acento del modo. WaitingRoom se monta dentro de esta pantalla,
-          así que una sola cruz aquí cubre toda la espera (poner otra dentro
-          de WaitingRoom duplicaría la marca y la descentraría). */}
-      <div
-        aria-hidden
-        className="dominican-cross"
-        style={{ '--dominican-cross-rgb': hexToRgbChannels(GAME_ENVIRONMENTS[room.game].accent) } as CSSProperties}
-      />
       {/* Resplandor animado en colores de bandera sobre el fondo de la sala. */}
       <div aria-hidden className="dominican-glow" />
       <div className="room-waiting-content mx-auto w-full max-w-6xl px-3 py-2 sm:px-6 sm:py-5">
