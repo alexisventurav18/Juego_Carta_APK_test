@@ -184,9 +184,11 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
     if (!currentCaptureKey || currentCaptureKey === lastAnimatedCaptureKey.current) return;
     lastAnimatedCaptureKey.current = currentCaptureKey;
     setCaptureFlightKey(currentCaptureKey);
+    // Barrido de mesa: suena distinto al de una captura normal.
+    if (currentCaptureKey.endsWith(':v')) playSound('virao');
     const timer = window.setTimeout(() => setCaptureFlightKey(null), 950);
     return () => window.clearTimeout(timer);
-  }, [currentCaptureKey]);
+  }, [currentCaptureKey, playSound]);
 
   /* ------------------------- reparto, vuelos y sonidos ------------------------- */
 
@@ -255,6 +257,13 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
     const timer = window.setTimeout(() => playSound(iWon ? 'win' : 'lose'), 500);
     return () => window.clearTimeout(timer);
   }, [state.phase, state.roundNo, iWon, playSound]);
+
+  // Aviso de turno: suena solo cuando el turno pasa a ser tuyo (no al montar la mesa).
+  const wasMyTurn = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (wasMyTurn.current === false && myTurn) playSound('turn');
+    wasMyTurn.current = myTurn;
+  }, [myTurn, playSound]);
 
   /** Mi jugada: la carta vuela de la mano al tablero y, si capturo, las cartas de la mesa vuelan hacia mí. */
   const flyMyMove = (played: Card, captured: { id: string; cards: Card[] }[]) => {

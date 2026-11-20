@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Coins } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Coins, Trophy } from 'lucide-react';
+import { useGameSounds } from '@/hooks/useGameSounds';
 
 interface VictoryCelebrationProps {
   onContinue: () => void;
@@ -33,6 +34,14 @@ export default function VictoryCelebration({
   rewardCoins = null,
 }: VictoryCelebrationProps) {
   const [pieces] = useState(makePieces);
+  const { playSound } = useGameSounds();
+
+  // Tintineo de monedas al aparecer la recompensa (la fanfarria la pone la mesa).
+  useEffect(() => {
+    if (rewardCoins === null || rewardCoins <= 0) return;
+    const timer = window.setTimeout(() => playSound('coin'), 350);
+    return () => window.clearTimeout(timer);
+  }, [rewardCoins, playSound]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/75 p-4 backdrop-blur-sm">
@@ -50,9 +59,16 @@ export default function VictoryCelebration({
         />
       ))}
       <div className="relative w-full max-w-md space-y-8 text-center">
+        <span
+          aria-hidden
+          className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-amber-400/20 ring-2 ring-amber-300/70 shadow-[0_0_40px_rgba(252,211,77,0.45)]"
+          style={{ animation: 'victory-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 150ms both' }}
+        >
+          <Trophy className="h-10 w-10 text-amber-300" />
+        </span>
         <h2
           className="text-[clamp(2.25rem,13vw,4.5rem)] font-black tracking-tight text-amber-300 drop-shadow-[0_4px_24px_rgba(252,211,77,0.6)] "
-          style={{ animation: 'victory-pop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both' }}
+          style={{ animation: 'victory-pop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both, victory-glow 2.4s ease-in-out 700ms infinite' }}
         >
           {title}
         </h2>
@@ -65,7 +81,10 @@ export default function VictoryCelebration({
         )}
         <button
           type="button"
-          onClick={onContinue}
+          onClick={() => {
+            playSound('click');
+            onContinue();
+          }}
           className="btn-gold min-h-[44px] rounded-lg px-6 py-3 text-sm font-extrabold shadow-lg transition-transform active:scale-95"
         >
           {continueLabel}

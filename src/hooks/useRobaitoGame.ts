@@ -98,6 +98,13 @@ export function useRobaitoGame({ state, seat, onMove }: Options) {
     return () => window.clearTimeout(timer);
   }, [gameOver, iWon, playSound]);
 
+  // Aviso de turno: suena solo cuando el turno pasa a ser tuyo (no al montar la mesa).
+  const wasMyTurn = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (wasMyTurn.current === false && myTurn) playSound('turn');
+    wasMyTurn.current = myTurn;
+  }, [myTurn, playSound]);
+
   return {
     hand,
     playing,

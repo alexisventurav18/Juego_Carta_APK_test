@@ -79,6 +79,37 @@ button,
   }
 }
 
+@keyframes victory-glow {
+  0%,
+  100% {
+    text-shadow: 0 4px 24px rgba(252, 211, 77, 0.6);
+  }
+  50% {
+    text-shadow:
+      0 4px 40px rgba(252, 211, 77, 0.95),
+      0 0 60px rgba(252, 211, 77, 0.5);
+  }
+}
+
+@keyframes defeat-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-7px) rotate(-1deg);
+  }
+  40% {
+    transform: translateX(6px) rotate(1deg);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
 @keyframes virao-gain {
   0% {
     transform: scale(0.9);
