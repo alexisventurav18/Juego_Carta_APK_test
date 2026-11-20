@@ -642,7 +642,6 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
         <SeatPlaque
           name={state.players[seat].name}
           avatar={resolveAvatarCode(state.players[seat], true)}
-          count={handAll.length}
           isTurn={myTurn}
           out={false}
           isMe

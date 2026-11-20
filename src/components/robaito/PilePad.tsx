@@ -56,7 +56,8 @@ export default function PilePad({ pile, name, targeted = false, mine = false, re
           {pile.length}
         </span>
       </div>
-      <span className="max-w-[9ch] truncate rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-bold leading-none text-amber-100 sm:text-[11px]">
+      {/* Sin límite de ancho: "Tu paquete" tiene 10 caracteres y antes se veía "Tu pa...". */}
+      <span className="whitespace-nowrap rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-bold leading-none text-amber-100 sm:text-[11px]">
         {mine ? 'Tu paquete' : name}
       </span>
     </div>

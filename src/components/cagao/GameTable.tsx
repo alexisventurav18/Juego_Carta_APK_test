@@ -300,7 +300,6 @@ export default function GameTable({
         <SeatPlaque
           name={state.players[seat].name}
           avatar={resolveAvatarCode(state.players[seat], true)}
-          count={game.hand.length}
           isTurn={game.myTurn}
           out={game.iAmOut}
           isMe

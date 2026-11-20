@@ -236,7 +236,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
       pickable={false}
       onPick={() => undefined}
       registerAnchor={registerAnchor}
-      tag={`${state.piles[s].length} en paquete`}
+      packetCount={state.piles[s].length}
     />
   );
 
@@ -400,11 +400,10 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
           <SeatPlaque
             name={state.players[seat].name}
             avatar={resolveAvatarCode(state.players[seat], true)}
-            count={hand.length}
             isTurn={myTurn}
             out={false}
             isMe
-            tag={`${state.piles[seat].length} en paquete`}
+            packetCount={state.piles[seat].length}
           />
         </div>
       }

@@ -370,7 +370,6 @@ export default function TresYDosTable({
         <SeatPlaque
           name={state.players[seat].name}
           avatar={resolveAvatarCode(state.players[seat], true)}
-          count={hand.length}
           isTurn={myTurn}
           out={false}
           isMe

@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Coins, Flame, Lock, ShoppingBag, Trophy, X } from 'lucide-react';
 import { CARD_BACK_IMAGES } from './cagao/CardAssets';
+import BuyConfirmDialog from './BuyConfirmDialog';
 import {
   buyCosmetic,
   isOwned,
@@ -43,6 +45,10 @@ export default function Store({ onClose }: { onClose: () => void }) {
   const { prefs, update } = useVisualPrefs();
   const [tab, setTab] = useState<CosmeticCategory>('cardBack');
   const [message, setMessage] = useState<string | null>(null);
+  /** Artículo pendiente de confirmar: se abre el diálogo antes de cobrar. */
+  const [pendingPurchase, setPendingPurchase] = useState<{ id: string; label: string; price: number } | null>(
+    null,
+  );
 
   const equippedId = tab === 'cardBack' ? prefs.cardBack : tab === 'table' ? prefs.table : prefs.menu;
   const items = SHOP_ITEMS.filter((item) => item.category === tab);
@@ -54,7 +60,12 @@ export default function Store({ onClose }: { onClose: () => void }) {
     setMessage('¡Equipado! Se ve en toda la app.');
   };
 
-  const buy = (id: string, label: string, price: number) => {
+  /** Solo se cobra al confirmar en el diálogo: un toque abre la
+      confirmación y el doble toque sobre la tarjeta también. */
+  const confirmBuy = () => {
+    if (!pendingPurchase) return;
+    const { id, label, price } = pendingPurchase;
+    setPendingPurchase(null);
     const result = buyCosmetic(tab, id);
     if (!result.ok) {
       setMessage(
@@ -154,15 +165,34 @@ export default function Store({ onClose }: { onClose: () => void }) {
             return (
               <div
                 key={item.id}
+                onDoubleClick={() => {
+                  if (!owned && !equipped) {
+                    setPendingPurchase({ id: item.id, label: item.label, price: item.price });
+                  }
+                }}
                 className={`flex flex-col overflow-hidden rounded-xl ring-1 ${
                   equipped ? 'bg-amber-400/15 ring-amber-300' : 'bg-black/30 ring-amber-200/20'
                 }`}
               >
                 <div
-                  className="h-20 w-full shrink-0 bg-cover bg-center"
+                  className="relative h-20 w-full shrink-0 bg-cover bg-center"
                   style={{ backgroundImage: preview.backgroundImage, backgroundColor: preview.backgroundColor }}
                   aria-hidden
-                />
+                >
+                  {/* El precio también vive sobre la vista previa: en pantallas
+                      cortas en horizontal la parte de abajo de la tarjeta
+                      queda bajo el pliegue y sin esto no se ve. */}
+                  <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/75 px-2 py-1 text-[11px] font-extrabold text-amber-300 ring-1 ring-amber-300/60">
+                    {item.price === 0 ? (
+                      'Gratis'
+                    ) : (
+                      <>
+                        <Coins className="h-3.5 w-3.5" aria-hidden />
+                        {item.price}
+                      </>
+                    )}
+                  </span>
+                </div>
                 <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-2.5">
                   <p className="text-[13px] font-extrabold leading-tight text-amber-50">{item.label}</p>
                   <p className="flex items-center gap-1 text-[13px] font-bold text-amber-300">
@@ -192,7 +222,7 @@ export default function Store({ onClose }: { onClose: () => void }) {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => buy(item.id, item.label, item.price)}
+                        onClick={() => setPendingPurchase({ id: item.id, label: item.label, price: item.price })}
                         disabled={!canAfford}
                         className="btn-gold flex min-h-[40px] w-full touch-manipulation items-center justify-center gap-1.5 rounded-lg text-[13px] font-extrabold transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                       >
@@ -210,6 +240,18 @@ export default function Store({ onClose }: { onClose: () => void }) {
         <p className="mt-3 shrink-0 text-center text-[13px] text-amber-100/60">
           Lo que ya tenías equipado sigue siendo tuyo, sin pagar nada.
         </p>
+
+        {pendingPurchase &&
+          createPortal(
+            <BuyConfirmDialog
+              itemLabel={pendingPurchase.label}
+              price={pendingPurchase.price}
+              coins={economy.coins}
+              onConfirm={confirmBuy}
+              onCancel={() => setPendingPurchase(null)}
+            />,
+            document.body,
+          )}
       </div>
     </div>
   );

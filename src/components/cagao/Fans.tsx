@@ -1,10 +1,9 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
 import { fanMargin, fanPose } from './fanLayout';
+import { DRAG_THRESHOLD, resolveActivation, wantsDrag } from './fanTouch';
 import PlayingCard from './PlayingCard';
 import type { Card, Point } from './types';
 
-/** Distancia (px) a partir de la cual un toque se considera arrastre y no un simple toque. */
-const DRAG_THRESHOLD = 10;
 const LIFT = 'translate3d(0,-18px,0) scale(1.06)';
 const LIFT_TWIN = 'translate3d(0,-9px,0) scale(1.03)';
 
@@ -61,6 +60,9 @@ interface Press {
  * Tu mano en abanico, igual en los tres juegos. Pointer Events: ratón y táctil por igual.
  * - Pasar el ratón o deslizar el dedo sobre una carta la eleva (y su pareja, si hay, se eleva un poco).
  * - Tocar o hacer clic activa la carta (en El Cagao baja el par; en Casino y Tres y Dos la elige).
+ * - Un toque casi quieto activa la carta que se pulsó, no la que quedó bajo el dedo al soltar: las zonas
+ *   de toque se solapan y una deriva de pocos píxeles no debe activar la vecina. Solo un deslizamiento
+ *   de verdad activa la carta que quedó bajo el dedo.
  * - Arrastrar una carta hasta la mesa la juega; si la sueltas fuera, vuelve a su sitio.
  * Solo se animan `transform` y `opacity`; mientras arrastras, la posición se escribe directo en el DOM
  * (sin re-render por cada movimiento).
@@ -89,6 +91,9 @@ export function HandFan({
 }: HandFanProps) {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  /** Carta que se está pulsando: su zona de toque sube por encima de las vecinas mientras el gesto siga
+      siendo un toque (así el dedo no "pierde" la carta al derivar unos píxeles); al deslizar o soltar, baja. */
+  const [pressId, setPressId] = useState<string | null>(null);
   const [wiggleId, setWiggleId] = useState<string | null>(null);
   const press = useRef<Press | null>(null);
   const n = cards.length;
@@ -116,6 +121,7 @@ export function HandFan({
     e.currentTarget.setPointerCapture(e.pointerId);
     press.current = { id: card.id, sx: e.clientX, sy: e.clientY, dx: 0, dy: 0, dragging: false, layer, raf: null };
     setHoverId(card.id);
+    setPressId(card.id);
   };
 
   const onPointerMove = (e: PointerEvent<HTMLDivElement>, card: Card) => {
@@ -123,14 +129,13 @@ export function HandFan({
     if (!p || p.id !== card.id) return;
     const dx = e.clientX - p.sx;
     const dy = e.clientY - p.sy;
+    // En cuanto el dedo se mueve más del umbral ya no es un toque: la zona de la carta pulsada vuelve a
+    // su sitio para que el deslizamiento vea la carta real que hay bajo el dedo.
+    if (pressId !== null && Math.hypot(dx, dy) > DRAG_THRESHOLD) setPressId(null);
     if (!p.dragging) {
       // Con el ratón cualquier movimiento arrastra. Con el dedo, subir hacia la mesa arrastra; moverse de
       // lado desliza por las cartas para elegir (así no se confunden los dos gestos).
-      const wantsDrag =
-        e.pointerType === 'mouse'
-          ? Math.hypot(dx, dy) > DRAG_THRESHOLD
-          : Math.hypot(dx, dy) > DRAG_THRESHOLD && Math.abs(dy) >= Math.abs(dx) * 0.8;
-      if (draggable(card) && wantsDrag) {
+      if (draggable(card) && wantsDrag(dx, dy, e.pointerType)) {
         p.dragging = true;
         setDragId(card.id);
         onDraggingChange(true);
@@ -158,6 +163,7 @@ export function HandFan({
     const p = press.current;
     if (!p || p.id !== card.id) return;
     press.current = null;
+    setPressId(null);
     if (p.raf !== null) cancelAnimationFrame(p.raf);
 
     if (p.dragging) {
@@ -175,12 +181,12 @@ export function HandFan({
       setDragId(null);
       onDraggingChange(false);
     } else if (!cancelled) {
-      // Un toque (poco movimiento) o, con el dedo, soltar tras deslizar: se activa la carta que quedó bajo el dedo.
+      // Un toque casi quieto activa LA CARTA QUE SE PULSÓ: en el abanico las zonas de toque se solapan y
+      // cada carta visible es una franja estrecha, así que una deriva de pocos píxeles al soltar no debe
+      // acabar activando la vecina. Solo un deslizamiento de verdad activa la carta que quedó bajo el dedo.
       const moved = Math.hypot(e.clientX - p.sx, e.clientY - p.sy);
-      if (e.pointerType === 'mouse' ? moved <= DRAG_THRESHOLD : true) {
-        const target = e.pointerType === 'mouse' ? card.id : (idUnder(e.clientX, e.clientY) ?? card.id);
-        activate(cards.find((c) => c.id === target) ?? card);
-      }
+      const targetId = resolveActivation(moved, e.pointerType, card.id, idUnder(e.clientX, e.clientY));
+      if (targetId !== null) activate(cards.find((c) => c.id === targetId) ?? card);
     }
     if (e.pointerType !== 'mouse') setHoverId(null);
   };
@@ -242,14 +248,15 @@ export function HandFan({
             onPointerCancel={(e) => finish(e, card, true)}
           >
             {/* Zona de toque: se queda quieta (con la inclinación del abanico) aunque la carta se eleve,
-                así el dedo o el ratón no "pierden" la carta al subirla. */}
+                así el dedo o el ratón no "pierden" la carta al subirla. Mientras se pulsa, su zona sube por
+                encima de las vecinas para que ninguna la tape durante el gesto. */}
             <div
               role="button"
               tabIndex={0}
               aria-pressed={selected}
               aria-label={`${marked ? 'Bajar el par con ' : ''}carta ${i + 1} de ${n}`}
               className="pointer-events-auto absolute inset-0 cursor-pointer rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
-              style={{ ...poseStyle, zIndex: 1000 + i }}
+              style={{ ...poseStyle, zIndex: pressId === card.id ? 5000 : 1000 + i }}
               onKeyDown={(e) => onKeyDown(e, card)}
             />
             {/* La carta que se ve: se eleva con transform y pasa por encima de sus vecinas. */}

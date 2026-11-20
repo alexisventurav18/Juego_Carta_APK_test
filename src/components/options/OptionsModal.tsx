@@ -6,6 +6,7 @@ import { buyCosmetic, isOwned, shopPrice, useEconomy, type CosmeticCategory } fr
 import { requestNotificationPermission } from '@/lib/notify';
 import { usePrefs } from '@/lib/soundPrefs';
 import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
+import BuyConfirmDialog from '../BuyConfirmDialog';
 import { CARD_BACK_THEMES, MENU_THEMES, TABLE_THEMES, useVisualPrefs } from '@/lib/visualPrefs';
 
 interface OptionsModalProps {
@@ -138,8 +139,9 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
   const { prefs, update } = usePrefs();
   const { prefs: visualPrefs, update: updateVisual } = useVisualPrefs();
   const economy = useEconomy();
-  /** Tema bloqueado que se tocó: el aviso ofrece comprarlo aquí mismo. */
-  const [lockedOffer, setLockedOffer] = useState<{
+  /** Tema bloqueado que se tocó: se abre el mismo diálogo de confirmación
+      de compra que en la Tienda, antes de cobrar nada. */
+  const [pendingPurchase, setPendingPurchase] = useState<{
     category: CosmeticCategory;
     id: string;
     label: string;
@@ -156,11 +158,12 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      // Con el diálogo de compra abierto, Escape solo lo cierra a él.
+      if (e.key === 'Escape' && !pendingPurchase) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, pendingPurchase]);
 
   const toggleNotifications = (value: boolean) => {
     update({ notifications: value });
@@ -179,37 +182,38 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
     patch: Parameters<typeof updateVisual>[0],
   ) => {
     if (isOwned(economy, category, id)) {
-      setLockedOffer(null);
+      setPendingPurchase(null);
       setLockedNotice(null);
       updateVisual(patch);
       return;
     }
     const price = shopPrice(category, id);
     if (price === null) {
-      setLockedOffer(null);
+      setPendingPurchase(null);
       setLockedNotice(`«${label}» no está disponible.`);
       return;
     }
     setLockedNotice(null);
-    setLockedOffer({ category, id, label, price, patch });
+    setPendingPurchase({ category, id, label, price, patch });
   };
 
-  /** Compra el tema bloqueado que se tocó y lo equipa al momento. */
+  /** Compra el tema bloqueado que se tocó y lo equipa al momento. Solo se
+      ejecuta al confirmar en el diálogo de compra. */
   const buyLocked = () => {
-    if (!lockedOffer) return;
-    const result = buyCosmetic(lockedOffer.category, lockedOffer.id);
+    if (!pendingPurchase) return;
+    const { category, id, label, price, patch } = pendingPurchase;
+    setPendingPurchase(null);
+    const result = buyCosmetic(category, id);
     if (!result.ok) {
-      setLockedOffer(null);
       setLockedNotice(
         result.reason === 'funds'
-          ? `Te faltan ${lockedOffer.price - economy.coins} monedas para «${lockedOffer.label}». Gana partidas para conseguirlas.`
-          : `«${lockedOffer.label}» no está disponible.`,
+          ? `Te faltan ${price - economy.coins} monedas para «${label}». Gana partidas para conseguirlas.`
+          : `«${label}» no está disponible.`,
       );
       return;
     }
-    updateVisual(lockedOffer.patch);
-    setLockedOffer(null);
-    setLockedNotice(`¡Compraste y equipaste «${lockedOffer.label}»!`);
+    updateVisual(patch);
+    setLockedNotice(`¡Compraste y equipaste «${label}»!`);
   };
 
   /** Precio en monedas si la opción no es del jugador; null si ya es suya. */
@@ -304,23 +308,17 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
                 {lockedNotice}
               </p>
             )}
-            {lockedOffer && (
-              <div role="status" className="flex items-center justify-between gap-2 rounded-lg bg-amber-300/15 px-2 py-1.5 ring-1 ring-amber-300/40">
-                <p className="text-[11px] font-semibold text-amber-200">
-                  «{lockedOffer.label}» cuesta {lockedOffer.price} monedas.
-                </p>
-                <button
-                  type="button"
-                  onClick={buyLocked}
-                  disabled={economy.coins < lockedOffer.price}
-                  className="btn-gold min-h-[36px] shrink-0 touch-manipulation rounded-lg px-3 text-xs font-extrabold transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {economy.coins < lockedOffer.price
-                    ? `Te faltan ${lockedOffer.price - economy.coins}`
-                    : 'Comprar y equipar'}
-                </button>
-              </div>
-            )}
+            {pendingPurchase &&
+              createPortal(
+                <BuyConfirmDialog
+                  itemLabel={pendingPurchase.label}
+                  price={pendingPurchase.price}
+                  coins={economy.coins}
+                  onConfirm={buyLocked}
+                  onCancel={() => setPendingPurchase(null)}
+                />,
+                document.body,
+              )}
             <div className="space-y-3">
               <div>
                 <p className="mb-1.5 text-xs font-semibold text-amber-100/80">Reverso de las cartas</p>
