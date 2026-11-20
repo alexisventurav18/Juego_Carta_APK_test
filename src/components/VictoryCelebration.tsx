@@ -44,7 +44,7 @@ export default function VictoryCelebration({
   }, [rewardCoins, playSound]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/75 p-4 backdrop-blur-sm">
+    <div className="end-notice fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/75 p-4 backdrop-blur-sm">
       {pieces.map((piece) => (
         <span
           key={piece.id}
@@ -67,7 +67,7 @@ export default function VictoryCelebration({
           <Trophy className="h-10 w-10 text-amber-300" />
         </span>
         <h2
-          className="text-[clamp(2.25rem,13vw,4.5rem)] font-black tracking-tight text-amber-300 drop-shadow-[0_4px_24px_rgba(252,211,77,0.6)] "
+          className="end-notice-title text-[clamp(2.25rem,13vw,4.5rem)] font-black tracking-tight text-amber-300 drop-shadow-[0_4px_24px_rgba(252,211,77,0.6)] "
           style={{ animation: 'victory-pop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both, victory-glow 2.4s ease-in-out 700ms infinite' }}
         >
           {title}

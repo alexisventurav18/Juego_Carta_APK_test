@@ -594,18 +594,37 @@ button,
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
+  /* La sala puede hacer scroll: si el contenido no cabe, se baja con el dedo
+     en vez de quedar cortado. Antes era overflow:hidden y el centrado flex
+     recortaba arriba (título "Jugadores") y abajo (botón "Empezar partida"). */
   .room-waiting-screen {
-    overflow: hidden;
+    overflow-y: auto;
     max-height: 100dvh;
   }
 
   .room-waiting-content {
     box-sizing: border-box;
     display: flex;
-    height: 100%;
-    min-height: 0;
+    /* Crece con el contenido: con height:100% el contenido que sobraba no
+       empujaba el scroll de la pantalla y quedaba cortado. */
+    min-height: 100%;
     flex-direction: column;
     padding: clamp(4px, 1.2dvh, 8px) clamp(10px, 2.4vw, 24px);
+  }
+
+  /* Banda del modo: solo el nombre; la descripción se esconde en horizontal
+     corto para no robarle altura a los paneles. */
+  .room-waiting-mode-banner {
+    padding: 4px 8px;
+  }
+
+  .room-waiting-mode-banner p:last-child {
+    display: none;
+  }
+
+  /* El nombre del juego ya está en la banda del modo: se esconde del encabezado. */
+  .room-waiting-header-game {
+    display: none;
   }
 
   .room-waiting-header {
@@ -642,7 +661,10 @@ button,
   }
 
   .room-waiting-info {
-    justify-content: center;
+    /* Sin centrar: con justify-content:center el contenido que sobraba se
+       recortaba por arriba y por abajo a la vez (título y botones cortados).
+       Arriba primero, y lo que sobre baja con el scroll de la pantalla. */
+    justify-content: flex-start;
   }
 
   .room-waiting-info > div,
@@ -704,7 +726,9 @@ button,
   .room-waiting-player-panel {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    /* Igual que el panel de info: sin centrar, para que el desborde salga
+       solo por abajo y se alcance con el scroll. */
+    justify-content: flex-start;
   }
 
   .room-waiting-player-panel > * {
@@ -747,8 +771,11 @@ button,
     font-size: clamp(10px, 2.4dvh, 12px);
   }
 
+  /* Resultado de ronda: el marco hace scroll si el panel no cabe; antes era
+     overflow:hidden y el botón "Repartir cartas y continuar" quedaba cortado
+     e inalcanzable en horizontal corto, con la partida esperando. */
   .casino-round-result-overlay {
-    overflow: hidden;
+    overflow-y: auto;
     padding: 1dvh 2vw;
   }
 
@@ -757,7 +784,7 @@ button,
     flex-direction: column;
     max-height: 90dvh;
     gap: clamp(4px, 1dvh, 8px);
-    overflow: hidden;
+    overflow-y: auto;
   }
 
   .casino-round-result-frame > * + * {
@@ -767,7 +794,7 @@ button,
   .round-result-panel-compact {
     min-height: 0;
     gap: clamp(8px, 2dvh, 14px);
-    overflow: hidden;
+    overflow: visible;
     padding: clamp(12px, 3dvh, 20px);
   }
 
@@ -804,6 +831,12 @@ button,
     font-size: clamp(10px, 2.4dvh, 13px);
   }
 
+  /* Detalle de cada línea de puntos ("33 de 52 cartas"): se esconde en
+     horizontal corto; el rótulo y los puntos ya dicen lo que importa. */
+  .round-result-panel-compact .round-result-detail {
+    display: none;
+  }
+
   .round-result-panel-compact button {
     min-height: clamp(34px, 9dvh, 44px);
     padding: 6px 14px;
@@ -812,6 +845,16 @@ button,
 
   .round-result-panel-compact > p {
     font-size: clamp(12px, 2.8dvh, 15px);
+  }
+
+  /* Pantallas de fin de partida (victoria/derrota): título y huecos más
+     compactos para que el botón de continuar no se corte en horizontal corto. */
+  .end-notice > div > * + * {
+    margin-top: clamp(8px, 2.5dvh, 16px) !important;
+  }
+
+  .end-notice-title {
+    font-size: clamp(1.5rem, 9dvh, 2.25rem) !important;
   }
 }
 

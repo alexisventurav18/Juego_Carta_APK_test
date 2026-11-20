@@ -37,7 +37,7 @@ export default function RoundResultPanel({ title, lines, totals, teamNames, comp
                       {line.label}
                     </span>
                     {line.detail && (
-                      <span className={`block text-xs sm:text-sm ${line.muted ? 'text-amber-300' : 'text-amber-100/60'}`}>
+                      <span className={`round-result-detail block text-xs sm:text-sm ${line.muted ? 'text-amber-300' : 'text-amber-100/60'}`}>
                         {line.detail}
                       </span>
                     )}

@@ -306,7 +306,10 @@ export function randomizeAvatarSections(
   for (const section of AVATAR_SECTIONS) {
     if (locked.has(section)) continue;
     for (const field of AVATAR_SECTION_FIELDS[section]) {
-      next[field] = fresh[field];
+      // Cada campo es number o Gender: la asignación pasa por un índice
+      // genérico porque TypeScript no puede probar campo a campo que los
+      // tipos coinciden (sin esto, el destino se reduce a `never`).
+      (next as Record<keyof AvatarConfig, number | Gender>)[field] = fresh[field];
     }
   }
   return normalizeAvatar(next);

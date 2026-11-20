@@ -18,7 +18,7 @@ export default function DefeatNotice({
   const { playSound } = useGameSounds();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+    <div className="end-notice fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-rose-950/40"
@@ -32,7 +32,7 @@ export default function DefeatNotice({
           <HeartCrack className="h-10 w-10 text-rose-300" />
         </span>
         <h2
-          className="text-[clamp(2rem,11vw,3.75rem)] font-black tracking-tight text-rose-300 drop-shadow-[0_4px_24px_rgba(253,164,175,0.35)] "
+          className="end-notice-title text-[clamp(2rem,11vw,3.75rem)] font-black tracking-tight text-rose-300 drop-shadow-[0_4px_24px_rgba(253,164,175,0.35)] "
           style={{ animation: 'victory-pop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both, defeat-shake 500ms ease-in-out 750ms both' }}
         >
           {title}

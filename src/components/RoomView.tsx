@@ -230,13 +230,17 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   // El primer humano de la sala pide al servidor las jugadas de los bots; el servidor es quien las calcula.
   // Si el tick falla, se reintenta hasta 3 veces con 2,5 s de espera; el contador se
   // reinicia cuando la versión de la sala cambia (es decir, cuando alguien jugó).
+  // El tick se programa en la misma ejecución en que llega el estado nuevo: antes
+  // se salía sin programarlo al cambiar la versión, y el bot solo se movía con
+  // el refresco de 15 s (hasta ~21 s para repartir la siguiente ronda, y nada
+  // si el refresco fallaba). La limpieza del efecto cancela el temporizador
+  // anterior, y el servidor rechaza ticks con versión vieja, así que no se duplica.
   useEffect(() => {
     if (!room?.state || !room.players.some(isBotPlayer)) return;
     if (room.players.find((p) => !isBotPlayer(p))?.id !== playerId) return;
     if (room.version !== botVersionRef.current) {
       botVersionRef.current = room.version;
       if (botRetries !== 0) setBotRetries(0);
-      return;
     }
     const delay = botTickDelay(room.state);
     if (delay === null) return;
@@ -445,7 +449,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         </button>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-xs font-bold text-amber-200/80">{info.name}</p>
+            <p className="room-waiting-header-game text-xs font-bold text-amber-200/80">{info.name}</p>
             <p className="font-mono text-base font-semibold tracking-[0.3em] text-amber-50 sm:text-lg">{room.code}</p>
           </div>
           <OptionsButton />
