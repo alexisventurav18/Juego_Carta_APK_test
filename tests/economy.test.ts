@@ -43,17 +43,20 @@ describe('economía: saldo inicial y catálogo', () => {
     assert.ok(isOwned(eco, 'cardBack', 'cacao'));
     assert.ok(isOwned(eco, 'table', 'madera'));
     assert.ok(isOwned(eco, 'menu', 'madera'));
+    assert.ok(isOwned(eco, 'menu', 'fiesta-tropical'));
     assert.equal(isOwned(eco, 'cardBack', 'dominicano-bandera'), false);
   });
 
-  it('el catálogo cubre los 8 dorsos, las 8 mesas y los 6 fondos, solo con arte existente o gradientes CSS', () => {
+  it('el catálogo cubre los 8 dorsos, las 8 mesas y los 7 fondos, solo con arte existente o gradientes CSS', () => {
     assert.equal(SHOP_ITEMS.filter((i) => i.category === 'cardBack').length, 8);
     assert.equal(SHOP_ITEMS.filter((i) => i.category === 'table').length, 8);
-    assert.equal(SHOP_ITEMS.filter((i) => i.category === 'menu').length, 6);
+    assert.equal(SHOP_ITEMS.filter((i) => i.category === 'menu').length, 7);
     assert.equal(shopPrice('cardBack', 'cacao'), 0);
     assert.equal(shopPrice('cardBack', 'dominicano-bandera'), 400);
     assert.equal(shopPrice('table', 'tropical'), 350);
     assert.equal(shopPrice('menu', 'playa-ilustrada'), 350);
+    assert.equal(shopPrice('menu', 'fiesta-tropical'), 0);
+    assert.equal(shopPrice('menu', 'madera'), 0);
     assert.equal(shopPrice('table', 'no-existe'), null);
   });
 
@@ -247,6 +250,8 @@ describe('economía: migración de temas ya equipados', () => {
     assert.ok(isOwned(migrated, 'cardBack', 'cacao'));
     assert.ok(isOwned(migrated, 'table', 'madera'));
     assert.ok(isOwned(migrated, 'menu', 'madera'));
+    // El default actual (Fiesta tropical) también es gratis para quien ya jugaba.
+    assert.ok(isOwned(migrated, 'menu', 'fiesta-tropical'));
   });
 
   it('la ruta de carga (loadEconomy) conserva lo equipado aunque no haya economía guardada', () => {

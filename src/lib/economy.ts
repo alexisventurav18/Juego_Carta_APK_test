@@ -88,6 +88,7 @@ const MENU_PRICES: Record<MenuTheme, number> = {
   azul: 100,
   'playa-ilustrada': 350,
   'atardecer-tropical': 350,
+  'fiesta-tropical': 0,
   palmeras: 250,
 };
 
@@ -152,7 +153,9 @@ export function defaultEconomy(): EconomyState {
     lastDailyDate: null,
     ownedCardBacks: [DEFAULT_VISUAL_PREFS.cardBack],
     ownedTables: [DEFAULT_VISUAL_PREFS.table],
-    ownedMenus: [DEFAULT_VISUAL_PREFS.menu],
+    // La madera era el fondo por defecto anterior y sigue siendo gratis
+    // para todos, aunque el default actual sea la Fiesta tropical.
+    ownedMenus: [DEFAULT_VISUAL_PREFS.menu, 'madera'],
     awarded: [],
     missions: defaultMissions(),
   };
@@ -190,6 +193,8 @@ export function migrateEconomy(state: EconomyState, prefs: VisualPrefs): Economy
     ownedMenus: unique([
       ...state.ownedMenus.filter((id) => knownMenus.includes(id)),
       DEFAULT_VISUAL_PREFS.menu,
+      // La madera era el fondo por defecto anterior y sigue siendo gratis.
+      'madera',
       prefs.menu,
     ]),
     awarded: state.awarded.slice(-50),

@@ -7,7 +7,7 @@ const STORAGE_KEY = 'cartas-dominicanas:visual-prefs';
 
 export type CardBackTheme = 'cacao' | 'azul' | 'rojo' | 'madera-turquesa' | 'dominicano-azul' | 'dominicano-bandera' | 'larimar' | 'ambar';
 export type TableTheme = 'madera' | 'verde' | 'azul' | 'rojo' | 'bandera' | 'tropical' | 'mar-caribe' | 'cana';
-export type MenuTheme = 'madera' | 'verde' | 'azul' | 'playa-ilustrada' | 'atardecer-tropical' | 'palmeras';
+export type MenuTheme = 'madera' | 'verde' | 'azul' | 'playa-ilustrada' | 'atardecer-tropical' | 'fiesta-tropical' | 'palmeras';
 
 export interface VisualPrefs {
   cardBack: CardBackTheme;
@@ -18,7 +18,7 @@ export interface VisualPrefs {
 export const DEFAULT_VISUAL_PREFS: VisualPrefs = {
   cardBack: 'cacao',
   table: 'madera',
-  menu: 'madera',
+  menu: 'fiesta-tropical',
 };
 
 export const CARD_BACK_THEMES: { id: CardBackTheme; label: string; color: string }[] = [
@@ -113,6 +113,12 @@ export const MENU_THEMES: { id: MenuTheme; label: string; color: string; image: 
     label: 'Atardecer tropical',
     color: '#3e2446',
     image: `url("${publicAsset('images/temas/menu/atardecer-tropical.webp')}")`,
+  },
+  {
+    id: 'fiesta-tropical',
+    label: 'Fiesta tropical',
+    color: '#122c46',
+    image: `url("${publicAsset('images/temas/menu/fiesta-tropical.webp')}")`,
   },
   {
     id: 'palmeras',

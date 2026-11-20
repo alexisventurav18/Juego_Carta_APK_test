@@ -9,6 +9,7 @@ import {
 } from '../src/lib/dominicanPalette';
 import {
   CARD_BACK_THEMES,
+  DEFAULT_VISUAL_PREFS,
   GAME_ENVIRONMENTS,
   MENU_THEMES,
   TABLE_THEMES,
@@ -86,6 +87,7 @@ describe('temas nuevos de la tienda', () => {
     assert.ok(TABLE_THEMES.some((t) => t.id === 'mar-caribe'));
     assert.ok(TABLE_THEMES.some((t) => t.id === 'cana'));
     assert.ok(MENU_THEMES.some((t) => t.id === 'palmeras'));
+    assert.ok(MENU_THEMES.some((t) => t.id === 'fiesta-tropical'));
     // Los nuevos temas de mesa y menú son gradientes CSS, no imágenes.
     for (const theme of TABLE_THEMES.filter((t) => t.id === 'mar-caribe' || t.id === 'cana')) {
       assert.match(theme.image, /gradient/);
@@ -93,6 +95,11 @@ describe('temas nuevos de la tienda', () => {
     const palmeras = MENU_THEMES.find((t) => t.id === 'palmeras');
     assert.match(palmeras!.image, /gradient/);
     assert.doesNotMatch(palmeras!.image, /url\(/);
+    // La Fiesta tropical sí es una imagen (ilustración), como las otras dos
+    // fotos del menú.
+    const fiesta = MENU_THEMES.find((t) => t.id === 'fiesta-tropical');
+    assert.match(fiesta!.image, /url\(".*fiesta-tropical\.webp"\)/);
+    assert.equal(fiesta!.label, 'Fiesta tropical');
   });
 
   it('los temas nuevos tienen precio en rango y los viejos no cambiaron', () => {
@@ -112,6 +119,9 @@ describe('temas nuevos de la tienda', () => {
     assert.equal(shopPrice('table', 'mar-caribe'), 150);
     assert.equal(shopPrice('table', 'cana'), 250);
     assert.equal(shopPrice('menu', 'palmeras'), 250);
+    // La Fiesta tropical es el fondo por defecto: gratis, como la madera.
+    assert.equal(shopPrice('menu', 'fiesta-tropical'), 0);
+    assert.equal(shopPrice('menu', 'madera'), 0);
     // Precios viejos intactos.
     assert.equal(shopPrice('cardBack', 'cacao'), 0);
     assert.equal(shopPrice('cardBack', 'dominicano-bandera'), 400);
@@ -192,5 +202,31 @@ describe('fondos animados (identidad dominicana)', () => {
     assert.ok(reduced.includes('.dominican-glow'), 'apaga el resplandor');
     assert.ok(reduced.includes('.table-halo-breathe'), 'apaga el halo');
     assert.ok(reduced.includes('animation: none'), 'las deja sin animación');
+  });
+});
+
+describe('fondo Fiesta tropical por default', () => {
+  it('el fondo por defecto al instalar es la Fiesta tropical, no la madera', () => {
+    assert.equal(DEFAULT_VISUAL_PREFS.menu, 'fiesta-tropical');
+    assert.equal(DEFAULT_VISUAL_PREFS.table, 'madera');
+    assert.equal(DEFAULT_VISUAL_PREFS.cardBack, 'cacao');
+  });
+
+  it('la sala de espera muestra el fondo de menú equipado con el tinte del modo', () => {
+    // RoomView ya no impone su degradado marrón: usa las variables que
+    // App.tsx define en la raíz con el tema de menú equipado.
+    assert.ok(roomView.includes('var(--menu-bg-image'), 'la sala usa la imagen del fondo de menú');
+    assert.ok(roomView.includes('var(--menu-bg-color'), 'la sala usa el color del fondo de menú');
+    assert.ok(
+      roomView.includes("GAME_ENVIRONMENTS[room.game].accent}40"),
+      'el tinte del acento del modo sigue por encima',
+    );
+    assert.ok(roomView.includes('className="dominican-glow"'), 'el resplandor sigue en la sala');
+    // Con 'madera' equipada las variables valen su degradado: la sala se ve
+    // como antes (el degradado marrón era el fondo de ese tema).
+    assert.ok(
+      roomView.includes("radial-gradient(ellipse at 50% 35%, #4a2a12, #1e0e05 75%)"),
+      'el respaldo con madera es el degradado de antes',
+    );
   });
 });

@@ -501,7 +501,15 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     <div
       className="wood-stage safe-screen overflow-y-auto room-waiting-screen"
       style={{
-        backgroundImage: `radial-gradient(ellipse at 50% 0%, ${GAME_ENVIRONMENTS[room.game].accent}40 0%, transparent 55%), radial-gradient(ellipse at 50% 35%, #4a2a12, #1e0e05 75%)`,
+        /* La sala muestra el fondo de menú equipado (como el menú), con el
+           tinte del acento del modo por encima. Con 'madera' equipada las
+           variables valen su degradado, así que se ve exactamente como
+           antes: el degradado marrón era el fondo de ese tema. */
+        backgroundColor: 'var(--menu-bg-color, #2a160a)',
+        backgroundImage: `radial-gradient(ellipse at 50% 0%, ${GAME_ENVIRONMENTS[room.game].accent}40 0%, transparent 55%), var(--menu-bg-image, radial-gradient(ellipse at 50% 35%, #4a2a12, #1e0e05 75%))`,
+        backgroundPosition: '0% 0%, center',
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'auto, cover',
       }}
     >
       {/* Resplandor animado en colores de bandera sobre el fondo de la sala. */}
