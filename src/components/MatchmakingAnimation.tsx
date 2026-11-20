@@ -59,12 +59,12 @@ export default function MatchmakingAnimation({ playersFound, maxPlayers, seconds
           <span>.</span>
         </span>
       </p>
-      <p className="text-xs text-amber-100/80">
+      <p className="matchmaking-players text-xs text-amber-100/80">
         {playersFound} de {maxPlayers} jugadores en la mesa
       </p>
 
       {/* Progreso de la espera: se llena mientras corre la cuenta atrás. */}
-      <div className="h-1.5 w-40 overflow-hidden rounded-full bg-black/50 ring-1 ring-amber-200/30" aria-hidden>
+      <div className="matchmaking-progress h-1.5 w-40 overflow-hidden rounded-full bg-black/50 ring-1 ring-amber-200/30" aria-hidden>
         <div
           className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500 transition-[width] duration-1000"
           style={{ width: `${Math.round(((waitSeconds - secondsLeft) / waitSeconds) * 100)}%` }}

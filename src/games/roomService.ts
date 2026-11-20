@@ -3,7 +3,7 @@ import { botStep } from './bots';
 import { randomInt } from './cards';
 import { applyGameMove } from './engine';
 import { canStartGame, createGameState, createSoloPlayers, fillWithBots, GAMES, type GameState, isGameFinished, minValidPlayerCount } from './index';
-import { type GameId, isBotPlayer, type Player } from './shared';
+import { type GameId, hostSeat, isBotPlayer, type Player } from './shared';
 import { projectState } from './view';
 
 /*
@@ -100,8 +100,6 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const KEY_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
 const MAX_NAME_LENGTH = 24;
 const JOIN_ATTEMPTS = 3;
-const HOST_SEAT = 0;
-
 const CONFLICT = 'La mesa cambió mientras jugabas. Revisa la jugada y vuelve a intentarlo.';
 
 /** Cuánto espera una sala pública a que se llene antes de completarse con bots y arrancar. */
@@ -377,7 +375,9 @@ async function start(store: RoomStore, req: Record<string, unknown>): Promise<Ro
   const stored = await loadById(store, readRoomId(req));
   const seat = await authenticate(stored, auth);
   const { room, secret } = stored;
-  if (seat !== HOST_SEAT) throw new RoomError('Solo quien creó la sala puede empezar la partida.');
+  // Anfitrión efectivo: si quien creó la sala abandonó, su asiento lo ocupa
+  // un bot y el primer humano que queda hereda el papel (ver `hostSeat`).
+  if (seat !== hostSeat(room.players)) throw new RoomError('Solo quien creó la sala puede empezar la partida.');
   if (room.status === 'playing' && secret.state && !isGameFinished(secret.state)) {
     throw new RoomError('La partida ya está en curso.');
   }

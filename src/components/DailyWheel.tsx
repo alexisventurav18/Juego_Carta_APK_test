@@ -70,7 +70,10 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
       role="dialog"
       aria-label="Rueda diaria"
     >
-      <div className="wood-panel relative w-full max-w-sm space-y-5 p-5 text-center">
+      {/* El panel nunca desborda la pantalla: la rueda se dimensiona con la
+          medida menor entre ancho y alto, y el scroll interno solo queda como
+          red de seguridad para pantallas muy bajas. */}
+      <div className="wood-panel relative max-h-[94dvh] w-full max-w-sm space-y-3 overflow-y-auto p-4 text-center [@media(max-height:500px)]:space-y-2 [@media(max-height:500px)]:p-3">
         <button
           type="button"
           onClick={onClose}
@@ -81,14 +84,16 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
           <X className="h-4 w-4" />
         </button>
         <div>
-          <p className="flex items-center justify-center gap-2 text-lg font-extrabold text-amber-50">
-            <Gift className="h-5 w-5 text-amber-300" aria-hidden />
+          <p className="flex items-center justify-center gap-2 text-[clamp(1rem,3.6dvh,1.125rem)] font-extrabold text-amber-50">
+            <Gift className="h-[clamp(1rem,3.6dvh,1.25rem)] w-[clamp(1rem,3.6dvh,1.25rem)] text-amber-300" aria-hidden />
             Rueda diaria
           </p>
-          <p className="mt-1 text-sm text-amber-100/80">Gira y llévate monedas. Vuelve mañana por otra.</p>
+          <p className="mt-0.5 text-[clamp(0.75rem,2.8dvh,0.875rem)] text-amber-100/80">Gira y llévate monedas. Vuelve mañana por otra.</p>
         </div>
 
-        <div className="relative mx-auto h-64 w-64">
+        {/* La rueda mide lo que quepa: el menor entre el ancho y el alto
+            disponible, para que se integre igual en vertical y en horizontal. */}
+        <div className="relative mx-auto size-[min(62vw,44dvh)]">
           {/* Puntero fijo arriba */}
           <div
             aria-hidden
@@ -102,34 +107,38 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
               transition: spinning ? `transform ${SPIN_MS}ms cubic-bezier(0.12, 0.8, 0.08, 1)` : undefined,
             }}
           >
+            {/* Cada etiqueta va en un envoltorio de tamaño completo que rota
+                hasta el centro de su segmento; la etiqueta se asienta arriba
+                por porcentaje (~10%), así su radio sigue al tamaño de la
+                rueda en vez de depender de píxeles fijos. */}
             {DAILY_WHEEL_PRIZES.map((prizeItem, i) => (
               <span
                 key={prizeItem.amount}
                 aria-hidden
-                className="absolute left-1/2 top-1/2 text-sm font-extrabold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
-                style={{
-                  transform: `translate(-50%, -50%) rotate(${i * step + step / 2}deg) translateY(-92px)`,
-                }}
+                className="absolute inset-0"
+                style={{ transform: `rotate(${i * step + step / 2}deg)` }}
               >
-                {prizeItem.label}
+                <span className="absolute left-1/2 top-[10%] -translate-x-1/2 whitespace-nowrap text-[clamp(0.65rem,3dvh,0.875rem)] font-extrabold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+                  {prizeItem.label}
+                </span>
               </span>
             ))}
             <span
               aria-hidden
-              className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-amber-950 ring-2 ring-amber-300/70"
+              className="absolute left-1/2 top-1/2 grid size-[clamp(2.5rem,11dvh,4rem)] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-amber-950 ring-2 ring-amber-300/70"
             >
-              <Sparkles className="h-7 w-7 text-amber-300" />
+              <Sparkles className="size-[clamp(1.25rem,5.5dvh,1.75rem)] text-amber-300" />
             </span>
           </div>
         </div>
 
         {granted !== null ? (
-          <div className="space-y-3">
-            <p className="text-xl font-extrabold text-amber-300">¡Te ganaste +{granted} monedas!</p>
+          <div className="space-y-2">
+            <p className="text-[clamp(1.05rem,4dvh,1.25rem)] font-extrabold text-amber-300">¡Te ganaste +{granted} monedas!</p>
             <button
               type="button"
               onClick={onClose}
-              className="btn-gold min-h-[44px] w-full rounded-lg px-6 py-3 text-sm font-extrabold transition-transform active:scale-95"
+              className="btn-gold min-h-[clamp(40px,9dvh,44px)] w-full rounded-lg px-6 py-2.5 text-sm font-extrabold transition-transform active:scale-95"
             >
               A jugar
             </button>
@@ -139,7 +148,7 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={spin}
             disabled={spinning}
-            className="btn-gold flex min-h-[48px] w-full touch-manipulation items-center justify-center gap-2 rounded-lg px-6 py-3 text-base font-extrabold transition-transform active:scale-95 disabled:opacity-60"
+            className="btn-gold flex min-h-[clamp(40px,9dvh,48px)] w-full touch-manipulation items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-[clamp(0.875rem,3.2dvh,1rem)] font-extrabold transition-transform active:scale-95 disabled:opacity-60"
           >
             <Coins className="h-5 w-5" aria-hidden />
             {spinning ? 'Girando...' : 'Girar la rueda'}

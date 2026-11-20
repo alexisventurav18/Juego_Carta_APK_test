@@ -110,6 +110,119 @@ button,
   }
 }
 
+/* Sorteo del repartidor: la casilla señalada da un saltito al ser elegida. */
+@keyframes dealer-draw-pop {
+  0% {
+    transform: scale(1) translateY(0);
+  }
+  40% {
+    transform: scale(1.12) translateY(-4px);
+  }
+  100% {
+    transform: scale(1.06) translateY(-2px);
+  }
+}
+
+.dealer-draw-active {
+  animation: dealer-draw-pop 300ms ease-out both;
+}
+
+/* La carta va rebotando sobre la casilla señalada mientras dura el sorteo. */
+@keyframes dealer-draw-deal {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(6deg);
+  }
+}
+
+.dealer-draw-deal {
+  animation: dealer-draw-deal 700ms ease-in-out infinite;
+}
+
+/* Al aterrizar, el ganador celebra: crece con rebote y brilla en dorado. */
+@keyframes dealer-draw-win {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.15) rotate(-2deg);
+  }
+  70% {
+    transform: scale(1.08) rotate(1deg);
+  }
+  100% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes dealer-draw-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgb(252 211 77 / 0.55),
+      0 0 24px rgb(252 211 77 / 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgb(252 211 77 / 0),
+      0 0 44px rgb(252 211 77 / 0.75);
+  }
+}
+
+.dealer-draw-winner {
+  animation:
+    dealer-draw-win 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    dealer-draw-glow 1.6s ease-in-out 600ms infinite;
+}
+
+/* Aviso de chat: el aviso entero entra con un pop suave. */
+@keyframes chat-toast-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 6px) scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.chat-toast {
+  animation: chat-toast-in 300ms ease-out both;
+}
+
+/* El emoji del aviso entra con un pop y luego rebota sin parar mientras dura el aviso. */
+@keyframes chat-emoji-pop {
+  0% {
+    transform: scale(0.3) rotate(-18deg);
+  }
+  60% {
+    transform: scale(1.3) rotate(8deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes chat-emoji-bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(5deg);
+  }
+}
+
+.chat-toast-emoji {
+  animation:
+    chat-emoji-pop 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    chat-emoji-bounce 1s ease-in-out 450ms infinite;
+}
+
 @keyframes virao-gain {
   0% {
     transform: scale(0.9);
@@ -855,6 +968,101 @@ button,
 
   .end-notice-title {
     font-size: clamp(1.5rem, 9dvh, 2.25rem) !important;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Sala de espera en horizontal corto: tiene que caber entera sin
+     desplazar. Se recorta lo repetido (la barra de progreso y el conteo de
+     jugadores ya están en el panel de jugadores; la nota de los bots ya la
+     dice la cuenta atrás) y se achican el radar, la cuenta atrás, las filas
+     de jugadores y el botón de empezar.
+     Los selectores llevan el ancestro .room-waiting-screen para ganar a las
+     utilidades `sm:` de Tailwind: en horizontal el ancho supera 640 px y
+     esas utilidades se aplican, y en el CSS compilado quedan después de
+     estas reglas, así que a igual especificidad las anularían. */
+  .room-waiting-screen .room-waiting-content {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  .room-waiting-header {
+    margin-bottom: 2px !important;
+  }
+
+  .room-waiting-connection {
+    margin-bottom: 2px !important;
+  }
+
+  .room-waiting-mode-banner {
+    padding: 2px 8px;
+  }
+
+  .room-waiting-screen .room-waiting-grid {
+    gap: clamp(4px, 1vw, 8px);
+  }
+
+  .room-waiting-screen .room-waiting-info,
+  .room-waiting-screen .room-waiting-player-panel {
+    gap: clamp(2px, 0.8dvh, 6px);
+    padding: clamp(6px, 1.6dvh, 10px);
+  }
+
+  .room-waiting-matchmaking-note,
+  .matchmaking-progress,
+  .matchmaking-players {
+    display: none;
+  }
+
+  /* Radar compacto: cabe con la cuenta atrás y el botón. El ancestro
+     .room-waiting-info hace que estas reglas ganen a la definición base
+     del radar, que está más abajo en el archivo. */
+  .room-waiting-info .matchmaking-radar {
+    width: clamp(56px, 20dvh, 84px);
+    height: clamp(56px, 20dvh, 84px);
+  }
+
+  .room-waiting-info .matchmaking-core-spade {
+    height: 36px;
+    width: 36px;
+    font-size: 18px;
+  }
+
+  .room-waiting-info .matchmaking-orbit-card {
+    width: 22px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .room-waiting-info .matchmaking-orbit-card--a,
+  .room-waiting-info .matchmaking-orbit-card--b {
+    margin-left: -11px;
+  }
+
+  /* Cuenta atrás: grande pero sin desbordar la fila. */
+  .room-waiting-info > p {
+    font-size: clamp(16px, 5dvh, 24px);
+  }
+
+  .room-waiting-player-list {
+    gap: 2px;
+  }
+
+  .room-waiting-screen .room-waiting-player-row,
+  .room-waiting-screen .room-waiting-empty-slot {
+    min-height: clamp(26px, 7.5dvh, 32px);
+  }
+
+  .room-waiting-screen .room-waiting-player-row > :first-child {
+    width: clamp(18px, 5.5dvh, 24px);
+    height: clamp(18px, 5.5dvh, 24px);
+  }
+
+  .room-waiting-screen .room-waiting-start,
+  .room-waiting-screen .room-waiting-start-message {
+    min-height: clamp(30px, 8.5dvh, 38px);
+    padding: 4px 8px;
+    font-size: clamp(10px, 2.4dvh, 12px);
   }
 }
 

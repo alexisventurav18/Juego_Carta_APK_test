@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, LoaderCircle, RotateCcw, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, Bot, LoaderCircle, RotateCcw, Wifi, WifiOff, X } from 'lucide-react';
 import { canStartGame, GAMES, isGameFinished } from '@/games';
 import type { CasinoMove } from '@/games/casino';
 import type { TresYDosMove } from '@/games/tresYDos';
 import type { CagaoMove } from '@/games/cagao';
 import type { RobaitoMove } from '@/games/robaito';
 import { botTickDelay } from '@/games/bots';
-import { isBotPlayer } from '@/games/shared';
+import { hostSeat, isBotPlayer, type Player } from '@/games/shared';
 import { getPlayerId } from '@/lib/identity';
+import { abandonNoticeText, detectAbandonedPlayers } from '@/lib/abandonedPlayers';
+import { useGameSounds } from '@/hooks/useGameSounds';
 import { abandonRoom, botTick, fetchRoom, leaveRoom, requestStart, type RoomConnectionStatus, type RoomRow, type RoomSubscription, sendMove, subscribeToRoom } from '@/lib/rooms';
 import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
 import { CHAT_TOAST_MS, isAllowedChatSender, type RoomChatMessage } from '@/lib/roomChat';
@@ -60,6 +62,13 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const chatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const roomRef = useRef<RoomRow | null>(null);
   const subscriptionRef = useRef<RoomSubscription | null>(null);
+  // Aviso de abandono: nombres de los humanos sustituidos por un bot desde
+  // que se está en la sala. Persiste hasta que el jugador lo cierra.
+  const [abandonedNames, setAbandonedNames] = useState<string[]>([]);
+  // Jugadores de la última sala vista: contra ellos se compara cada sala
+  // nueva para detectar el abandono.
+  const prevPlayersRef = useRef<Player[] | null>(null);
+  const { playSound } = useGameSounds();
 
   const retryConnection = () => {
     setConnection('connecting');
@@ -147,6 +156,20 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
+
+  // Cuando un asiento que era humano pasa a ser bot, el jugador que queda se
+  // entera con un banner (no solo con el cambio de nombre en la mesa). Se
+  // dispara una sola vez por abandono: la comparación es contra los jugadores
+  // de la última sala vista, así que los sondeos de 15 s no lo repiten.
+  useEffect(() => {
+    if (!room) return;
+    const prev = prevPlayersRef.current;
+    prevPlayersRef.current = room.players;
+    const names = detectAbandonedPlayers(prev, room.players);
+    if (names.length === 0) return;
+    setAbandonedNames((current) => [...current, ...names.filter((name) => !current.includes(name))]);
+    playSound('turn');
+  }, [room, playSound]);
 
   useEffect(() => {
     let active = true;
@@ -356,7 +379,9 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       onRetry: retryConnection,
       notice,
       resultFooter:
-        isGameFinished(state) && seat === 0 ? (
+        // Jugar otra partida lo ofrece el anfitrión efectivo: si quien creó la
+        // sala abandonó, el primer humano que queda hereda el papel.
+        isGameFinished(state) && seat === hostSeat(room.players) ? (
           <button
             type="button"
             onClick={startGame}
@@ -397,6 +422,28 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         {/* Chat de texto: vive aquí, en la rama que envuelve las 4 mesas, así
             funciona igual en Casino, Tres y Dos, El Cagao y El Robaíto. */}
         {hasOtherHuman && <RoomChat toast={chatToast} myId={playerId} myName={myName} onSend={sendChatMessage} />}
+
+        {/* Aviso de abandono: persiste hasta que el jugador lo cierra, para
+            que no se pierda en mitad de la partida. Va en la misma banda que
+            el aviso de chat, con el mismo estilo de píldora flotante. */}
+        {abandonedNames.length > 0 && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed left-1/2 top-12 z-50 flex w-[min(92vw,26rem)] -translate-x-1/2 items-center gap-2 rounded-xl bg-amber-500 px-3 py-2 text-left text-xs font-bold text-stone-900 shadow-xl ring-1 ring-amber-200/60 sm:text-sm"
+          >
+            <Bot className="h-4 w-4 shrink-0" aria-hidden />
+            <p className="min-w-0 flex-1">{abandonNoticeText(abandonedNames)}</p>
+            <button
+              type="button"
+              aria-label="Cerrar aviso"
+              onClick={() => setAbandonedNames([])}
+              className="flex min-h-[32px] min-w-[32px] shrink-0 items-center justify-center rounded-lg bg-black/15 text-stone-900 transition-transform active:scale-95"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {confirmLeave && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" role="dialog" aria-label="Salir de la partida">

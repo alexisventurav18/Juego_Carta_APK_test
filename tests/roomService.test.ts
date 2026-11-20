@@ -16,6 +16,7 @@ import {
 } from '../src/games/roomService';
 import type { GameState } from '../src/games';
 import { encodeAvatar, randomAvatar, seededRandom } from '../src/games/avatar';
+import type { GameId } from '../src/games/shared';
 
 class MemoryStore implements RoomStore {
   rooms = new Map<string, StoredRoom>();
@@ -27,6 +28,11 @@ class MemoryStore implements RoomStore {
   }
   async findByCode(code: string) {
     return [...this.rooms.values()].find((r) => r.room.code === code) ?? null;
+  }
+  async findWaiting(game: GameId) {
+    return [...this.rooms.values()]
+      .filter((r) => r.room.game === game && r.room.isPublic && r.room.status === 'waiting')
+      .sort((a, b) => a.room.createdAt - b.room.createdAt);
   }
   async create(room: Pick<RoomRecord, 'game' | 'status' | 'players'>, secret: StoredRoom['secret']) {
     const id = `00000000-0000-4000-8000-${String(++this.seq).padStart(12, '0')}`;
@@ -44,6 +50,9 @@ class MemoryStore implements RoomStore {
     stored.room = { ...stored.room, status: patch.status, players: patch.players, version: expectedVersion + 1 };
     stored.secret = { state: patch.state, keys: patch.keys };
     return true;
+  }
+  async remove(roomId: string) {
+    this.rooms.delete(roomId);
   }
   fullState(roomId: string): GameState {
     const state = this.rooms.get(roomId)?.secret.state;
@@ -335,5 +344,62 @@ describe('Avatares en las salas', () => {
     const store = new MemoryStore();
     const created = await ok(store, { action: 'create', game: 'casino', name: 'Ana', ...A });
     assert.deepEqual(created.players, [{ id: A.playerId, name: 'Ana' }]);
+  });
+});
+
+describe('servidor de salas: abandono', () => {
+  it('el anfitrión abandona: el otro jugador sigue contra un bot y puede jugar otra partida', async () => {
+    const store = new MemoryStore();
+    const { id } = await twoPlayerRoom('casino', store);
+    // Ana (asiento 0, anfitriona) abandona a mitad de partida.
+    const afterAbandon = await ok(store, { action: 'abandon', roomId: id, ...A });
+    assert.equal(afterAbandon.status, 'playing');
+    assert.ok(afterAbandon.players[0].id.startsWith('bot-'), 'el asiento de Ana lo ocupa un bot');
+    assert.equal(afterAbandon.players[1].id, B.playerId);
+    // La clave de Ana ya no vale: no puede volver a entrar.
+    assert.match(await fail(store, { action: 'view', roomId: id, ...A }), /No estás/);
+
+    // Beto (ahora primer humano) pide los turnos del bot y juega los suyos hasta el final.
+    let view = await ok(store, { action: 'view', roomId: id, ...B });
+    let guard = 0;
+    while (view.state && view.state.phase !== 'gameOver') {
+      assert.ok(++guard < 3000, 'partida sin fin tras el abandono');
+      const full = store.fullState(id);
+      if (full.game !== 'casino') throw new Error('juego inesperado');
+      const humanTurn = full.phase === 'playing' && full.turn === 1;
+      const humanDeals = full.phase === 'roundEnd' && (full.dealer + 1) % 2 === 1;
+      if (humanTurn) {
+        const move = chooseCasinoMove(full as Parameters<typeof chooseCasinoMove>[0]);
+        assert.ok(move);
+        view = await ok(store, { action: 'move', roomId: id, move, ...B });
+      } else if (humanDeals) {
+        view = await ok(store, { action: 'move', roomId: id, move: { type: 'nextRound' }, ...B });
+      } else {
+        view = await ok(store, { action: 'tick', roomId: id, expectedVersion: view.version, ...B });
+      }
+    }
+    assert.equal(view.state?.phase, 'gameOver');
+
+    // Beto heredó el papel de anfitrión: puede empezar otra partida en la misma sala.
+    const rematch = await ok(store, { action: 'start', roomId: id, ...B });
+    assert.equal(rematch.status, 'playing');
+    assert.equal(rematch.state?.phase, 'playing');
+    assert.equal(rematch.players[1].id, B.playerId);
+  });
+
+  it('quien no es anfitrión (ni lo hereda) no puede empezar la partida', async () => {
+    const store = new MemoryStore();
+    const created = await ok(store, { action: 'create', game: 'casino', name: 'Ana', ...A });
+    await ok(store, { action: 'join', code: created.code, name: 'Beto', ...B });
+    assert.match(await fail(store, { action: 'start', roomId: created.id, ...B }), /Solo quien creó/);
+  });
+
+  it('si no queda ningún humano, la sala se borra', async () => {
+    const store = new MemoryStore();
+    const { id } = await twoPlayerRoom('casino', store);
+    await ok(store, { action: 'abandon', roomId: id, ...A });
+    const gone = await ok(store, { action: 'abandon', roomId: id, ...B });
+    assert.deepEqual(gone.players, []);
+    assert.match(await fail(store, { action: 'view', roomId: id, ...B }), /no existe/);
   });
 });

@@ -21,6 +21,17 @@ export function isBotPlayer(player: Player): boolean {
   return player.id.startsWith('bot-');
 }
 
+/**
+ * Asiento del anfitrión efectivo: quien creó la sala (asiento 0) mientras
+ * siga siendo humano. Si abandonó y un bot ocupa su asiento, el primer
+ * humano que queda hereda el papel (empezar la partida y jugar otra), para
+ * que la sala no se quede sin nadie que pueda arrancar. Sin humanos, 0.
+ */
+export function hostSeat(players: Player[]): number {
+  const firstHuman = players.findIndex((p) => !isBotPlayer(p));
+  return firstHuman === -1 ? 0 : firstHuman;
+}
+
 export function teamOf(seat: number): number {
   return seat % 2;
 }

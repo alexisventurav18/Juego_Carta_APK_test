@@ -120,7 +120,7 @@ describe('chat de sala: el componente', () => {
     assert.ok(!html.includes('¡Buena jugada!'), 'con el panel cerrado no se ven los mensajes');
   });
 
-  it('con el panel abierto se ven los 8 emojis y los 10 mensajes, y el aviso con el último mensaje', () => {
+  it('con el panel abierto se ve la pestaña de emojis por defecto y el aviso con el último mensaje', () => {
     const html = renderToStaticMarkup(
       React.createElement(RoomChat, {
         toast: baseQuick,
@@ -131,8 +131,41 @@ describe('chat de sala: el componente', () => {
       }),
     );
     for (const emoji of CHAT_EMOJIS) assert.ok(html.includes(emoji), `falta el emoji ${emoji}`);
-    for (const text of QUICK_MESSAGES) assert.ok(html.includes(text), `falta el mensaje ${text}`);
+    assert.ok(html.includes('Emojis'), 'debe verse la pestaña Emojis');
+    assert.ok(html.includes('Mensajes'), 'debe verse la pestaña Mensajes');
+    // Con la pestaña de emojis activa, los mensajes rápidos no se renderizan.
+    assert.ok(!html.includes('¡Qué suerte!'), 'en la pestaña de emojis no se ven los mensajes');
     assert.ok(html.includes('Ana: ¡Buena jugada!'), 'el aviso muestra el último mensaje');
+  });
+
+  it('el aviso de un emoji lo muestra grande y animado, separado del nombre', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(RoomChat, {
+        toast: baseEmoji,
+        myId: 'ana',
+        myName: 'Ana',
+        onSend: () => undefined,
+      }),
+    );
+    assert.ok(html.includes('chat-toast-emoji'), 'el emoji debe ir en su propio elemento animado');
+    assert.ok(html.includes('😂'), 'el emoji debe verse');
+    assert.ok(html.includes('Ana:'), 'el nombre del remitente debe verse');
+    assert.ok(!html.includes('Ana: 😂'), 'el emoji ya no va pegado al texto: va en su propio elemento');
+  });
+
+  it('con la pestaña de mensajes se ven los 10 mensajes y no los emojis', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(RoomChat, {
+        toast: null,
+        myId: 'ana',
+        myName: 'Ana',
+        onSend: () => undefined,
+        defaultOpen: true,
+        defaultTab: 'quick',
+      }),
+    );
+    for (const text of QUICK_MESSAGES) assert.ok(html.includes(text), `falta el mensaje ${text}`);
+    for (const emoji of CHAT_EMOJIS) assert.ok(!html.includes(emoji), `no debe verse el emoji ${emoji}`);
   });
 });
 

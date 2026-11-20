@@ -92,7 +92,7 @@ export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = f
       {/* Banda del modo: el color del juego que se va a jugar tiñe la sala. */}
       <div
         aria-hidden
-        className="room-waiting-mode-banner rounded-xl px-3 py-2 text-center ring-1 ring-white/20 min-[600px]:col-span-2"
+        className="room-waiting-mode-banner flex flex-col items-center justify-center rounded-xl px-3 py-2 text-center ring-1 ring-white/20 min-[600px]:col-span-2"
         style={{
           background: `linear-gradient(90deg, ${env.accent}66, ${env.accent}26 55%, ${env.accent}66)`,
           boxShadow: `0 0 24px ${env.accent}55`,
@@ -106,7 +106,7 @@ export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = f
           <MatchmakingAnimation playersFound={room.players.length} maxPlayers={info.maxPlayers} secondsLeft={secondsLeft} />
           <div className="space-y-1 text-center">
             <p className="text-xs font-bold text-amber-200 sm:text-sm">Buscando jugadores en línea…</p>
-            <p className="text-xs text-amber-100/85 sm:text-sm">
+            <p className="room-waiting-matchmaking-note text-xs text-amber-100/85 sm:text-sm">
               {secondsLeft > 0
                 ? `Si no se llena en ${secondsLeft} s, se completa con bots y la partida empieza sola.`
                 : 'Completando la mesa con bots…'}
