@@ -1,12 +1,13 @@
-import { americanDeck, type Card, randomInt, shuffle } from './cards';
+import { americanDeck, type Card, drawProb, randomInt, shuffle } from './cards';
 import type { MoveResult, Player } from './shared';
 
 /**
  * El Cagao (el Old Maid dominicano). Baraja de 49 cartas: la inglesa sin tres de los cuatro Ases.
  * El A♠ no tiene pareja y es "El Cagao". Todas las cartas se reparten, cada jugador baja sus pares
  * con una fase inicial en la que cada uno baja sus pares (los humanos a mano, los bots solos) y
- * después, por turnos, cada uno le roba una carta a ciegas al jugador siguiente. Se salva quien
- * se queda sin cartas; pierde el último que queda, que siempre es quien tiene el A♠.
+ * después, por turnos, cada uno le roba una carta a ciegas al jugador que elija. Nadie sabe quién
+ * tiene El Cagao hasta el final de la partida. Se salva quien se queda sin cartas; pierde el
+ * último que queda, que siempre es quien tiene el A♠.
  *
  * El motor es puro: cada jugada devuelve un estado nuevo y nunca modifica el anterior.
  */
@@ -34,9 +35,10 @@ export interface CagaoEvent {
   index: number;
   /** El par que se bajó, si la carta robada hizo pareja. */
   pair: [Card, Card] | null;
-  /** True si la carta robada fue El Cagao (A♠). */
+  /** True si la carta robada fue El Cagao (A♠). Solo vive en el estado del servidor:
+   * nunca se proyecta a los jugadores, así que nadie sabe quién lo tiene hasta el final. */
   cagao: boolean;
-  /** Id de la carta robada. Solo la ve quien la robó, salvo que sea El Cagao o haya formado un par. */
+  /** Id de la carta robada. Solo la ve quien la robó, salvo que haya formado un par (El Cagao nunca se revela). */
   drawnCardId: string | null;
   /** Quiénes se quedaron sin cartas con esta jugada (se salvan). */
   outSeats: number[];
@@ -62,7 +64,7 @@ export interface CagaoState {
 }
 
 export type CagaoMove =
-  | { type: 'draw'; index: number }
+  | { type: 'draw'; index: number; from?: number }
   /** Baja un par concreto de tu mano (solo en la fase inicial). */
   | { type: 'pair'; cardIds: [string, string] }
   /** Baja todos los pares de tu mano de una vez (solo en la fase inicial). */
@@ -72,6 +74,9 @@ export type CagaoMove =
 export function cagaoDeck(): Card[] {
   return americanDeck().filter((card) => card.rank !== 1 || card.id === CAGAO_CARD_ID);
 }
+
+/** Total de cartas de la baraja de El Cagao. */
+export const CAGAO_DECK_SIZE = 49;
 
 /** Primer asiento con cartas después de `from` (sin contar `from`), o -1 si no queda ninguno. */
 export function nextActiveSeat(hands: Card[][], from: number): number {
@@ -83,8 +88,19 @@ export function nextActiveSeat(hands: Card[][], from: number): number {
   return -1;
 }
 
-/** A quién le roba el jugador que tiene el turno: el siguiente jugador que todavía tiene cartas. */
-export function drawFromSeat(state: CagaoState): number {
+/** A quién le roba el jugador que tiene el turno: el jugador que elija (`preferred`),
+ * si todavía tiene cartas, o si no el siguiente jugador que todavía tenga cartas. */
+export function drawFromSeat(state: CagaoState, preferred?: number): number {
+  if (
+    typeof preferred === 'number' &&
+    Number.isInteger(preferred) &&
+    preferred !== state.turn &&
+    preferred >= 0 &&
+    preferred < state.hands.length &&
+    state.hands[preferred].length > 0
+  ) {
+    return preferred;
+  }
   return nextActiveSeat(state.hands, state.turn);
 }
 
@@ -201,7 +217,18 @@ export function applyCagaoMove(state: CagaoState, seat: number, move: CagaoMove)
   if (state.phase !== 'playing') return { error: 'Primero todos tienen que bajar sus pares.' };
   if (seat !== state.turn) return { error: 'No es tu turno.' };
 
-  const victim = drawFromSeat(state);
+  if (move.from !== undefined) {
+    if (
+      !Number.isInteger(move.from) ||
+      move.from < 0 ||
+      move.from >= state.hands.length ||
+      move.from === seat ||
+      state.hands[move.from].length === 0
+    ) {
+      return { error: 'No puedes robarle a ese jugador.' };
+    }
+  }
+  const victim = drawFromSeat(state, move.from);
   if (victim < 0 || victim === seat) return { error: 'No hay a quién robarle.' };
   const victimHand = state.hands[victim];
   if (!Number.isInteger(move.index) || move.index < 0 || move.index >= victimHand.length) {
@@ -254,8 +281,83 @@ export function applyCagaoMove(state: CagaoState, seat: number, move: CagaoMove)
   return { state: shuffleNextVictim({ ...next, turn: nextActiveSeat(hands, seat) }) };
 }
 
-/** Jugada del bot: una carta cualquiera de la mano oculta del rival. */
+/**
+ * Jugada del bot: elige a quién robarle con lo que recuerda de la partida.
+ *
+ * Solo usa información legítima: su mano y los pares que cada jugador ha bajado
+ * (públicos). Nunca mira las manos ajenas, y tampoco sabe quién tiene El Cagao:
+ * es anónimo hasta el final, así que el riesgo de robarlo es proporcional a
+ * cuántas cartas tiene cada víctima.
+ *
+ * Por cada posible víctima calcula:
+ *   Σ P(tenga una carta que me dé pareja)  −  2 · P(tenga el A♠).
+ * Las probabilidades son hipergeométricas sobre las cartas que nadie ha visto:
+ * de cada número quedan 4 copias menos las que se ven en mi mano y en los pares
+ * bajados (el A♠ solo tiene 1 copia). Un jugador que ya bajó un par de un número
+ * casi seguro ya no tiene ese número, así que no suma para ese número.
+ * El A♠ no tiene pareja: robarlo es quedarse con una carta que nunca se puede
+ * bajar, así que se evita en proporción al tamaño de la mano.
+ * La mano de la víctima se baraja tras cada robo, así que la posición de la carta
+ * no dice nada: el índice se elige al azar.
+ */
 export function chooseCagaoMove(state: CagaoState): CagaoMove {
-  const victim = drawFromSeat(state);
-  return { type: 'draw', index: randomInt(Math.max(state.hands[victim]?.length ?? 1, 1)) };
+  const seat = state.turn;
+  const victim = chooseCagaoVictim(state);
+  const hand = state.hands[victim] ?? [];
+  return { type: 'draw', index: randomInt(Math.max(hand.length, 1)), from: victim };
+}
+
+/** Cuánto castiga robar El Cagao, en "parejas que vale" (ver chooseCagaoMove). */
+export const CAGAO_AVOID_PENALTY = 2;
+
+/** La víctima que elegiría el bot (útil para pruebas). */
+export function chooseCagaoVictim(state: CagaoState): number {
+  const seat = state.turn;
+  const candidates = state.hands.flatMap((hand, s) => (s !== seat && hand.length > 0 ? [s] : []));
+  if (candidates.length === 0) return drawFromSeat(state);
+  if (candidates.length === 1) return candidates[0];
+
+  const myHand = state.hands[seat] ?? [];
+  const myRanks = [...new Set(myHand.map((c) => c.rank))];
+  const totalPairs = state.pairs.length * 2;
+  // Cartas que nadie ha visto: ni en mi mano ni bajadas como pares. Están en las manos rivales.
+  const unseen = CAGAO_DECK_SIZE - myHand.length - totalPairs;
+
+  const seenCopies = new Map<number, number>();
+  for (const c of myHand) seenCopies.set(c.rank, (seenCopies.get(c.rank) ?? 0) + 1);
+  for (const pair of state.pairs) {
+    for (const c of pair.cards) seenCopies.set(c.rank, (seenCopies.get(c.rank) ?? 0) + 1);
+  }
+  // Números que cada víctima casi seguro ya no tiene: los de los pares que bajó.
+  const goneBySeat = new Map<number, Set<number>>();
+  for (const pair of state.pairs) {
+    const gone = goneBySeat.get(pair.seat) ?? new Set<number>();
+    for (const c of pair.cards) gone.add(c.rank);
+    goneBySeat.set(pair.seat, gone);
+  }
+
+  const iHoldCagao = myHand.some((c) => c.id === CAGAO_CARD_ID);
+
+  let best = candidates[0];
+  let bestScore = -Infinity;
+  for (const victim of candidates) {
+    const size = state.hands[victim].length;
+    let score = 0;
+    const gone = goneBySeat.get(victim) ?? new Set<number>();
+    for (const rank of myRanks) {
+      if (gone.has(rank)) continue;
+      const copies = (rank === 1 ? 1 : 4) - (seenCopies.get(rank) ?? 0);
+      if (copies <= 0 || unseen <= 0) continue;
+      score += drawProb(unseen, copies, size, 1);
+    }
+    // El Cagao es anónimo: el riesgo de robarlo es proporcional al tamaño de la mano.
+    let pCagao = 0;
+    if (!iHoldCagao && unseen > 0) pCagao = size / unseen;
+    score -= CAGAO_AVOID_PENALTY * pCagao;
+    if (score > bestScore) {
+      bestScore = score;
+      best = victim;
+    }
+  }
+  return best;
 }

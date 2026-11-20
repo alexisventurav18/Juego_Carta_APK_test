@@ -2,7 +2,7 @@ import { isAvatarCode } from './avatar';
 import { botStep } from './bots';
 import { randomInt } from './cards';
 import { applyGameMove } from './engine';
-import { canStartGame, createGameState, createSoloPlayers, GAMES, type GameState, isGameFinished } from './index';
+import { canStartGame, createGameState, createSoloPlayers, fillWithBots, GAMES, type GameState, isGameFinished, minValidPlayerCount } from './index';
 import { type GameId, isBotPlayer, type Player } from './shared';
 import { projectState } from './view';
 
@@ -26,6 +26,10 @@ export interface RoomRecord {
   status: RoomStatus;
   players: Player[];
   version: number;
+  /** True si es una sala de matchmaking (se puede entrar con "Jugar online"). */
+  isPublic: boolean;
+  /** Cuándo se creó la sala (milisegundos desde epoch): manda en la espera y la caducidad. */
+  createdAt: number;
 }
 
 export interface SecretRecord {
@@ -44,14 +48,19 @@ export interface RoomPatch {
   players: Player[];
   state: GameState | null;
   keys: Record<string, string>;
+  isPublic: boolean;
 }
 
 export interface RoomStore {
   findById(id: string): Promise<StoredRoom | null>;
   findByCode(code: string): Promise<StoredRoom | null>;
-  create(room: Pick<RoomRecord, 'game' | 'status' | 'players'>, secret: SecretRecord): Promise<StoredRoom>;
+  /** Salas públicas en espera de ese juego, de la más vieja a la más nueva. */
+  findWaiting(game: GameId): Promise<StoredRoom[]>;
+  create(room: Pick<RoomRecord, 'game' | 'status' | 'players' | 'isPublic' | 'createdAt'>, secret: SecretRecord): Promise<StoredRoom>;
   /** Actualiza solo si la versión guardada sigue siendo `expectedVersion`; devuelve false si cambió. */
   update(roomId: string, expectedVersion: number, patch: RoomPatch): Promise<boolean>;
+  /** Borra la sala (y sus secretos). Solo se usa cuando queda vacía. */
+  remove(roomId: string): Promise<void>;
 }
 
 interface Auth {
@@ -62,6 +71,8 @@ interface Auth {
 export type RoomRequest =
   | ({ action: 'create'; game: GameId; solo?: boolean; name: string; avatar?: string } & Auth)
   | ({ action: 'join'; code: string; name: string; avatar?: string } & Auth)
+  | ({ action: 'quickplay'; game: GameId; name: string; avatar?: string } & Auth)
+  | ({ action: 'leave'; roomId: string } & Auth)
   | ({ action: 'view'; roomId: string } & Auth)
   | ({ action: 'start'; roomId: string; dealer?: number } & Auth)
   | ({ action: 'move'; roomId: string; move: unknown } & Auth)
@@ -75,6 +86,8 @@ export interface RoomView {
   players: Player[];
   version: number;
   state: GameState | null;
+  isPublic: boolean;
+  createdAt: number;
 }
 
 export type RoomResponse = { ok: true; room: RoomView } | { ok: false; error: string };
@@ -89,6 +102,11 @@ const JOIN_ATTEMPTS = 3;
 const HOST_SEAT = 0;
 
 const CONFLICT = 'La mesa cambió mientras jugabas. Revisa la jugada y vuelve a intentarlo.';
+
+/** Cuánto espera una sala pública a que se llene antes de completarse con bots y arrancar. */
+export const QUICKPLAY_WAIT_MS = 30_000;
+/** Una sala pública en espera más vieja que esto ya no se ofrece en matchmaking. */
+export const QUICKPLAY_STALE_MS = 5 * 60_000;
 
 class RoomError extends Error {}
 
@@ -152,6 +170,8 @@ function toView(stored: StoredRoom, seat: number): RoomView {
     players: room.players,
     version: room.version,
     state: secret.state ? projectState(secret.state, seat) : null,
+    isPublic: room.isPublic,
+    createdAt: room.createdAt,
   };
 }
 
@@ -178,10 +198,11 @@ async function commit(store: RoomStore, stored: StoredRoom, patch: Partial<RoomP
     players: patch.players ?? baseRoom.players,
     state: patch.state === undefined ? stored.secret.state : patch.state,
     keys: patch.keys ?? stored.secret.keys,
+    isPublic: patch.isPublic ?? baseRoom.isPublic,
   };
   const updated = await store.update(baseRoom.id, baseRoom.version, next);
   if (!updated) return { ok: false, error: CONFLICT };
-  const room: RoomRecord = { ...baseRoom, status: next.status, players: next.players, version: baseRoom.version + 1 };
+  const room: RoomRecord = { ...baseRoom, status: next.status, players: next.players, version: baseRoom.version + 1, isPublic: next.isPublic };
   return { ok: true, room: toView({ room, secret: { state: next.state, keys: next.keys } }, seat) };
 }
 
@@ -194,7 +215,7 @@ async function create(store: RoomStore, req: Record<string, unknown>): Promise<R
   const human: Player = avatar ? { id: auth.playerId, name, avatar } : { id: auth.playerId, name };
   const players = req.solo === true ? createSoloPlayers(game, human) : [human];
   const stored = await store.create(
-    { game, status: 'waiting', players },
+    { game, status: 'waiting', players, isPublic: false, createdAt: Date.now() },
     { state: null, keys: { [auth.playerId]: await hashKey(auth.key) } },
   );
   return { ok: true, room: toView(stored, 0) };
@@ -222,6 +243,100 @@ async function join(store: RoomStore, req: Record<string, unknown>): Promise<Roo
     if (result.ok) return result;
   }
   throw new RoomError('La sala cambió mientras intentabas entrar. Inténtalo de nuevo.');
+}
+
+/**
+ * Matchmaking ("Jugar online"): mete al jugador en la sala pública en espera
+ * más vieja de ese juego que tenga hueco, o crea una si no hay ninguna.
+ * Las salas privadas (con código) y las que llevan más de QUICKPLAY_STALE_MS
+ * en espera no se ofrecen. Si al entrar la sala queda llena, arranca sola.
+ */
+async function quickplay(store: RoomStore, req: Record<string, unknown>): Promise<RoomResponse> {
+  const auth = readAuth(req);
+  const name = readName(req);
+  if (typeof req.game !== 'string' || !(req.game in GAMES)) throw new RoomError('Juego no válido.');
+  const game = req.game as GameId;
+  const avatar = readAvatar(req);
+  const now = Date.now();
+
+  for (let attempt = 0; attempt < JOIN_ATTEMPTS; attempt++) {
+    const waiting = await store.findWaiting(game);
+    const fresh = waiting.filter(
+      (stored) =>
+        stored.room.status === 'waiting' &&
+        now - stored.room.createdAt <= QUICKPLAY_STALE_MS &&
+        stored.room.players.length < GAMES[game].maxPlayers,
+    );
+    const mine = fresh.find((stored) => stored.room.players.some((p) => p.id === auth.playerId));
+    if (mine) {
+      const seat = await authenticate(mine, auth);
+      return (await maybeAutoStart(store, mine, seat, now)) ?? { ok: true, room: toView(mine, seat) };
+    }
+    const target = fresh[0];
+    if (!target) {
+      const human: Player = avatar ? { id: auth.playerId, name, avatar } : { id: auth.playerId, name };
+      const stored = await store.create(
+        { game, status: 'waiting', players: [human], isPublic: true, createdAt: now },
+        { state: null, keys: { [auth.playerId]: await hashKey(auth.key) } },
+      );
+      return { ok: true, room: toView(stored, 0) };
+    }
+    const { room, secret } = target;
+    const players = [...room.players, avatar ? { id: auth.playerId, name, avatar } : { id: auth.playerId, name }];
+    const keys = { ...secret.keys, [auth.playerId]: await hashKey(auth.key) };
+    const result = await commit(store, target, { players, keys }, players.length - 1);
+    if (result.ok) {
+      const joined = await loadById(store, target.room.id);
+      return (await maybeAutoStart(store, joined, players.length - 1, now)) ?? result;
+    }
+  }
+  throw new RoomError('No se pudo entrar a una partida. Inténtalo de nuevo.');
+}
+
+/**
+ * Salir de una sala en espera. Si queda vacía se borra; si no, se quita al
+ * jugador de la lista. En una partida empezada ya no se puede salir así.
+ */
+async function leave(store: RoomStore, req: Record<string, unknown>): Promise<RoomResponse> {
+  const auth = readAuth(req);
+  const stored = await loadById(store, readRoomId(req));
+  const seat = await authenticate(stored, auth);
+  const { room } = stored;
+  if (room.status !== 'waiting') throw new RoomError('La partida ya empezó.');
+  const players = room.players.filter((p) => p.id !== auth.playerId);
+  if (players.length === 0) {
+    await store.remove(room.id);
+    return { ok: true, room: { ...toView(stored, seat), players: [], version: room.version + 1 } };
+  }
+  return commit(store, stored, { players }, seat);
+}
+
+/**
+ * Arranque automático de una sala pública en espera. Lo dispara cualquier
+ * jugador de la sala al consultarla (view/tick) o al entrar (quickplay): no
+ * depende de quién sea el anfitrión. Arranca cuando se llena, o cuando pasa
+ * QUICKPLAY_WAIT_MS, completando con bots hasta la menor cantidad válida.
+ * Devuelve la vista actualizada si arrancó, o null si todavía hay que esperar.
+ * Si otro jugador ya la arrancó (conflicto de versión), devuelve su vista.
+ */
+async function maybeAutoStart(
+  store: RoomStore,
+  stored: StoredRoom,
+  seat: number,
+  now: number,
+): Promise<RoomResponse | null> {
+  const { room } = stored;
+  if (room.status !== 'waiting' || !room.isPublic) return null;
+  if (!room.players.some((p) => !isBotPlayer(p))) return null;
+  const full = room.players.length >= GAMES[room.game].maxPlayers;
+  if (!full && now - room.createdAt < QUICKPLAY_WAIT_MS) return null;
+  const target = minValidPlayerCount(room.game, room.players.length);
+  const players = fillWithBots(room.game, room.players, target);
+  const state = createGameState(room.game, players);
+  const result = await commit(store, stored, { status: 'playing', players, state }, seat);
+  if (result.ok) return result;
+  const fresh = await loadById(store, room.id);
+  return { ok: true, room: toView(fresh, fresh.room.players.findIndex((p) => p.id === stored.room.players[seat]?.id)) };
 }
 
 async function start(store: RoomStore, req: Record<string, unknown>): Promise<RoomResponse> {
@@ -265,6 +380,8 @@ async function tick(store: RoomStore, req: Record<string, unknown>): Promise<Roo
   const auth = readAuth(req);
   const stored = await loadById(store, readRoomId(req));
   const seat = await authenticate(stored, auth);
+  const started = await maybeAutoStart(store, stored, seat, Date.now());
+  if (started) return started;
   const state = stored.secret.state;
   const unchanged: RoomResponse = { ok: true, room: toView(stored, seat) };
   if (!state || stored.room.status !== 'playing' || !stored.room.players.some(isBotPlayer)) return unchanged;
@@ -279,7 +396,8 @@ async function tick(store: RoomStore, req: Record<string, unknown>): Promise<Roo
 async function view(store: RoomStore, req: Record<string, unknown>): Promise<RoomResponse> {
   const auth = readAuth(req);
   const stored = await loadById(store, readRoomId(req));
-  return { ok: true, room: toView(stored, await authenticate(stored, auth)) };
+  const seat = await authenticate(stored, auth);
+  return (await maybeAutoStart(store, stored, seat, Date.now())) ?? { ok: true, room: toView(stored, seat) };
 }
 
 export async function handleRequest(store: RoomStore, raw: unknown): Promise<RoomResponse> {
@@ -290,6 +408,10 @@ export async function handleRequest(store: RoomStore, raw: unknown): Promise<Roo
         return await create(store, req);
       case 'join':
         return await join(store, req);
+      case 'quickplay':
+        return await quickplay(store, req);
+      case 'leave':
+        return await leave(store, req);
       case 'view':
         return await view(store, req);
       case 'start':

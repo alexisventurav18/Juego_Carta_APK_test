@@ -312,7 +312,7 @@ describe('El Cagao: lo que ve cada jugador', () => {
     assert.ok(!JSON.stringify(view).includes('"picas-1"'), 'el A♠ del rival no se ve');
   });
 
-  it('la carta que robas solo la ves tú, salvo que sea El Cagao o forme un par', () => {
+  it('la carta que robas solo la ves tú, salvo que forme un par (ni El Cagao se revela)', () => {
     const next = play(live(), 0, { type: 'draw', index: 1 });
     const mine = projectState(next, 0);
     const other = projectState(next, 2);
@@ -326,9 +326,14 @@ describe('El Cagao: lo que ve cada jugador', () => {
       0,
       { type: 'draw', index: 0 },
     );
+    const seenByMe = projectState(stolen, 0);
     const seenByOther = projectState(stolen, 2);
-    if (seenByOther.game !== 'cagao') throw new Error('juego inesperado');
-    assert.equal(seenByOther.lastEvent!.drawnCardId, CAGAO_CARD_ID);
+    if (seenByMe.game !== 'cagao' || seenByOther.game !== 'cagao') throw new Error('juego inesperado');
+    // Quien robó El Cagao lo ve en su mano; los demás no ven ni la carta ni el aviso.
+    assert.equal(seenByMe.lastEvent!.drawnCardId, CAGAO_CARD_ID);
+    assert.equal(seenByOther.lastEvent!.drawnCardId, null);
+    assert.equal(seenByOther.lastEvent!.cagao, false);
+    assert.ok(!JSON.stringify(seenByOther).includes('"picas-1"'));
   });
 
   it('el par que se baja es público', () => {
@@ -377,5 +382,117 @@ describe('El Cagao: el bot', () => {
       assert.equal(state.hands.flat()[0].id, CAGAO_CARD_ID);
       assert.equal(state.finishOrder.length, state.players.length - 1);
     }
+  });
+});
+
+describe('El Cagao: robar a quien se elija', () => {
+  it('se puede robar a cualquier jugador con cartas, no solo al siguiente', () => {
+    const state = makeState({
+      hands: [[c(7, 'corazones'), c(13, 'picas')], [c(7, 'treboles'), c(2, 'diamantes')], [c(5, 'picas'), ace]],
+    });
+    assert.equal(drawFromSeat(state), 1, 'por defecto sigue siendo el siguiente');
+    assert.equal(drawFromSeat(state, 2), 2);
+    const next = play(state, 0, { type: 'draw', index: 0, from: 2 });
+    assert.equal(next.lastEvent!.from, 2);
+    assert.deepEqual(ids(next.hands[2]), ['picas-1']);
+  });
+
+  it('robar a uno mismo, a un asiento vacío o fuera de rango se rechaza', () => {
+    const state = makeState({
+      hands: [[c(7, 'corazones')], [c(4, 'treboles')], []],
+    });
+    assert.match(rejected(state, 0, { type: 'draw', index: 0, from: 0 }), /robarle/);
+    assert.match(rejected(state, 0, { type: 'draw', index: 0, from: 2 }), /robarle/);
+    assert.match(rejected(state, 0, { type: 'draw', index: 0, from: 5 }), /robarle/);
+  });
+});
+
+describe('El Cagao: bot analítico (memoria y víctima)', () => {
+  it('elige a la víctima que más parejas le puede dar según los pares bajados', () => {
+    // El bot tiene 7, 9 y K. El asiento 1 ya bajó un par de 7 (casi seguro no tiene más);
+    // el asiento 2 bajó pares de 9 y de K. Quedan dos números vivos contra el 1 y uno contra el 2.
+    const state = makeState({
+      hands: [
+        [c(7, 'corazones'), c(9, 'corazones'), c(13, 'corazones')],
+        [c(2, 'picas'), c(3, 'picas'), c(4, 'picas'), c(5, 'picas')],
+        [c(6, 'picas'), c(8, 'picas'), c(10, 'picas'), c(11, 'picas')],
+      ],
+      pairs: [
+        { seat: 1, cards: [c(7, 'diamantes'), c(7, 'treboles')] },
+        { seat: 2, cards: [c(9, 'diamantes'), c(9, 'treboles')] },
+        { seat: 2, cards: [c(13, 'diamantes'), c(13, 'treboles')] },
+      ],
+    });
+    const move = chooseCagaoMove(state);
+    assert.equal(move.type, 'draw');
+    if (move.type !== 'draw') return;
+    assert.equal(move.from, 1);
+    assert.ok(move.index >= 0 && move.index < state.hands[1].length);
+  });
+
+  it('no sabe quién tiene El Cagao: que la última jugada lo revelara en el servidor no cambia su víctima', () => {
+    // El Cagao es anónimo: aunque en el estado del servidor conste que el asiento 2
+    // robó El Cagao, el bot elige igual que si no se supiera.
+    const base = {
+      hands: [
+        [c(7, 'corazones'), c(9, 'corazones')],
+        [c(2, 'picas'), c(3, 'picas'), c(4, 'picas')],
+        [c(5, 'picas'), c(6, 'picas'), c(8, 'picas')],
+      ],
+    };
+    const revealed = makeState({
+      ...base,
+      lastEvent: {
+        seq: 1, by: 2, from: 0, index: 0, pair: null, cagao: true, drawnCardId: CAGAO_CARD_ID, outSeats: [],
+      },
+    });
+    const hidden = makeState(base);
+    const moveRevealed = chooseCagaoMove(revealed);
+    const moveHidden = chooseCagaoMove(hidden);
+    assert.equal(moveRevealed.type, 'draw');
+    assert.equal(moveHidden.type, 'draw');
+    if (moveRevealed.type !== 'draw' || moveHidden.type !== 'draw') return;
+    assert.equal(moveRevealed.from, moveHidden.from);
+  });
+
+  it('no mira las manos ajenas: con la misma información pública elige igual', () => {
+    const base = {
+      hands: [
+        [c(7, 'corazones'), c(9, 'corazones'), c(13, 'corazones')],
+        [c(2, 'picas'), c(3, 'picas'), c(4, 'picas'), c(5, 'picas')],
+        [c(6, 'picas'), c(8, 'picas'), c(10, 'picas'), c(11, 'picas')],
+      ],
+      pairs: [
+        { seat: 1, cards: [c(7, 'diamantes'), c(7, 'treboles')] },
+        { seat: 2, cards: [c(9, 'diamantes'), c(9, 'treboles')] },
+        { seat: 2, cards: [c(13, 'diamantes'), c(13, 'treboles')] },
+      ],
+    };
+    const a = makeState(base);
+    // Mismas manos en tamaño y mismos pares, pero cartas distintas en las víctimas.
+    const b = makeState({
+      ...base,
+      hands: [
+        base.hands[0],
+        [c(2, 'diamantes'), c(3, 'diamantes'), c(4, 'diamantes'), c(5, 'diamantes')],
+        [c(6, 'diamantes'), c(8, 'diamantes'), c(10, 'diamantes'), c(11, 'diamantes')],
+      ],
+    });
+    const moveA = chooseCagaoMove(a);
+    const moveB = chooseCagaoMove(b);
+    assert.equal(moveA.type, 'draw');
+    assert.equal(moveB.type, 'draw');
+    if (moveA.type !== 'draw' || moveB.type !== 'draw') return;
+    assert.equal(moveA.from, moveB.from);
+  });
+
+  it('si solo queda una víctima posible, roba de ella', () => {
+    const state = makeState({
+      hands: [[c(7, 'corazones')], [c(4, 'treboles')], []],
+    });
+    const move = chooseCagaoMove(state);
+    assert.equal(move.type, 'draw');
+    if (move.type !== 'draw') return;
+    assert.equal(move.from, 1);
   });
 });

@@ -87,14 +87,14 @@ export const GAMES: Record<GameId, GameInfo> = {
     quickRules: [
       'Se juega con 49 cartas: la baraja sin tres de los Ases. El A♠ no tiene pareja: es El Cagao.',
       'Al empezar, todos bajan sus pares (dos cartas del mismo número).',
-      'En tu turno le robas una carta, a ciegas, al jugador siguiente. Si hace par con una tuya, bajas las dos.',
+      'En tu turno le robas una carta, a ciegas, al jugador que elijas. Si hace par con una tuya, bajas las dos.',
       'Te salvas cuando te quedas sin cartas. Pierde el último que se queda con El Cagao.',
     ],
     rules: [
       'Se usa la baraja americana de 52 cartas sin los Ases de corazones, diamantes y tréboles: quedan 49 cartas. El único As que queda, el A♠, no tiene pareja y es El Cagao. Pueden jugar de 2 a 6 personas.',
       'Se reparte todo el mazo, una carta a la vez. Algunos jugadores se quedan con una carta más, y eso es normal.',
       'Antes de empezar, todos bajan los pares que tengan: dos cartas del mismo número, sin importar el palo. Tú los bajas tocando una carta que tenga pareja o arrastrándola al centro de la mesa (también está el botón para bajar todos de una vez); los bots lo hacen solos. Si tienes tres iguales, bajas dos y te quedas con la otra. Nadie roba hasta que todos terminen.',
-      'Empieza el jugador que está después del que reparte. En tu turno miras las cartas boca abajo del jugador siguiente (el próximo que todavía tenga cartas) y jalas una sin saber cuál es.',
+      'Empieza el jugador que está después del que reparte. En tu turno miras las cartas boca abajo del jugador que elijas (cualquiera que todavía tenga cartas) y jalas una sin saber cuál es.',
       'Si la carta que robaste hace par con una de tu mano, bajas las dos al momento. Si no, se queda en tu mano. Cuando te roban a ti, tu mano se baraja sola para que nadie sepa dónde quedó cada carta.',
       'Quien se queda sin cartas se salva y sale del juego: ya no roba ni le roban.',
       'La partida termina cuando solo queda un jugador con cartas. Esa persona tiene El Cagao (el A♠) y pierde.',
@@ -148,12 +148,43 @@ const BOT_NAMES: { name: string; gender: Gender }[] = [
 ];
 
 export function createSoloPlayers(game: GameId, human: Player, playerCount = GAMES[game].soloPlayerCount): Player[] {
-  const available = [...BOT_NAMES];
-  const bots = Array.from({ length: playerCount - 1 }, (_, i) => {
-    const [pick] = available.splice(randomInt(available.length), 1);
-    return { id: `bot-${i + 1}`, name: pick.name, avatar: encodeAvatar(randomAvatar(Math.random, pick.gender)) };
-  });
-  return [human, ...bots];
+  return fillWithBots(game, [human], playerCount);
+}
+
+/**
+ * Completa la mesa con bots hasta `targetCount` jugadores. Los nombres y los
+ * ids no se repiten con los que ya están sentados (sirve tanto para el modo
+ * sin conexión como para completar una sala en línea). Si ya hay suficientes,
+ * devuelve la lista tal cual.
+ */
+export function fillWithBots(game: GameId, players: Player[], targetCount: number): Player[] {
+  void game;
+  const needed = targetCount - players.length;
+  if (needed <= 0) return players;
+  const usedNames = new Set(players.map((p) => p.name));
+  const usedIds = new Set(players.map((p) => p.id));
+  const available = BOT_NAMES.filter((b) => !usedNames.has(b.name));
+  let nextBot = 1;
+  for (const p of players) {
+    const m = /^bot-(\d+)$/.exec(p.id);
+    if (m) nextBot = Math.max(nextBot, Number(m[1]) + 1);
+  }
+  const bots: Player[] = [];
+  for (let i = 0; i < needed; i++) {
+    const pool = available.length > 0 ? available : [...BOT_NAMES];
+    const [pick] = pool.splice(randomInt(pool.length), 1);
+    let id = `bot-${nextBot++}`;
+    while (usedIds.has(id)) id = `bot-${nextBot++}`;
+    usedIds.add(id);
+    bots.push({ id, name: pick.name, avatar: encodeAvatar(randomAvatar(Math.random, pick.gender)) });
+  }
+  return [...players, ...bots];
+}
+
+/** La menor cantidad válida de jugadores para el juego que no baje de `atLeast` (o el máximo si no hay). */
+export function minValidPlayerCount(game: GameId, atLeast: number): number {
+  const valid = GAMES[game].playerCounts.find((count) => count >= atLeast);
+  return valid ?? GAMES[game].maxPlayers;
 }
 
 export function canStartGame(game: GameId, playerCount: number): boolean {

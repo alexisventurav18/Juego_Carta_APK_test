@@ -157,7 +157,7 @@ export default function GameTable({
   );
 
   const pickFromSeat = (s: number, index: number) => {
-    if (game.myTurn && s === game.victimSeat) game.drawAt(index);
+    if (game.myTurn && game.stealableSeats.includes(s)) game.drawAt(index, s);
   };
 
   // Los avisos de instrucciones salen solo al inicio de la partida (hasta que termina tu primer turno).
@@ -170,9 +170,9 @@ export default function GameTable({
     }
     if (!game.playing) return '';
     if (game.iAmOut) return '¡Te salvaste! Mira cómo termina la partida.';
-    if (game.myTurn) return `Tu turno: jala una carta de ${names[game.victimSeat]}. ¡A ciegas!`;
-    if (game.victimSeat === seat) return `${names[state.turn]} te está robando una carta.`;
-    return `${names[state.turn]} le está robando a ${names[game.victimSeat]}...`;
+    if (game.myTurn) return 'Tu turno: elige a quién robarle una carta. ¡A ciegas!';
+    if (game.stealableSeats.includes(seat)) return `${names[state.turn]} está eligiendo a quién robarle...`;
+    return `${names[state.turn]} está robando una carta...`;
   })();
 
   const turnLabel = game.gameOver ? 'Fin' : game.pairing ? 'Bajando pares' : game.myTurn ? 'Tu turno' : names[state.turn];
@@ -192,7 +192,7 @@ export default function GameTable({
       isTurn={game.playing && state.turn === s}
       isVictim={game.victimSeat === s}
       out={state.hands[s].length === 0 && !game.pairing}
-      pickable={game.myTurn && game.victimSeat === s}
+      pickable={game.myTurn && game.stealableSeats.includes(s)}
       onPick={pickFromSeat}
       registerAnchor={registerAnchor}
     />
@@ -261,32 +261,23 @@ export default function GameTable({
                 key={event.seq}
                 role="status"
                 className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-1 text-center text-[11px] ring-1 sm:text-xs ${
-                  event.cagao
-                    ? 'bg-rose-600/80 font-bold text-rose-50 ring-rose-200'
-                    : event.pair
-                      ? 'bg-amber-500/80 font-semibold text-stone-900 ring-amber-200'
-                      : 'bg-black/55 text-amber-50 ring-white/15'
+                  event.pair
+                    ? 'bg-amber-500/80 font-semibold text-stone-900 ring-amber-200'
+                    : 'bg-black/55 text-amber-50 ring-white/15'
                 }`}
               >
-                {event.cagao && <Skull className="h-3.5 w-3.5 shrink-0" aria-hidden />}
                 <span>
-                  {event.cagao
+                  {event.pair
                     ? event.by === seat
-                      ? `¡Robaste El Cagao (A♠) de ${names[event.from]}!`
+                      ? `Robaste a ${names[event.from]} y bajaste par de ${rankLabel(event.pair[0])}.`
                       : event.from === seat
-                        ? `¡${names[event.by]} te quitó El Cagao!`
-                        : `¡${names[event.by]} le robó El Cagao a ${names[event.from]}!`
-                    : event.pair
-                      ? event.by === seat
-                        ? `Robaste a ${names[event.from]} y bajaste par de ${rankLabel(event.pair[0])}.`
-                        : event.from === seat
-                          ? `${names[event.by]} te robó y bajó par de ${rankLabel(event.pair[0])}.`
-                          : `${names[event.by]} bajó par de ${rankLabel(event.pair[0])}.`
-                      : event.by === seat
-                        ? `Le robaste una carta a ${names[event.from]}.`
-                        : event.from === seat
-                          ? `${names[event.by]} te robó una carta.`
-                          : `${names[event.by]} le robó una carta a ${names[event.from]}.`}
+                        ? `${names[event.by]} te robó y bajó par de ${rankLabel(event.pair[0])}.`
+                        : `${names[event.by]} bajó par de ${rankLabel(event.pair[0])}.`
+                    : event.by === seat
+                      ? `Le robaste una carta a ${names[event.from]}.`
+                      : event.from === seat
+                        ? `${names[event.by]} te robó una carta.`
+                        : `${names[event.by]} le robó una carta a ${names[event.from]}.`}
                   {event.outSeats.length > 0 && ` ${event.outSeats.map((s) => names[s]).join(' y ')} se salvó.`}
                 </span>
               </div>

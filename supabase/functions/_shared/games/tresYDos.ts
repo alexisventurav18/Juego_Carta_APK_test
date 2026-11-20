@@ -1,4 +1,4 @@
-import { americanDeck, type Card, randomInt, shuffle } from './cards.ts';
+import { americanDeck, type Card, drawProb, randomInt, shuffle } from './cards.ts';
 import type { MoveResult, Player } from './shared.ts';
 
 /**
@@ -262,6 +262,9 @@ function sameRankCount(hand: Card[], card: Card): number {
   return hand.filter((c) => c.rank === card.rank).length;
 }
 
+/** Peso del regalo al rival, en unidades de "cartas que me completan" (ver chooseDiscardId). */
+const DISCARD_GIFT_WEIGHT = 20;
+
 function chooseDiscardId(state: TresYDosState): string {
   const hand = state.hands[state.turn];
   const forbiddenId = state.drawnFrom === 'discard' ? state.drawnCardId : null;
@@ -269,18 +272,25 @@ function chooseDiscardId(state: TresYDosState): string {
   if (winning.length > 0) return winning[0];
 
   const unseen = groupByRank(unseenCards(hand, state.discardPile));
+  const unseenTotal = unseen.reduce((sum, group) => sum + group.count, 0);
   const candidates = hand.filter((c) => c.id !== forbiddenId);
   let best = candidates[0];
-  let bestOuts = -1;
+  let bestScore = -Infinity;
   let bestShare = Infinity;
   for (const card of candidates) {
     const remaining = hand.filter((c) => c.id !== card.id);
     const value = outs(remaining, unseen);
+    // La carta botada queda arriba del Pozo: el siguiente jugador puede tomarla.
+    // Si tiene dos de ese número, le puede completar el 3 y 2. Se castiga el
+    // descarte según lo probable que sea eso (las copias que nadie ha visto).
+    const copies = unseen.find((group) => group.card.rank === card.rank)?.count ?? 0;
+    const gift = drawProb(unseenTotal, copies, HAND_SIZE, 2);
+    const score = value - DISCARD_GIFT_WEIGHT * gift;
     // A igualdad de posibilidades, se bota la carta más aislada (la que menos se repite en la mano).
     const share = sameRankCount(hand, card);
-    if (value > bestOuts || (value === bestOuts && share < bestShare)) {
+    if (score > bestScore || (score === bestScore && share < bestShare)) {
       best = card;
-      bestOuts = value;
+      bestScore = score;
       bestShare = share;
     }
   }

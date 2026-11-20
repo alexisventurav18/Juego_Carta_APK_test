@@ -1,8 +1,8 @@
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BookOpen, Bot, Coins, DoorOpen, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Users, VolumeX, X, Zap } from 'lucide-react';
+import { BookOpen, Bot, Coins, DoorOpen, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
-import { createRoom, joinRoom } from '@/lib/rooms';
+import { createRoom, joinRoom, quickplayRoom } from '@/lib/rooms';
 import { getMyAvatar, getPlayerId, getStoredName, hasChosenAvatar, resetPlayerIdentity, storeAvatar, storeName } from '@/lib/identity';
 import { claimDaily, useEconomy } from '@/lib/economy';
 import { useFullscreen } from '@/lib/platform';
@@ -89,7 +89,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const economy = useEconomy();
   const [avatar, setAvatar] = useState(getMyAvatar);
   const [avatarChosen, setAvatarChosen] = useState(hasChosenAvatar);
-  const [busy, setBusy] = useState<'create' | 'join' | null>(null);
+  const [busy, setBusy] = useState<'create' | 'join' | 'quickplay' | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Cantidad de bots elegida para jugar sin conexión, por juego (si no se tocó, la recomendada).
   // Al abrir, se recupera la de la última partida jugada.
@@ -123,7 +123,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
     setError(null);
   };
 
-  const run = async (kind: 'create' | 'join', action: (player: Player) => Promise<string>) => {
+  const run = async (kind: 'create' | 'join' | 'quickplay', action: (player: Player) => Promise<string>) => {
     if (!trimmedName) {
       setError('Escribe tu nombre para continuar.');
       setPanel(kind === 'join' ? 'join' : null);
@@ -144,6 +144,9 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   };
 
   const handleCreate = () => run('create', async (player) => (await createRoom(game, player)).id);
+
+  /** Matchmaking: busca una sala pública de este juego o crea una; si no se llena, se completa con bots. */
+  const handleQuickplay = () => run('quickplay', async (player) => (await quickplayRoom(game, player)).id);
 
   const handleJoin = (event: FormEvent) => {
     event.preventDefault();
@@ -350,7 +353,11 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
               <Bot className="h-4 w-4 shrink-0" />
               <span className="truncate">Jugar {info.name} contra {bots} {bots === 1 ? 'bot' : 'bots'}</span>
             </button>
-            <button type="button" onClick={handleCreate} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[14rem] flex-1 btn-leaf font-bold`}>
+            <button type="button" onClick={handleQuickplay} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[14rem] flex-1 btn-leaf font-bold`}>
+              <Globe className="h-4 w-4 shrink-0" />
+              <span className="truncate">{busy === 'quickplay' ? 'Buscando...' : 'Jugar online'}</span>
+            </button>
+            <button type="button" onClick={handleCreate} disabled={busy !== null} className={`${BTN} min-w-0 max-w-[14rem] flex-1 btn-wood font-bold`}>
               <Spade className="h-4 w-4 shrink-0" />
               <span className="truncate">{busy === 'create' ? 'Creando...' : 'Crear sala'}</span>
             </button>

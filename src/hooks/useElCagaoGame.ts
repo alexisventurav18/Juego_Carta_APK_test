@@ -26,6 +26,10 @@ export function useElCagaoGame({ state, seat, onMove }: Options) {
   const gameOver = state.phase === 'gameOver';
   const myTurn = playing && state.turn === seat;
   const victimSeat = playing ? drawFromSeat(state) : -1;
+  /** Asientos a los que se les puede robar: cualquiera con cartas, menos yo. */
+  const stealableSeats = playing
+    ? state.hands.flatMap((hand, s) => (s !== seat && hand.length > 0 ? [s] : []))
+    : [];
   const iAmOut = playing && hand.length === 0;
   const iLost = state.loserSeat === seat;
   const event = state.lastEvent;
@@ -61,12 +65,12 @@ export function useElCagaoGame({ state, seat, onMove }: Options) {
 
   /* ------------------------------ acciones ------------------------------ */
 
-  /** Jala la carta `index` de la mano oculta del rival al que le toca robarte. */
+  /** Jala la carta `index` de la mano oculta del rival elegido (`from`, o el siguiente por defecto). */
   const drawAt = useCallback(
-    (index: number) => {
-      if (myTurn) onMove({ type: 'draw', index });
+    (index: number, from?: number) => {
+      if (myTurn) onMove({ type: 'draw', index, from: from ?? victimSeat });
     },
-    [myTurn, onMove],
+    [myTurn, onMove, victimSeat],
   );
 
   /** Baja el par de esa carta (con su pareja). Devuelve las dos cartas, o null si no se puede. */
@@ -109,11 +113,11 @@ export function useElCagaoGame({ state, seat, onMove }: Options) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cada jugada de robo: roce de carta, par bajado o la alerta de El Cagao.
+  // Cada jugada de robo: roce de carta o par bajado (El Cagao es anónimo: no suena distinto).
   useEffect(() => {
     if (!event || event.seq === lastSeq.current) return;
     lastSeq.current = event.seq;
-    playSound(event.cagao ? 'cagaoAlert' : event.pair ? 'pairMatch' : 'cardSlide');
+    playSound(event.pair ? 'pairMatch' : 'cardSlide');
     if (event.outSeats.includes(seat)) {
       const timer = window.setTimeout(() => playSound('win'), 420);
       return () => window.clearTimeout(timer);
@@ -141,6 +145,7 @@ export function useElCagaoGame({ state, seat, onMove }: Options) {
     gameOver,
     myTurn,
     victimSeat,
+    stealableSeats,
     iAmOut,
     iLost,
     event,

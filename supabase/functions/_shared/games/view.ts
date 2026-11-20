@@ -33,8 +33,10 @@ export function projectState(state: GameState, seat: number): GameState {
       lastEvent: event
         ? {
             ...event,
-            // La carta robada es secreta, salvo que sea El Cagao o haya formado un par (ambos son públicos).
-            drawnCardId: event.cagao || seat === event.by ? event.drawnCardId : null,
+            // El Cagao es anónimo hasta el final: nadie ve cuándo alguien lo roba.
+            // La carta robada es secreta, salvo que forme un par (público) o seas quien robó.
+            cagao: false,
+            drawnCardId: event.pair || seat === event.by ? event.drawnCardId : null,
           }
         : null,
     };

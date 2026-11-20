@@ -340,3 +340,38 @@ describe('El Robaíto · vista de cada jugador', () => {
     assert.equal(chooseRobaitoCard(view, 0).id, 'corazones-9');
   });
 });
+
+describe('El Robaíto · IA analítica (valor neto)', () => {
+  it('no roba un paquete si eso deja su paquete grande expuesto a un 9 probable', () => {
+    // Las dos jugadas se llevan 3 cartas, pero robar el paquete deja mi cima en 9
+    // (quedan 3 nueves sin ver) y mi paquete de 13 cartas a tiro del rival; levantar
+    // los dos 4 de la mesa deja mi cima en 4, del que solo quedan 2 copias sin ver.
+    const state = makeState({
+      hands: [
+        [c(9, 'corazones'), c(4, 'corazones')],
+        [c(2, 'picas'), c(3, 'picas'), c(6, 'picas'), c(8, 'picas')],
+        [c(7, 'picas')],
+      ],
+      deck: [],
+      table: [c(4, 'picas'), c(4, 'diamantes')],
+      piles: [
+        [
+          c(1, 'treboles'), c(2, 'treboles'), c(3, 'treboles'), c(5, 'treboles'), c(6, 'treboles'),
+          c(7, 'treboles'), c(8, 'treboles'), c(10, 'treboles'), c(11, 'treboles'), c(13, 'picas'),
+        ],
+        [c(12, 'treboles'), c(9, 'diamantes')],
+        [c(4, 'treboles')],
+      ],
+    });
+    assert.equal(chooseRobaitoCard(state, 0).id, 'corazones-4');
+  });
+
+  it('sigue robando el paquete más grande cuando no hay exposición', () => {
+    const state = makeState({
+      hands: [[c(4, 'corazones'), c(9, 'corazones'), c(12, 'corazones')], [c(5, 'picas')], [c(8, 'picas')]],
+      piles: [[], [c(1, 'picas'), c(4, 'treboles')], [c(1, 'diamantes'), c(2, 'diamantes'), c(3, 'diamantes'), c(9, 'treboles')]],
+      table: [c(12, 'picas')],
+    });
+    assert.equal(chooseRobaitoCard(state, 0).id, 'corazones-9');
+  });
+});

@@ -2,6 +2,7 @@ import type { GameState } from '@/games';
 import type { GameId, Player } from '@/games/shared';
 import { serverErrorMessage } from './functionsError';
 import { getPlayerId, getPlayerKey } from './identity';
+import { isValidChatPayload, ROOM_CHAT_EVENT, type RoomChatMessage } from './roomChat';
 import { supabase } from './supabase';
 
 export type RoomStatus = 'waiting' | 'playing';
@@ -15,6 +16,10 @@ export interface RoomRow {
   players: Player[];
   state: GameState | null;
   version: number;
+  /** True si es una sala de matchmaking ("Jugar online"). */
+  isPublic: boolean;
+  /** Cuándo se creó la sala (milisegundos desde epoch): manda en la cuenta atrás de la espera. */
+  createdAt: number;
 }
 
 export type RoomConnectionStatus = 'connecting' | 'connected' | 'offline';
@@ -57,6 +62,16 @@ export function joinRoom(code: string, player: Player): Promise<RoomRow> {
   return call({ action: 'join', code, name: player.name, avatar: player.avatar });
 }
 
+/** Matchmaking: entra en una sala pública en espera de ese juego o crea una. */
+export function quickplayRoom(game: GameId, player: Player): Promise<RoomRow> {
+  return call({ action: 'quickplay', game, name: player.name, avatar: player.avatar });
+}
+
+/** Salir de una sala en espera (si queda vacía, se borra). */
+export function leaveRoom(roomId: string): Promise<RoomRow> {
+  return call({ action: 'leave', roomId });
+}
+
 export function fetchRoom(roomId: string): Promise<RoomRow> {
   return call({ action: 'view', roomId });
 }
@@ -75,15 +90,28 @@ export function botTick(roomId: string, expectedVersion: number): Promise<RoomRo
   return call({ action: 'tick', roomId, expectedVersion });
 }
 
+export interface RoomSubscription {
+  /** Deja de escuchar la sala (Realtime + canal). */
+  unsubscribe: () => void;
+  /** Envía un mensaje de chat por Broadcast a los demás jugadores de la sala. */
+  sendChat: (msg: RoomChatMessage) => void;
+}
+
 /**
  * Avisa cuando la sala cambia. La sala pública no contiene cartas, así que el aviso solo trae la versión;
  * quien lo recibe pide su vista actualizada al servidor.
+ *
+ * El mismo canal `room:<id>` lleva también el chat de texto por Broadcast
+ * (evento 'chat'): los mensajes llegan por `onChat` ya validados contra el
+ * catálogo cerrado (ver `isValidChatPayload`); el remitente no recibe su
+ * propio Broadcast, así que quien envía muestra su mensaje en local.
  */
 export function subscribeToRoom(
   roomId: string,
   onVersion: (version: number) => void,
   onStatus?: (status: RoomConnectionStatus) => void,
-): () => void {
+  onChat?: (msg: RoomChatMessage) => void,
+): RoomSubscription {
   const channel = supabase
     .channel(`room:${roomId}`)
     .on(
@@ -91,12 +119,21 @@ export function subscribeToRoom(
       { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
       (payload) => onVersion((payload.new as { version: number }).version),
     )
+    .on('broadcast', { event: ROOM_CHAT_EVENT }, ({ payload }) => {
+      // Solo mensajes del catálogo cerrado: cualquier otra cosa se descarta en silencio.
+      if (isValidChatPayload(payload)) onChat?.(payload);
+    })
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') onStatus?.('connected');
       else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') onStatus?.('offline');
       else onStatus?.('connecting');
     });
-  return () => {
-    supabase.removeChannel(channel);
+  return {
+    unsubscribe: () => {
+      supabase.removeChannel(channel);
+    },
+    sendChat: (msg) => {
+      void channel.send({ type: 'broadcast', event: ROOM_CHAT_EVENT, payload: msg });
+    },
   };
 }

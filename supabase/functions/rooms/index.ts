@@ -18,11 +18,37 @@ const CORS_HEADERS = {
 const UNIQUE_VIOLATION = '23505';
 const MAX_CODE_ATTEMPTS = 6;
 const MAX_BODY_BYTES = 16_384;
-const ROOM_COLUMNS = 'id, code, game, status, players, version';
+const MAX_WAITING_ROOMS = 10;
+const ROOM_COLUMNS = 'id, code, game, status, players, version, is_public, created_at';
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
   auth: { persistSession: false },
 });
+
+/** La fila de `rooms` tal como la guarda la base de datos. */
+interface RoomRow {
+  id: string;
+  code: string;
+  game: string;
+  status: string;
+  players: RoomRecord['players'];
+  version: number;
+  is_public: boolean | null;
+  created_at: string | null;
+}
+
+function toRecord(row: RoomRow): RoomRecord {
+  return {
+    id: row.id,
+    code: row.code,
+    game: row.game as RoomRecord['game'],
+    status: row.status as RoomRecord['status'],
+    players: row.players,
+    version: row.version,
+    isPublic: row.is_public ?? false,
+    createdAt: row.created_at ? new Date(row.created_at).getTime() : 0,
+  };
+}
 
 async function load(column: 'id' | 'code', value: string): Promise<StoredRoom | null> {
   const { data: room, error } = await db.from('rooms').select(ROOM_COLUMNS).eq(column, value).maybeSingle();
@@ -35,7 +61,7 @@ async function load(column: 'id' | 'code', value: string): Promise<StoredRoom | 
     .maybeSingle();
   if (secretError) throw new Error(secretError.message);
   return {
-    room: room as RoomRecord,
+    room: toRecord(room as RoomRow),
     secret: { state: secret?.state ?? null, keys: secret?.keys ?? {} },
   };
 }
@@ -44,11 +70,36 @@ const store: RoomStore = {
   findById: (id) => load('id', id),
   findByCode: (code) => load('code', code),
 
+  async findWaiting(game) {
+    const { data, error } = await db
+      .from('rooms')
+      .select(ROOM_COLUMNS)
+      .eq('game', game)
+      .eq('status', 'waiting')
+      .eq('is_public', true)
+      .order('created_at', { ascending: true })
+      .limit(MAX_WAITING_ROOMS);
+    if (error) throw new Error(error.message);
+    const rooms: StoredRoom[] = [];
+    for (const row of data ?? []) {
+      const stored = await load('id', (row as RoomRow).id);
+      if (stored) rooms.push(stored);
+    }
+    return rooms;
+  },
+
   async create(room, secret: SecretRecord) {
     for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
       const { data, error } = await db
         .from('rooms')
-        .insert({ code: makeRoomCode(), ...room })
+        .insert({
+          code: makeRoomCode(),
+          game: room.game,
+          status: room.status,
+          players: room.players,
+          is_public: room.isPublic,
+          created_at: new Date(room.createdAt).toISOString(),
+        })
         .select(ROOM_COLUMNS)
         .maybeSingle();
       if (error?.code === UNIQUE_VIOLATION) continue;
@@ -60,7 +111,7 @@ const store: RoomStore = {
         await db.from('rooms').delete().eq('id', data.id);
         throw new Error(secretError.message);
       }
-      return { room: data as RoomRecord, secret };
+      return { room: toRecord(data as RoomRow), secret };
     }
     throw new Error('No se pudo generar un código de sala libre.');
   },
@@ -73,9 +124,16 @@ const store: RoomStore = {
       p_players: patch.players,
       p_state: patch.state,
       p_keys: patch.keys,
+      p_is_public: patch.isPublic,
     });
     if (error) throw new Error(error.message);
     return data === true;
+  },
+
+  async remove(roomId: string) {
+    // room_secrets se borra en cascada por la clave foránea (ON DELETE CASCADE).
+    const { error } = await db.from('rooms').delete().eq('id', roomId);
+    if (error) throw new Error(error.message);
   },
 };
 

@@ -344,3 +344,24 @@ describe('Tres y Dos: el bot', () => {
     assert.ok('state' in applyTresYDosMove(state, 0, move));
   });
 });
+
+describe('Tres y Dos: el bot no regala el descarte', () => {
+  it('entre dos descartes igual de buenos, bota el número que el rival no puede aprovechar', () => {
+    // Mano: K K Q Q 7 3. Botar el 7 o el 3 deja las mismas 4 cartas que completan
+    // (otro K o otra Q). Pero del 3 ya se ven las 4 copias (una en mano y tres en el
+    // Pozo): el rival no puede tener pareja de 3. Del 7 quedan 3 copias sin ver.
+    const state = makeState({
+      hands: [
+        [c(13, 'picas'), c(13, 'corazones'), c(12, 'picas'), c(12, 'corazones'), c(7, 'picas'), c(3, 'picas')],
+        [c(2, 'diamantes'), c(4, 'diamantes'), c(6, 'diamantes'), c(8, 'diamantes'), c(10, 'diamantes')],
+      ],
+      deck: [c(2, 'picas'), c(4, 'picas'), c(6, 'picas')],
+      discardPile: [c(3, 'corazones'), c(3, 'diamantes'), c(3, 'treboles')],
+      turnStep: 'discard',
+      drawnFrom: 'deck',
+      drawnCardId: 'picas-7',
+    });
+    const move = chooseTresYDosMove(state);
+    assert.deepEqual(move, { type: 'discard', cardId: 'picas-3' });
+  });
+});

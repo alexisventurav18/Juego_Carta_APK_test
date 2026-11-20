@@ -8,7 +8,9 @@ import type { RobaitoMove } from '@/games/robaito';
 import { botTickDelay } from '@/games/bots';
 import { isBotPlayer } from '@/games/shared';
 import { getPlayerId } from '@/lib/identity';
-import { botTick, fetchRoom, requestStart, type RoomConnectionStatus, type RoomRow, sendMove, subscribeToRoom } from '@/lib/rooms';
+import { botTick, fetchRoom, leaveRoom, requestStart, type RoomConnectionStatus, type RoomRow, type RoomSubscription, sendMove, subscribeToRoom } from '@/lib/rooms';
+import { CHAT_TOAST_MS, isAllowedChatSender, type RoomChatMessage } from '@/lib/roomChat';
+import RoomChat from './RoomChat';
 import { OptionsButton } from './table/chips';
 import WaitingRoom from './WaitingRoom';
 import CasinoTable from './CasinoTable';
@@ -46,6 +48,12 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const botRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const BOT_TICK_MAX_RETRIES = 3;
   const BOT_TICK_RETRY_MS = 2500;
+  // Chat de texto de la sala: aviso temporal con el último mensaje, y el
+  // envío por Broadcast (el remitente no recibe su propio mensaje).
+  const [chatToast, setChatToast] = useState<RoomChatMessage | null>(null);
+  const chatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const roomRef = useRef<RoomRow | null>(null);
+  const subscriptionRef = useRef<RoomSubscription | null>(null);
 
   const retryConnection = () => {
     setConnection('connecting');
@@ -59,6 +67,27 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       return next;
     });
   }, []);
+
+  /** Muestra un mensaje de chat como aviso temporal (~4 s). El nombre que se ve es el de la sala, no el que traiga el mensaje. */
+  const showChatMessage = useCallback((msg: RoomChatMessage) => {
+    const sender = roomRef.current?.players.find((player) => player.id === msg.fromId);
+    setChatToast({ ...msg, fromName: sender?.name ?? msg.fromName });
+    if (chatTimerRef.current !== null) clearTimeout(chatTimerRef.current);
+    chatTimerRef.current = setTimeout(() => setChatToast(null), CHAT_TOAST_MS);
+  }, []);
+
+  /** Envía un mensaje de chat y muestra el eco local (el remitente no recibe su propio Broadcast). */
+  const sendChatMessage = useCallback(
+    (msg: RoomChatMessage) => {
+      subscriptionRef.current?.sendChat(msg);
+      showChatMessage(msg);
+    },
+    [showChatMessage],
+  );
+
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
 
   useEffect(() => {
     let active = true;
@@ -82,9 +111,19 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     };
 
     refresh();
-    const unsubscribe = subscribeToRoom(roomId, (version) => {
-      if (version > versionRef.current) refresh();
-    }, setConnection);
+    const subscription = subscribeToRoom(
+      roomId,
+      (version) => {
+        if (version > versionRef.current) refresh();
+      },
+      setConnection,
+      (msg) => {
+        // Solo mensajes de un jugador humano de esta sala; el resto se descarta.
+        if (!isAllowedChatSender(msg, roomRef.current?.players ?? [])) return;
+        showChatMessage(msg);
+      },
+    );
+    subscriptionRef.current = subscription;
     const refreshTimer = window.setInterval(refresh, 15000);
     const handleOffline = () => setConnection('offline');
     window.addEventListener('focus', refresh);
@@ -92,19 +131,36 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     window.addEventListener('offline', handleOffline);
     return () => {
       active = false;
-      unsubscribe();
+      subscription.unsubscribe();
+      subscriptionRef.current = null;
+      if (chatTimerRef.current !== null) clearTimeout(chatTimerRef.current);
       window.clearInterval(refreshTimer);
       window.removeEventListener('focus', refresh);
       window.removeEventListener('online', refresh);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [roomId, acceptRow, retryToken]);
+  }, [roomId, acceptRow, retryToken, showChatMessage]);
 
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), 5000);
     return () => clearTimeout(timer);
   }, [notice]);
+
+  // En una sala pública en espera, el servidor arranca la partida sola cuando
+  // se llena o pasan ~30 s: se consulta cada 5 s para no perderse el arranque.
+  useEffect(() => {
+    if (!room || room.status !== 'waiting' || !room.isPublic) return undefined;
+    const timer = window.setInterval(() => {
+      fetchRoom(room.id)
+        .then((row) => {
+          setConnection('connected');
+          acceptRow(row);
+        })
+        .catch(() => undefined);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [room, acceptRow]);
 
   // El primer humano de la sala pide al servidor las jugadas de los bots; el servidor es quien las calcula.
   // Si el tick falla, se reintenta hasta 3 veces con 2,5 s de espera; el contador se
@@ -192,6 +248,17 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     void run(() => requestStart(room.id));
   };
 
+  /** Salir de una sala en espera: se avisa al servidor para liberar el asiento (y borrarla si queda vacía). */
+  const leaveWaitingRoom = useCallback(() => {
+    if (!room || room.status !== 'waiting') {
+      onLeave();
+      return;
+    }
+    leaveRoom(room.id)
+      .catch(() => undefined)
+      .finally(() => onLeave());
+  }, [room, onLeave]);
+
   const startSoloGame = (humanWonToss: boolean) => {
     setCoinOpen(false);
     const dealer = humanWonToss ? room.players.findIndex(isBotPlayer) : seat;
@@ -200,6 +267,10 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
 
   const state = room.state;
   const info = GAMES[room.game];
+
+  // El chat solo tiene sentido con otro humano en la mesa: contra bots no hay con quién hablar.
+  const hasOtherHuman = room.players.some((player) => player.id !== playerId && !isBotPlayer(player));
+  const myName = room.players.find((player) => player.id === playerId)?.name ?? '';
 
   // Los juegos ocupan toda la pantalla: sale, estado de conexión y avisos van dentro de su barra superior.
   if (state !== null && room.status !== 'waiting') {
@@ -249,6 +320,9 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
             onMove={(move: CagaoMove) => void run(() => sendMove(room.id, move))}
           />
         )}
+        {/* Chat de texto: vive aquí, en la rama que envuelve las 4 mesas, así
+            funciona igual en Casino, Tres y Dos, El Cagao y El Robaíto. */}
+        {hasOtherHuman && <RoomChat toast={chatToast} myId={playerId} myName={myName} onSend={sendChatMessage} />}
       </div>
     );
   }
@@ -259,7 +333,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       <header className="room-waiting-header mb-2 flex items-center justify-between gap-2 sm:mb-6 sm:gap-4">
         <button
           type="button"
-          onClick={onLeave}
+          onClick={leaveWaitingRoom}
           className="wood-chip inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-transform active:scale-95 sm:gap-2 sm:text-sm"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -304,7 +378,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
 
       {coinOpen && <CoinToss onDone={startSoloGame} />}
 
-      <WaitingRoom room={room} myId={playerId} busy={saving} onStart={startGame} />
+      <WaitingRoom room={room} myId={playerId} busy={saving} onStart={startGame} matchmaking={room.isPublic} onLeave={leaveWaitingRoom} />
     </div>
     </div>
   );

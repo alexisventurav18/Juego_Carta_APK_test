@@ -206,7 +206,7 @@ const CAGAO: TutorialStep[] = [
   {
     title: 'Roba a ciegas',
     body: [
-      'Después, en tu turno le robas una carta al jugador siguiente, sin ver cuál es. Si hace par con una tuya, bajas las dos.',
+      'Después, en tu turno le robas una carta al jugador que tú elijas, sin ver cuál es. Si hace par con una tuya, bajas las dos.',
       'Pruébalo: toca una de las cartas boca abajo de tu rival.',
     ],
     practice: {
@@ -223,6 +223,7 @@ const CAGAO: TutorialStep[] = [
     title: 'Salvarse o perder',
     body: [
       'Quien se queda sin cartas se salva y sale del juego. La partida termina cuando solo queda un jugador con cartas: esa persona tiene El Cagao y pierde.',
+      'Nadie sabe quién tiene El Cagao hasta el final: solo se revela cuando la partida termina.',
       'Cuando te roban a ti, tu mano se baraja sola para que nadie sepa dónde quedó cada carta.',
     ],
   },

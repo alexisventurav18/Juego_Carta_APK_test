@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Check, Copy, Play, Share2, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Check, Copy, Play, Share2, Users, X } from 'lucide-react';
 import { canStartGame, GAMES } from '@/games';
+import { QUICKPLAY_WAIT_MS } from '@/games/roomService';
 import type { Player } from '@/games/shared';
 import { createRoomInviteUrl } from '@/lib/invitation';
 import type { RoomRow } from '@/lib/rooms';
@@ -12,15 +13,30 @@ interface WaitingRoomProps {
   myId: string;
   busy: boolean;
   onStart: () => void;
+  /** Sala de matchmaking: sin código para compartir, con cuenta atrás y salida. */
+  matchmaking?: boolean;
+  onLeave?: () => void;
 }
 
-export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomProps) {
+export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = false, onLeave }: WaitingRoomProps) {
   const isHost = room.players[0]?.id === myId;
   const info = GAMES[room.game];
   const canStart = canStartGame(room.game, room.players.length);
   const slots = Math.max(info.maxPlayers - room.players.length, 0);
   const [copied, setCopied] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
+  // Cuenta atrás de la espera: cuando llega a cero el servidor completa con bots y arranca.
+  const [secondsLeft, setSecondsLeft] = useState(() =>
+    Math.max(0, Math.ceil((room.createdAt + QUICKPLAY_WAIT_MS - Date.now()) / 1000)),
+  );
+  useEffect(() => {
+    if (!matchmaking) return undefined;
+    setSecondsLeft(Math.max(0, Math.ceil((room.createdAt + QUICKPLAY_WAIT_MS - Date.now()) / 1000)));
+    const timer = window.setInterval(() => {
+      setSecondsLeft(Math.max(0, Math.ceil((room.createdAt + QUICKPLAY_WAIT_MS - Date.now()) / 1000)));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [matchmaking, room.createdAt]);
   const inviteUrl = createRoomInviteUrl(room.code, import.meta.env.VITE_APP_URL, window.location.href);
   // Las salas de 4 o más jugadores muestran la lista en dos columnas para ahorrar altura en móvil.
   const twoColumns = info.maxPlayers >= 4;
@@ -70,11 +86,37 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
 
   return (
     <div className="room-waiting-grid mx-auto grid w-full max-w-3xl gap-2 min-[600px]:grid-cols-[1fr_1.2fr] sm:gap-5">
-      <div className="room-waiting-info flex flex-col gap-2 self-start wood-panel p-3 sm:gap-4 sm:p-5">
-        <div className="space-y-1">
-          <p className="text-xs font-bold text-amber-200 sm:text-sm">Sala de {info.name}</p>
-          <p className="text-xs text-amber-100/85 sm:text-sm">Comparte este código con tus amigos para que entren.</p>
+      {matchmaking ? (
+        <div className="room-waiting-info flex flex-col gap-2 self-start wood-panel p-3 sm:gap-4 sm:p-5">
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-amber-200 sm:text-sm">Buscando jugadores en línea…</p>
+            <p className="text-xs text-amber-100/85 sm:text-sm">
+              {secondsLeft > 0
+                ? `Si no se llena en ${secondsLeft} s, se completa con bots y la partida empieza sola.`
+                : 'Completando la mesa con bots…'}
+            </p>
+          </div>
+          <p className="font-mono text-[clamp(1.5rem,8vw,2.25rem)] font-semibold tracking-[0.2em] text-amber-300">
+            0:{String(secondsLeft).padStart(2, '0')}
+          </p>
+          {onLeave && (
+            <button
+              type="button"
+              onClick={onLeave}
+              disabled={busy}
+              className="btn-wood inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-bold transition-transform active:scale-95 sm:min-h-[44px] sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
+            >
+              <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              Cancelar búsqueda
+            </button>
+          )}
         </div>
+      ) : (
+        <div className="room-waiting-info flex flex-col gap-2 self-start wood-panel p-3 sm:gap-4 sm:p-5">
+          <div className="space-y-1">
+            <p className="text-xs font-bold text-amber-200 sm:text-sm">Sala de {info.name}</p>
+            <p className="text-xs text-amber-100/85 sm:text-sm">Comparte este código con tus amigos para que entren.</p>
+          </div>
         <div className="space-y-2">
           <p className="font-mono text-[clamp(1.5rem,8vw,2.25rem)] font-semibold tracking-[0.2em] text-amber-300 sm:tracking-[0.3em]">{room.code}</p>
           <button
@@ -95,7 +137,8 @@ export default function WaitingRoom({ room, myId, busy, onStart }: WaitingRoomPr
           </button>
           {shareMessage && <p role="status" className="text-xs text-amber-200">{shareMessage}</p>}
         </div>
-      </div>
+        </div>
+      )}
 
       <div className="room-waiting-player-panel wood-panel space-y-2 p-3 sm:space-y-4 sm:p-5">
         <div className="flex items-center justify-between">
