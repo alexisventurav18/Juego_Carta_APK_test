@@ -14,7 +14,7 @@ import VictoryCelebration from '../VictoryCelebration';
 import FlightLayer, { type Flight } from './FlightLayer';
 import TableLayout from '../table/TableLayout';
 import { useStartHint } from '../table/useStartHint';
-import { CORNER_CHIP, LeaveButton, TableNotices, TurnSound } from '../table/chips';
+import { CORNER_CHIP, LeaveButton, OptionsButton, TableNotices, TurnSound } from '../table/chips';
 import { centerOf, useFlights } from '../table/useFlights';
 import { HandFan } from './Fans';
 import PlayerSeat, { SeatPlaque } from './PlayerSeat';
@@ -224,13 +224,16 @@ export default function GameTable({
       onPick={pickFromSeat}
       registerAnchor={registerAnchor}
       level={state.players[s].level}
+      // Con tres rivales arriba (6 jugadores) la placa va encima del abanico: en fila no caben los
+      // tres sin recortar los nombres hasta perderlos.
+      stacked={side === 'top' && game.layout.top.length >= 3}
     />
   );
 
   return (
     <TableLayout
       accent={GAME_ENVIRONMENTS[state.game].accent}
-      topLeft={
+      controlsLeft={
         <>
           <LeaveButton onLeave={onLeave} />
           <button
@@ -245,9 +248,46 @@ export default function GameTable({
         </>
       }
       // Con tres rivales arriba (6 jugadores) cada abanico cede ancho para que las placas no se recorten.
-      vars={{ '--top-avail': game.layout.top.length >= 3 ? '13dvw' : '28dvw' } as CSSProperties}
-      topCenter={game.layout.top.map((s) => renderSeat(s, 'top'))}
-      topRight={<TurnSound label={turnLabel} myTurn={myTurn} showFlow />}
+      vars={{ '--top-avail': game.layout.top.length >= 3 ? '13dvw' : '16dvw' } as CSSProperties}
+      topSeats={game.layout.top.map((s) => renderSeat(s, 'top'))}
+      controlsCenter={<TurnSound label={turnLabel} myTurn={myTurn} showFlow />}
+      controlsRight={<OptionsButton />}
+      hint={
+        <>
+          {/* Aviso de la última jugada: en este carril, junto a la pista, no sobre el tablero. */}
+          {event && game.playing && (
+            <div
+              key={event.seq}
+              role="status"
+              className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-1 text-center text-[11px] ring-1 sm:text-xs ${
+                event.pair
+                  ? 'bg-amber-500/80 font-semibold text-stone-900 ring-amber-200'
+                  : 'bg-black/55 text-amber-50 ring-white/15'
+              }`}
+            >
+              <span>
+                {event.pair
+                  ? event.by === seat
+                    ? `Robaste a ${names[event.from]} y bajaste par de ${rankLabel(event.pair[0])}.`
+                    : event.from === seat
+                      ? `${names[event.by]} te robó y bajó par de ${rankLabel(event.pair[0])}.`
+                      : `${names[event.by]} bajó par de ${rankLabel(event.pair[0])}.`
+                  : event.by === seat
+                    ? `Le robaste una carta a ${names[event.from]}.`
+                    : event.from === seat
+                      ? `${names[event.by]} te robó una carta.`
+                      : `${names[event.by]} le robó una carta a ${names[event.from]}.`}
+                {event.outSeats.length > 0 && ` ${event.outSeats.map((s) => names[s]).join(' y ')} se salvó.`}
+              </span>
+            </div>
+          )}
+          {showStartHint && hint && (
+            <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
+              {hint}
+            </p>
+          )}
+        </>
+      }
       left={game.layout.left !== null && renderSeat(game.layout.left, 'left')}
       right={game.layout.right !== null && renderSeat(game.layout.right, 'right')}
       center={
@@ -304,41 +344,7 @@ export default function GameTable({
             </div>
           )}
 
-          {/* Aviso de la última jugada */}
-          {event && game.playing && (
-            <div className="pointer-events-none absolute inset-x-0 top-1 z-30 flex justify-center px-1">
-              <div
-                key={event.seq}
-                role="status"
-                className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-1 text-center text-[11px] ring-1 sm:text-xs ${
-                  event.pair
-                    ? 'bg-amber-500/80 font-semibold text-stone-900 ring-amber-200'
-                    : 'bg-black/55 text-amber-50 ring-white/15'
-                }`}
-              >
-                <span>
-                  {event.pair
-                    ? event.by === seat
-                      ? `Robaste a ${names[event.from]} y bajaste par de ${rankLabel(event.pair[0])}.`
-                      : event.from === seat
-                        ? `${names[event.by]} te robó y bajó par de ${rankLabel(event.pair[0])}.`
-                        : `${names[event.by]} bajó par de ${rankLabel(event.pair[0])}.`
-                    : event.by === seat
-                      ? `Le robaste una carta a ${names[event.from]}.`
-                      : event.from === seat
-                        ? `${names[event.by]} te robó una carta.`
-                        : `${names[event.by]} le robó una carta a ${names[event.from]}.`}
-                  {event.outSeats.length > 0 && ` ${event.outSeats.map((s) => names[s]).join(' y ')} se salvó.`}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {showStartHint && hint && (
-            <p className="pointer-events-none absolute bottom-0 left-1/2 z-30 max-w-[96%] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
-              {hint}
-            </p>
-          )}
+          {/* (El aviso de la última jugada vive en el carril de la pista, bajo el tablero.) */}
         </>
       }
       bottomLeft={

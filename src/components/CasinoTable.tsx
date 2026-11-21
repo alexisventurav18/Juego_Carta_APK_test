@@ -41,7 +41,7 @@ import { HandFan } from './cagao/Fans';
 import PlayerSeat, { SeatPlaque } from './cagao/PlayerSeat';
 import type { Point } from './cagao/types';
 import TableLayout from './table/TableLayout';
-import { CORNER_CHIP, LeaveButton, TableNotices, TurnSound } from './table/chips';
+import { CORNER_CHIP, LeaveButton, OptionsButton, TableNotices, TurnSound } from './table/chips';
 import { teamColor } from './table/teamColors';
 import { useStartHint } from './table/useStartHint';
 import { seatLayout } from './table/seatLayout';
@@ -493,7 +493,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
     />
   );
 
-  /** Tarjeta de puntuación de un equipo (vive en la barra superior), con el color de su equipo. */
+  /** Tarjeta de puntuación de un equipo (flanquea al asiento de arriba en la fila de rivales), con el color de su equipo. */
   const scoreChip = (team: 0 | 1) => {
     const color = teamColor(team, myTeam);
     const needs = closingNeeds(state.scores[team]);
@@ -503,7 +503,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
         key={`score-${team}`}
         title={teamName(state.players, team)}
         style={{ boxShadow: `inset 0 0 0 2px ${color.main}, inset 0 -4px 8px rgb(0 0 0 / 0.45), 0 3px 8px rgb(0 0 0 / 0.5)` }}
-        className="wood-block pointer-events-none relative z-30 flex w-[clamp(88px,13.5dvw,128px)] shrink-0 flex-col rounded-lg px-1.5 py-0.5"
+        className="wood-block pointer-events-none relative z-30 flex w-[clamp(96px,15dvw,136px)] shrink-0 flex-col rounded-lg px-1.5 py-0.5"
       >
         <span className="flex items-center justify-between gap-1 text-[12px] font-semibold leading-tight text-amber-100">
           <span className="flex min-w-0 items-center gap-1 truncate">
@@ -538,32 +538,53 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
     <TableLayout
       vars={{ '--ch': 'clamp(54px, 21.3dvh, 143px)' } as CSSProperties}
       sideCols="17%"
-      rows="21%_minmax(0,1fr)_32%"
       accent={GAME_ENVIRONMENTS[state.game].accent}
       centerRef={boardRef}
       bottomCenterRef={mineRef}
-      topLeft={
+      controlsLeft={
         <>
           <LeaveButton onLeave={onLeave} />
           <button
             type="button"
             onClick={() => setCapturedOpen(true)}
             aria-label={`Cartas capturadas: ${capturedTotal}`}
-            className={`${CORNER_CHIP} w-[4.5rem] justify-center`}
+            // En pantallas muy estrechas se oculta: con Salir + este chip + el chip del mazo +
+            // la píldora + el engranaje la barra no cabe y este chip se montaba sobre el del
+            // mazo. El puntaje sigue visible en los paneles Nosotros/Ellos.
+            className={`${CORNER_CHIP} w-[4.5rem] justify-center max-[480px]:hidden`}
           >
             <Layers className="h-4 w-4" aria-hidden />
             {capturedTotal}
           </button>
         </>
       }
-      topCenter={
+      // Los paneles de puntos flanquean al asiento de arriba en su propio carril: antes vivían en la
+      // misma fila estrecha que el asiento y la píldora, y el panel "Nosotros" se comía la ficha de
+      // capturadas mientras "Tu turno" tapaba el texto de "Ellos".
+      topSeats={
         <>
           {scoreChip(myTeam as 0 | 1)}
           {layout.top.map((s) => renderSeat(s, 'top'))}
           {scoreChip((1 - myTeam) as 0 | 1)}
         </>
       }
-      topRight={<TurnSound label={turnLabel} myTurn={myTurn} />}
+      controlsCenter={
+        <>
+          <span className={`${CORNER_CHIP} w-[4.5rem] cursor-default justify-center`} title={`Cartas en el mazo: ${deckDisplayCount}`}>
+            <Layers className="h-4 w-4 text-amber-300" aria-hidden />
+            {deckDisplayCount}
+          </span>
+          <TurnSound label={turnLabel} myTurn={myTurn} />
+        </>
+      }
+      controlsRight={<OptionsButton />}
+      hint={
+        playing && showStartHint && hint ? (
+          <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
+            {hint}
+          </p>
+        ) : undefined
+      }
       left={layout.left !== null && renderSeat(layout.left, 'left')}
       right={layout.right !== null && renderSeat(layout.right, 'right')}
       center={
@@ -581,7 +602,8 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
             className="pointer-events-none absolute left-1/2 top-1/2 aspect-square h-[min(70%,22dvh)] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-amber-200/30"
           />
 
-          {/* Mazo: de aquí salen las cartas del reparto */}
+          {/* Mazo: de aquí salen las cartas del reparto. El contador vive en su ficha de la barra de
+              controles, no pintado sobre el dorso (encima del dibujo se leía mal y tapaba la carta). */}
           <div
             ref={deckRef}
             title={`Mazo: ${deckDisplayCount} cartas`}
@@ -589,9 +611,6 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           >
             <span className="relative block rounded-lg shadow-[2px_2px_0_rgba(255,255,255,0.18),4px_4px_0_rgba(255,255,255,0.1)]">
               <DorsoUI className="h-[clamp(34px,12dvh,76px)]" />
-              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] font-extrabold tabular-nums text-white [text-shadow:0_1px_3px_rgb(0_0_0/0.9)]">
-                {deckDisplayCount}
-              </span>
             </span>
           </div>
 
@@ -646,12 +665,6 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
               virao={captureNotice.virao}
               team={teamColor(teamOf(captureNotice.seat), myTeam)}
             />
-          )}
-
-          {playing && showStartHint && hint && (
-            <p className="pointer-events-none absolute bottom-0 left-1/2 z-30 max-w-[96%] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
-              {hint}
-            </p>
           )}
         </>
       }

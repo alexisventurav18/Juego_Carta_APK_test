@@ -41,11 +41,23 @@ describe('placas de jugador de tamaño fijo', () => {
     assert.ok(plaque.includes('max-w-[9ch] truncate'), 'la etiqueta se recorta a 9 caracteres');
   });
 
-  it('el abanico del asiento de arriba tiene ancho fijo', () => {
+  it('el abanico del asiento de arriba tiene ancho fijo, dimensionado a lo que mide el abanico', () => {
+    // El tope ya no es 28dvw/300px: reservaba más del doble de lo que mide el abanico (unas 110 px con
+    // la mano llena) y ese hueco vacío empujaba la placa contra la ficha de mazo. El ancho sigue
+    // siendo fijo para que la placa y los paneles no se muevan cuando se juegan cartas.
     assert.ok(
-      plaque.includes('w-[min(var(--top-avail,28dvw),300px)]'),
-      'el abanico de arriba ocupa siempre su tope',
+      plaque.includes('w-[min(var(--top-avail,14dvw),110px)]'),
+      'el abanico de arriba ocupa siempre su tope (14dvw, máx. 110 px)',
     );
+    assert.ok(!plaque.includes('28dvw'), 'el abanico de arriba ya no reserva 28dvw');
+    assert.ok(!plaque.includes('300px'), 'el abanico de arriba ya no reserva 300 px');
+  });
+
+  it('el abanico de los costados cabe en la fila del tablero', () => {
+    // El asiento lateral (placa + abanico girado) era más alto que la fila del tablero en horizontal
+    // corto y la placa se montaba sobre la fila de arriba. El largo del abanico es ahora 16dvh.
+    assert.ok(plaque.includes("height: 'min(16dvh, 120px)'"), 'el abanico lateral mide 16dvh, máx. 120 px');
+    assert.ok(!plaque.includes("height: 'min(24dvh, 175px)'"), 'el abanico lateral ya no mide 24dvh');
   });
 });
 

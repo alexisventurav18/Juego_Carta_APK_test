@@ -11,7 +11,8 @@ export const CORNER_BUTTON =
 export const CORNER_CHIP =
   'flex h-10 shrink-0 items-center gap-1 rounded-lg bg-black/40 px-2 text-xs font-bold tabular-nums text-amber-50 ring-1 ring-amber-200/30 active:scale-95';
 
-/** Botón de salir de la partida, con texto para que no pase desapercibido. */
+/** Botón de salir de la partida, con texto para que no pase desapercibido. En pantallas muy estrechas
+    solo queda la flecha: el texto no cabe en la barra de controles sin empujar la píldora de turno. */
 export function LeaveButton({ onLeave }: { onLeave?: () => void }) {
   if (!onLeave) return null;
   return (
@@ -23,7 +24,7 @@ export function LeaveButton({ onLeave }: { onLeave?: () => void }) {
       className="flex h-10 shrink-0 touch-manipulation items-center gap-1.5 rounded-lg bg-black/40 px-2.5 text-xs font-bold text-amber-50 ring-1 ring-amber-200/30 transition-transform active:scale-95"
     >
       <ArrowLeft className="h-4 w-4" />
-      Salir
+      <span className="max-[480px]:hidden">Salir</span>
     </button>
   );
 }
@@ -54,7 +55,8 @@ export function OptionsButton({ className = CORNER_BUTTON }: { className?: strin
   );
 }
 
-/** Esquina superior derecha: de quién es el turno y el botón de opciones. */
+/** Píldora de turno (centro de la barra de controles): de quién es el turno. El botón de opciones ya no
+    va aquí: vive en su propia esquina de la barra, así la píldora nunca lo empuja ni tapa nada. */
 export function TurnSound({ label, myTurn, showFlow = false }: TurnSoundProps) {
   useTurnNotification(myTurn);
   return (
@@ -75,12 +77,15 @@ export function TurnSound({ label, myTurn, showFlow = false }: TurnSoundProps) {
       {showFlow && (
         <span
           title="El turno pasa al siguiente jugador, a tu izquierda"
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black/40 text-amber-200 ring-1 ring-amber-200/30"
+          // En pantallas muy estrechas (<480 px) se oculta: la barra de controles no cabe con el
+          // chip de ronda + la píldora + el flujo + Salir + engranaje (en retrato el flujo se
+          // montaba sobre el engranaje y la ficha de ronda sobre Salir). El sentido del turno
+          // sigue siendo evidente por la píldora y el brillo del asiento.
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black/40 text-amber-200 ring-1 ring-amber-200/30 max-[480px]:hidden"
         >
           <RotateCw className="turn-flow h-4 w-4" aria-hidden />
         </span>
       )}
-      <OptionsButton />
     </>
   );
 }

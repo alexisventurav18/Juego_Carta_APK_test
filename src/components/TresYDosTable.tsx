@@ -17,7 +17,7 @@ import PlayerSeat, { SeatPlaque } from './cagao/PlayerSeat';
 import PlayingCard from './cagao/PlayingCard';
 import type { Card } from './cagao/types';
 import TableLayout from './table/TableLayout';
-import { CORNER_CHIP, LeaveButton, TableNotices, TurnSound } from './table/chips';
+import { CORNER_CHIP, LeaveButton, OptionsButton, TableNotices, TurnSound } from './table/chips';
 import { seatLayout } from './table/seatLayout';
 import { useStartHint } from './table/useStartHint';
 import { TB_DROP, TB_FORM, TB_MAIN, TB_SING } from './table/styles';
@@ -284,9 +284,10 @@ export default function TresYDosTable({
       centerRef={boardRef}
       bottomCenterRef={mineRef}
       vars={CENTER_VARS}
-      topLeft={
+      controlsLeft={<LeaveButton onLeave={onLeave} />}
+      topSeats={layout.top.map((s) => renderSeat(s, 'top'))}
+      controlsCenter={
         <>
-          <LeaveButton onLeave={onLeave} />
           <span
             className={`${CORNER_CHIP} w-[6.75rem] cursor-default justify-center`}
             title={`Ronda ${state.roundNo}. Rondas ganadas: ${state.wins[seat]} de ${TARGET_WINS}`}
@@ -294,10 +295,17 @@ export default function TresYDosTable({
             <Trophy className="h-4 w-4 text-amber-300" aria-hidden />
             R{state.roundNo} · {state.wins[seat]}/{TARGET_WINS}
           </span>
+          <TurnSound label={turnLabel} myTurn={myTurn} showFlow />
         </>
       }
-      topCenter={layout.top.map((s) => renderSeat(s, 'top'))}
-      topRight={<TurnSound label={turnLabel} myTurn={myTurn} showFlow />}
+      controlsRight={<OptionsButton />}
+      hint={
+        playing && showStartHint && hint ? (
+          <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
+            {hint}
+          </p>
+        ) : undefined
+      }
       left={layout.left !== null && renderSeat(layout.left, 'left')}
       right={layout.right !== null && renderSeat(layout.right, 'right')}
       center={
@@ -332,11 +340,15 @@ export default function TresYDosTable({
                     emptySlot
                   )}
                 </button>
-                <span className="pointer-events-none absolute -right-2 -top-2 z-10 btn-gold rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none shadow sm:text-xs">
+                {/* El contador va DENTRO del mazo: antes colgaba fuera (-right-2 -top-2) y se montaba
+                    sobre la placa de arriba o la píldora de turno. */}
+                <span className="pointer-events-none absolute right-1 top-1 z-10 btn-gold rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none shadow sm:text-xs">
                   {deckDisplayCount}
                 </span>
               </div>
-              <span className="-mt-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold leading-none text-amber-100 sm:text-xs">Monte</span>
+              {/* La etiqueta tiene su propia línea reservada bajo la carta: antes iba pegada con -mt-2
+                  y la propia carta la tapaba a la mitad ("Monte" se leía "Monte" recortado). */}
+              <span className="mt-1 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold leading-none text-amber-100 sm:text-xs">Monte</span>
             </div>
 
             {/* Pozo */}
@@ -367,15 +379,9 @@ export default function TresYDosTable({
                   emptySlot
                 )}
               </div>
-              <span className="-mt-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold leading-none text-amber-100 sm:text-xs">Pozo</span>
+              <span className="mt-1 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold leading-none text-amber-100 sm:text-xs">Pozo</span>
             </div>
           </div>
-
-          {playing && showStartHint && hint && (
-            <p className="pointer-events-none absolute bottom-0 left-1/2 z-30 max-w-[96%] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
-              {hint}
-            </p>
-          )}
         </>
       }
       bottomLeft={

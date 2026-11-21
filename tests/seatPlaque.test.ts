@@ -62,12 +62,12 @@ describe('placa de jugador (SeatPlaque)', () => {
     assert.ok(playerSeat.includes('fill-sky-200'), 'la estrella va rellena en azul larimar');
   });
 
-  it('PlayerSeat reenvía el nivel a la placa en las dos posiciones', () => {
+  it('PlayerSeat reenvía el nivel a la placa en las tres posiciones', () => {
     assert.ok(playerSeat.includes('level?: number'), 'PlayerSeat acepta level');
-    // 3 usos de level={level}: la insignia dentro de SeatPlaque y los dos
-    // reenvíos de PlayerSeat (placa de arriba y placa lateral).
-    assert.equal(playerSeat.split('level={level}').length - 1, 3);
-    assert.equal(playerSeat.split('<SeatPlaque').length - 1, 2, 'hay dos placas (arriba y lateral)');
+    // 4 usos de level={level}: la insignia dentro de SeatPlaque y los tres
+    // reenvíos de PlayerSeat (placa de arriba, placa de arriba apilada y placa lateral).
+    assert.equal(playerSeat.split('level={level}').length - 1, 4);
+    assert.equal(playerSeat.split('<SeatPlaque').length - 1, 3, 'hay tres placas (arriba, arriba apilada y lateral)');
   });
 
   it('PlayerSeat reenvía el paquete a la placa sin tocar el abanico del rival', () => {

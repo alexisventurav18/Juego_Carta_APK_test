@@ -30,6 +30,8 @@ interface SeatPlaqueProps {
 /**
  * Mini mazo de cartas con el contador centrado dentro: el paquete de El Robaíto. Las dos cartas de
  * atrás asoman por arriba a la derecha para que se lea como un mazo apilado, no como una carta sola.
+ * El icono cabe dentro de la altura de la sub-línea (sin estirarla ni asomar por debajo de la placa):
+ * antes medía 21 px en una línea de 12 px y el contador parecía colgar fuera de la placa.
  */
 function PacketIcon({ count, compact = false }: { count: number; compact?: boolean }) {
   return (
@@ -37,13 +39,13 @@ function PacketIcon({ count, compact = false }: { count: number; compact?: boole
       role="img"
       aria-label={`${count} en paquete`}
       title={`${count} en paquete`}
-      className={`relative inline-flex shrink-0 items-center justify-center ${compact ? 'h-[18px] w-[14px]' : 'h-[21px] w-[17px]'}`}
+      className={`relative inline-flex shrink-0 items-center justify-center ${compact ? 'h-[14px] w-[11px]' : 'h-[16px] w-[13px]'}`}
     >
-      <span aria-hidden className="absolute inset-0 translate-x-[2px] -translate-y-[2px] rounded-[2px] bg-amber-100/50" />
-      <span aria-hidden className="absolute inset-0 translate-x-[1px] -translate-y-[1px] rounded-[2px] bg-amber-100/75" />
+      <span aria-hidden className="absolute inset-0 translate-x-[1px] -translate-y-[1px] rounded-[2px] bg-amber-100/50" />
+      <span aria-hidden className="absolute inset-0 translate-x-[0.5px] -translate-y-[0.5px] rounded-[2px] bg-amber-100/75" />
       <span
         className={`absolute inset-0 flex items-center justify-center rounded-[2px] bg-amber-50 font-extrabold tabular-nums leading-none text-stone-900 ring-1 ring-amber-900/50 ${
-          compact ? 'text-[9px]' : 'text-[11px]'
+          compact ? 'text-[8px]' : 'text-[10px]'
         }`}
       >
         {count}
@@ -164,6 +166,9 @@ interface PlayerSeatProps {
   packetCount?: number;
   /** Nivel de experiencia del jugador (se muestra como insignia en la placa). */
   level?: number;
+  /** Tres rivales arriba (El Cagao con 6 jugadores): placa compacta encima del abanico, en vez de al
+      lado, para que los tres asientos quepan sin recortar los nombres. */
+  stacked?: boolean;
   children?: ReactNode;
 }
 
@@ -189,6 +194,7 @@ export default function PlayerSeat({
   team,
   packetCount,
   level,
+  stacked = false,
 }: PlayerSeatProps) {
   const vertical = side !== 'top';
   const fan =
@@ -196,7 +202,7 @@ export default function PlayerSeat({
       <OpponentFan
         count={count}
         heightVar="--oh"
-        avail={vertical ? 'min(21dvh, 160px)' : 'min(var(--top-avail, 28dvw), 300px)'}
+        avail={vertical ? 'min(16dvh, 120px)' : 'min(var(--top-avail, 14dvw), 110px)'}
         rotation={ROTATION[side]}
         active={pickable}
         label={name}
@@ -208,12 +214,25 @@ export default function PlayerSeat({
     );
 
   if (!vertical) {
+    if (stacked) {
+      // Tres rivales arriba: la placa compacta va encima del abanico. En fila, tres placas con su
+      // abanico no caben en la fila de arriba sin recortar los nombres hasta perderlos; apilados,
+      // cada asiento ocupa lo que mide su placa y los tres caben en cualquier ancho.
+      return (
+        <div className="flex min-w-0 flex-col items-center justify-center gap-1">
+          <SeatPlaque name={name} avatar={avatar} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} packetCount={packetCount} level={level} compact />
+          <div className="flex h-[calc(var(--oh)+14px)] w-[min(var(--top-avail,14dvw),110px)] min-w-0 shrink-0 items-center justify-center px-2">{fan}</div>
+        </div>
+      );
+    }
     return (
       <div className="flex min-w-0 items-center justify-center gap-2">
         <SeatPlaque name={name} avatar={avatar} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} packetCount={packetCount} level={level} />
         {/* El abanico tiene ancho fijo (su tope): si no, al jugarse cartas se estrecha y empuja la
-            placa y lo que haya al lado en la barra superior. */}
-        <div className="flex h-[calc(var(--oh)+14px)] w-[min(var(--top-avail,28dvw),300px)] min-w-0 shrink-0 items-center justify-center px-2">{fan}</div>
+            placa y lo que haya al lado en la fila de arriba. El tope es el ancho real del abanico
+            (unas 110 px con la mano llena): antes reservaba más del doble y ese hueco vacío
+            empujaba la placa contra la ficha de mazo. */}
+        <div className="flex h-[calc(var(--oh)+14px)] w-[min(var(--top-avail,14dvw),110px)] min-w-0 shrink-0 items-center justify-center px-2">{fan}</div>
       </div>
     );
   }
@@ -221,10 +240,12 @@ export default function PlayerSeat({
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col items-center justify-center gap-1">
       <SeatPlaque name={name} avatar={avatar} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} packetCount={packetCount} level={level} />
-      {/* El abanico se gira 90°: la caja reserva su largo como alto y el alto de carta como ancho. */}
+      {/* El abanico se gira 90°: la caja reserva su largo como alto y el alto de carta como ancho.
+          El largo es 16dvh (máx. 120 px): con 24dvh el asiento de los costados era más alto que la
+          fila del tablero en horizontal corto y la placa se montaba sobre la fila de arriba. */}
       <div
         className="relative flex shrink-0 items-center justify-center"
-        style={{ width: 'calc(var(--oh) + 16px)', height: 'min(24dvh, 175px)' }}
+        style={{ width: 'calc(var(--oh) + 16px)', height: 'min(16dvh, 120px)' }}
       >
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">{fan}</div>
       </div>

@@ -16,7 +16,7 @@ import { HandFan } from '../cagao/Fans';
 import PlayerSeat, { SeatPlaque } from '../cagao/PlayerSeat';
 import PlayingCard from '../cagao/PlayingCard';
 import TableLayout from '../table/TableLayout';
-import { CORNER_CHIP, LeaveButton, TableNotices, TurnSound } from '../table/chips';
+import { CORNER_CHIP, LeaveButton, OptionsButton, TableNotices, TurnSound } from '../table/chips';
 import { TB_DROP, TB_MAIN, TB_SING } from '../table/styles';
 import { useDealFlights } from '../table/useDealFlights';
 import { centerOf, useFlights } from '../table/useFlights';
@@ -297,22 +297,48 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
       centerRef={boardRef}
       bottomCenterRef={mineRef}
       vars={VARS}
-      topLeft={
-        <>
-          <LeaveButton onLeave={onLeave} />
-          <span className={`${CORNER_CHIP} w-[4.5rem] cursor-default justify-center`} title={`Cartas en el mazo: ${deckDisplayCount}`}>
-            <Layers className="h-4 w-4 text-amber-300" aria-hidden />
-            {deckDisplayCount}
-          </span>
-        </>
-      }
-      topCenter={game.layout.top.map((s) => (
+      controlsLeft={<LeaveButton onLeave={onLeave} />}
+      topSeats={game.layout.top.map((s) => (
         <div key={s} className="flex min-w-0 items-center justify-center gap-[clamp(6px,1.6dvw,16px)]">
           {renderSeat(s, 'top')}
           {pileOf(s)}
         </div>
       ))}
-      topRight={<TurnSound label={turnLabel} myTurn={myTurn} />}
+      controlsCenter={
+        <>
+          <span className={`${CORNER_CHIP} w-[4.5rem] cursor-default justify-center`} title={`Cartas en el mazo: ${deckDisplayCount}`}>
+            <Layers className="h-4 w-4 text-amber-300" aria-hidden />
+            {deckDisplayCount}
+          </span>
+          <TurnSound label={turnLabel} myTurn={myTurn} />
+        </>
+      }
+      controlsRight={<OptionsButton />}
+      hint={
+        <>
+          {/* Aviso de la última jugada: en este carril, junto a la pista, no sobre el tablero. */}
+          {event && game.playing && (
+            <div
+              key={event.seq}
+              role="status"
+              className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-1 text-center text-[11px] ring-1 sm:text-xs ${
+                event.kind === 'steal'
+                  ? 'bg-amber-500/85 font-bold text-stone-900 ring-amber-200'
+                  : event.kind === 'capture'
+                    ? 'bg-lime-700/80 font-semibold text-lime-50 ring-lime-200/60'
+                    : 'bg-black/55 text-amber-50 ring-white/15'
+              }`}
+            >
+              {describeEvent(event, seat, names)}
+            </div>
+          )}
+          {game.playing && showStartHint && hint && (
+            <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
+              {hint}
+            </p>
+          )}
+        </>
+      }
       left={game.layout.left !== null && renderSeat(game.layout.left, 'left')}
       right={game.layout.right !== null && renderSeat(game.layout.right, 'right')}
       center={
@@ -345,11 +371,13 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
                 ) : (
                   <span className="block aspect-[2.5/3.5] h-[var(--th)] rounded-lg border-2 border-dashed border-amber-100/40" />
                 )}
-                <span className="pointer-events-none absolute -right-2 -top-2 z-10 btn-gold rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none tabular-nums shadow sm:text-xs">
+                <span className="pointer-events-none absolute right-1 top-1 z-10 btn-gold rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none tabular-nums shadow sm:text-xs">
                   {deckDisplayCount}
                 </span>
               </div>
-              <span className="-mt-2 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold leading-none text-amber-100 sm:text-xs">Mazo</span>
+              {/* La etiqueta tiene su propia línea reservada bajo la carta: antes iba pegada con -mt-2
+                  y la propia carta la tapaba a la mitad ("Mazo" se leía recortado). */}
+              <span className="mt-1 rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-bold leading-none text-amber-100 sm:text-xs">Mazo</span>
             </div>
 
             <div ref={tableRef} className="flex min-w-0 items-center justify-center" aria-label="Cartas de la mesa">
@@ -379,30 +407,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
             </div>
           </div>
 
-          {/* Aviso de la última jugada */}
-          {event && game.playing && (
-            <div className="pointer-events-none absolute inset-x-0 top-1 z-30 flex justify-center px-1">
-              <div
-                key={event.seq}
-                role="status"
-                className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-1 text-center text-[11px] ring-1 sm:text-xs ${
-                  event.kind === 'steal'
-                    ? 'bg-amber-500/85 font-bold text-stone-900 ring-amber-200'
-                    : event.kind === 'capture'
-                      ? 'bg-lime-700/80 font-semibold text-lime-50 ring-lime-200/60'
-                      : 'bg-black/55 text-amber-50 ring-white/15'
-                }`}
-              >
-                {describeEvent(event, seat, names)}
-              </div>
-            </div>
-          )}
-
-          {game.playing && showStartHint && hint && (
-            <p className="pointer-events-none absolute bottom-0 left-1/2 z-30 max-w-[96%] -translate-x-1/2 rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
-              {hint}
-            </p>
-          )}
+          {/* (El aviso de la última jugada vive en el carril de la pista, bajo el tablero.) */}
         </>
       }
       bottomLeft={
