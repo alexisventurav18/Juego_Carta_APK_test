@@ -70,7 +70,7 @@ export default function TableBuild({ build, selected, disabled, onSelect, team }
       <span
         key={etiqueta}
         aria-hidden
-        className={`animate-combo-label absolute -top-2 -right-2 z-10 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none shadow sm:text-xs ${
+        className={`animate-combo-label absolute -top-2 -left-2 z-10 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none shadow sm:text-xs ${
           team ? '' : 'bg-amber-500 text-black'
         }`}
         style={team ? { backgroundColor: team.main, color: team.ink } : undefined}

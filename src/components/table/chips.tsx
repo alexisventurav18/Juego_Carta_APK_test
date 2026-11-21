@@ -60,9 +60,11 @@ export function TurnSound({ label, myTurn, showFlow = false }: TurnSoundProps) {
   return (
     <>
       {myTurn && <span aria-hidden className="turn-screen-glow" />}
+      {/* Ancho fijo y texto recortado: el rótulo cambia ("Tu turno", un nombre, "Fin de ronda") y sin
+          ancho fijo el engranaje de opciones se mueve a cada cambio de turno. */}
       <span
         aria-live="polite"
-        className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[13px] font-bold leading-none ${
+        className={`w-[7.5rem] shrink-0 truncate rounded-full px-2.5 py-1.5 text-center text-[13px] font-bold leading-none ${
           myTurn
             ? 'turn-chip-myturn bg-amber-400 text-stone-900'
             : 'bg-black/40 text-amber-50 ring-1 ring-amber-200/30'

@@ -288,7 +288,7 @@ export default function TresYDosTable({
         <>
           <LeaveButton onLeave={onLeave} />
           <span
-            className={`${CORNER_CHIP} cursor-default`}
+            className={`${CORNER_CHIP} w-[6.75rem] cursor-default justify-center`}
             title={`Ronda ${state.roundNo}. Rondas ganadas: ${state.wins[seat]} de ${TARGET_WINS}`}
           >
             <Trophy className="h-4 w-4 text-amber-300" aria-hidden />
@@ -470,10 +470,10 @@ export default function TresYDosTable({
 
           {/* Al cantar 3 y 2 todos muestran sus 5 cartas */}
           {!playing && !deal.dealing && !showEndNotice && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-2 sm:p-3">
+            <div className="fixed inset-0 z-[60] flex overflow-y-auto bg-black/65 p-2 sm:p-3">
               <div
                 style={{ '--rh': 'clamp(34px, 10.6dvh, 67px)' } as CSSProperties}
-                className="wood-panel max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-xl space-y-1.5 overflow-y-auto p-2 text-center sm:space-y-2 sm:p-4"
+                className="game-end-panel wood-panel my-auto max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-xl space-y-1.5 overflow-y-auto p-2 text-center sm:space-y-2 sm:p-4"
               >
                 <h2 className="text-sm font-extrabold sm:text-xl">
                   {state.phase === 'gameOver'
@@ -484,7 +484,7 @@ export default function TresYDosTable({
                       ? '¡Cantaste 3 y 2!'
                       : `¡${winnerName} cantó 3 y 2!`}
                 </h2>
-                <div className="space-y-1">
+                <div className="game-end-rows space-y-1">
                   {state.players.map((player, s) => (
                     <div
                       key={player.id}

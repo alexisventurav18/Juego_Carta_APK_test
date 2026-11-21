@@ -72,7 +72,7 @@ export default function VictoryCelebration({
       <div className="relative m-auto w-full max-w-md space-y-8 text-center">
         <span
           aria-hidden
-          className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-amber-400/20 ring-2 ring-amber-300/70 shadow-[0_0_40px_rgba(252,211,77,0.45)]"
+          className="end-notice-icon mx-auto grid h-20 w-20 place-items-center rounded-full bg-amber-400/20 ring-2 ring-amber-300/70 shadow-[0_0_40px_rgba(252,211,77,0.45)]"
           style={{ animation: 'victory-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 150ms both' }}
         >
           <Trophy className="h-10 w-10 text-amber-300" />
@@ -83,15 +83,15 @@ export default function VictoryCelebration({
         >
           {title}
         </h2>
-        <p className="text-base text-amber-50">{message}</p>
+        <p className="end-notice-message text-base text-amber-50">{message}</p>
         {rewardCoins !== null && rewardCoins > 0 && (
-          <p className="mx-auto flex w-fit items-center gap-2 rounded-full bg-amber-400/20 px-4 py-2 text-base font-extrabold text-amber-300 ring-1 ring-amber-300/60">
+          <p className="end-notice-reward mx-auto flex w-fit items-center gap-2 rounded-full bg-amber-400/20 px-4 py-2 text-base font-extrabold text-amber-300 ring-1 ring-amber-300/60">
             <Coins className="h-5 w-5" aria-hidden />
             +{rewardCoins} monedas
           </p>
         )}
         <XpGainBar xpGain={xpGain} />
-        <div className="flex flex-col items-center gap-2.5">
+        <div className="end-notice-actions flex flex-col items-center gap-2.5">
           {onRematch && (
             <button
               type="button"

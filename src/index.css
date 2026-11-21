@@ -1005,13 +1005,133 @@ button,
   }
 
   /* Pantallas de fin de partida (victoria/derrota): título y huecos más
-     compactos para que el botón de continuar no se corte en horizontal corto. */
+     compactos para que el botón de continuar no se corte en horizontal corto.
+     El trofeo, el mensaje, la píldora de monedas, la barra de XP y los
+     botones se achican también, para que la Revancha quepa sin bajar con
+     el dedo. En vertical no cambia nada. */
   .end-notice > div > * + * {
-    margin-top: clamp(8px, 2.5dvh, 16px) !important;
+    margin-top: clamp(6px, 2dvh, 12px) !important;
   }
 
   .end-notice-title {
-    font-size: clamp(1.5rem, 9dvh, 2.25rem) !important;
+    font-size: clamp(1.25rem, 7dvh, 2rem) !important;
+  }
+
+  .end-notice .end-notice-icon {
+    height: 48px !important;
+    width: 48px !important;
+  }
+
+  .end-notice .end-notice-icon svg {
+    height: 24px !important;
+    width: 24px !important;
+  }
+
+  .end-notice .end-notice-message {
+    font-size: 13px !important;
+    line-height: 1.3;
+  }
+
+  .end-notice .end-notice-reward {
+    padding: 4px 12px !important;
+    font-size: 13px !important;
+  }
+
+  .end-notice .xp-gain-bar > * + * {
+    margin-top: 2px !important;
+  }
+
+  .end-notice .xp-gain-bar > p {
+    font-size: 11px !important;
+  }
+
+  .end-notice .xp-gain-bar > p:first-child {
+    font-size: 13px !important;
+  }
+
+  .end-notice .xp-gain-bar > p:nth-child(4) {
+    font-size: 14px !important;
+  }
+
+  .end-notice .xp-gain-bar .xp-bar {
+    height: 8px !important;
+  }
+
+  .end-notice .end-notice-actions {
+    gap: 6px !important;
+  }
+
+  .end-notice .end-notice-actions button {
+    min-height: 36px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    font-size: 14px !important;
+  }
+
+  /* Perfil: el panel entero se compacta para que quepa en horizontal corto:
+     menos relleno y huecos, avatar y tarjetas más pequeños. El panel ya
+     tiene scroll, pero la idea es que no haga falta bajar. */
+  .profile-panel {
+    padding: 12px !important;
+  }
+
+  .profile-panel > * + * {
+    margin-top: 8px !important;
+  }
+
+  .profile-panel .profile-avatar {
+    height: 40px !important;
+    width: 40px !important;
+  }
+
+  .profile-panel .profile-level {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .profile-panel .profile-level > * + * {
+    margin-top: 4px !important;
+  }
+
+  .profile-panel .profile-stats > div {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .profile-panel .profile-modes > * + * {
+    margin-top: 4px !important;
+  }
+
+  /* Paneles de fin de partida (clasificación de El Cagao, resultados de Tres
+     y Dos y de El Robaíto): título, filas y botones más compactos, la misma
+     regla en los tres modos. El de Casino usa el panel de resultado de ronda,
+     que ya tiene su propia compactación. */
+  .game-end-panel {
+    padding: 8px !important;
+  }
+
+  .game-end-panel > * + * {
+    margin-top: 4px !important;
+  }
+
+  .game-end-panel h2 {
+    font-size: 14px !important;
+  }
+
+  .game-end-panel .game-end-rows > * + * {
+    margin-top: 2px !important;
+  }
+
+  .game-end-panel .game-end-rows > div {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .game-end-panel button {
+    min-height: 34px !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    font-size: 12px !important;
   }
 }
 

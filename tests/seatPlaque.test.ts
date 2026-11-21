@@ -40,10 +40,11 @@ describe('placa de jugador (SeatPlaque)', () => {
     assert.ok(packetIcon.includes('items-center justify-center'), 'el contador va centrado dentro del mazo');
   });
 
-  it('la etiqueta de rondas ganadas sigue como texto y la sub-línea solo existe si hay algo que mostrar', () => {
+  it('la etiqueta de rondas ganadas sigue como texto y la sub-línea siempre reserva su fila', () => {
     assert.ok(seatPlaque.includes('{tag}'), 'el tag (p. ej. "2 ganadas") sigue mostrándose');
-    assert.ok(seatPlaque.includes('hasSubLine'), 'hay una condición que decide si la sub-línea existe');
-    assert.ok(seatPlaque.includes('{hasSubLine && ('), 'sin equipo, tag ni paquete no se renderiza la sub-línea');
+    assert.ok(seatPlaque.includes('hasSubLine'), 'hay una condición que decide qué muestra la sub-línea');
+    assert.ok(!seatPlaque.includes('{hasSubLine && ('), 'la sub-línea ya no aparece y desaparece');
+    assert.ok(seatPlaque.includes('invisible">Salvó'), 'sin nada que mostrar, un hueco invisible reserva la altura');
   });
 
   it('el nombre sigue truncado y "Salvó" se mantiene cuando el jugador se queda sin cartas', () => {
@@ -77,11 +78,11 @@ describe('placa de jugador (SeatPlaque)', () => {
 });
 
 describe('etiqueta del paquete (PilePad)', () => {
-  it('"Tu paquete" se ve completo: sin límite de ancho ni truncate', () => {
+  it('"Tu paquete" se ve completo y los nombres largos se recortan con tope', () => {
     const labelClass = pilePad.match(/<span className="([^"]*)">\s*\{mine \? 'Tu paquete'/)?.[1] ?? '';
     assert.ok(labelClass.length > 0, 'la etiqueta de "Tu paquete" existe');
-    assert.ok(!labelClass.includes('max-w-'), 'la etiqueta no debe tener un ancho máximo');
-    assert.ok(!labelClass.includes('truncate'), 'la etiqueta no debe recortarse con puntos suspensivos');
+    assert.ok(labelClass.includes('max-w-24'), 'la etiqueta tiene tope de 6rem: "Tu paquete" cabe, un nombre largo no empuja el asiento');
+    assert.ok(labelClass.includes('truncate'), 'un nombre largo se recorta con puntos suspensivos');
     assert.ok(labelClass.includes('whitespace-nowrap'), 'la etiqueta no debe partirse en dos líneas');
   });
 });

@@ -55,13 +55,14 @@ export default function RoomChat({ toast, myId, myName, onSend, defaultOpen = fa
       {/* Aviso temporal con el último mensaje (propio o ajeno), ~4 s.
           El emoji va en su propio elemento, grande y animado; el texto
           rápido sigue viéndose normal. La clave es la fecha del mensaje:
-          cada aviso nuevo vuelve a entrar con el pop. */}
+          cada aviso nuevo vuelve a entrar con el pop. Va debajo del aviso
+          de abandono (top-12) para no taparlo cuando coinciden. */}
       {toast && (
         <div
           key={toast.at}
           role="status"
           aria-live="polite"
-          className="chat-toast pointer-events-none fixed left-1/2 top-12 z-50 flex max-w-[92vw] -translate-x-1/2 items-center justify-center gap-2 rounded-xl bg-black/60 px-3 py-1.5 text-amber-50 ring-1 ring-white/15"
+          className="chat-toast pointer-events-none fixed left-1/2 top-[6.75rem] z-50 flex max-w-[92vw] -translate-x-1/2 items-center justify-center gap-2 rounded-xl bg-black/60 px-3 py-1.5 text-amber-50 ring-1 ring-white/15"
         >
           {toast.kind === 'emoji' ? (
             <>

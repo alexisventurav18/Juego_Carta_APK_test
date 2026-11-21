@@ -548,15 +548,20 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         {connection === 'offline' && <WifiOff className="h-3.5 w-3.5" />}
         {connection === 'connecting' && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
         {connection === 'connected' ? 'Conectado al servidor' : connection === 'offline' ? 'Sin conexión. Reintentando...' : 'Conectando al servidor...'}
-        {connection === 'offline' && (
+        {connection === 'offline' ? (
           <button type="button" onClick={retryConnection} className="ml-2 rounded-md bg-black/25 px-2 py-1 font-bold text-amber-50 underline">
             Reintentar
           </button>
+        ) : (
+          <span aria-hidden className="invisible ml-2 rounded-md px-2 py-1 font-bold underline">
+            Reintentar
+          </span>
         )}
       </div>
 
+      {/* Aviso flotante, fuera del flujo: si va dentro, al aparecer empuja toda la sala hacia abajo. */}
       {notice && (
-        <p role="alert" className="mb-5 rounded-xl bg-rose-700/80 px-4 py-3 text-center text-sm font-medium text-rose-50 ring-1 ring-rose-300/60">
+        <p role="alert" className="fixed left-1/2 top-2 z-50 w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl bg-rose-700/90 px-4 py-3 text-center text-sm font-medium text-rose-50 shadow-xl ring-1 ring-rose-300/60">
           {notice}
         </p>
       )}

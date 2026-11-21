@@ -52,7 +52,8 @@ function PacketIcon({ count, compact = false }: { count: number; compact?: boole
   );
 }
 
-/** Insignia de nivel: estrella + número, compacta para caber junto al nombre sin empujar nada fuera. */
+/** Insignia de nivel: estrella + número, compacta para caber junto al nombre sin empujar nada fuera.
+    El número tiene ancho fijo para dos cifras: al subir de nivel 9 a 10 la placa no crece. */
 function LevelBadge({ level, compact = false }: { level: number; compact?: boolean }) {
   return (
     <span
@@ -64,7 +65,7 @@ function LevelBadge({ level, compact = false }: { level: number; compact?: boole
       }`}
     >
       <Star className={`${compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} shrink-0 fill-sky-200`} aria-hidden />
-      {level}
+      <span className="inline-block w-[2ch] text-center tabular-nums">{level}</span>
     </span>
   );
 }
@@ -74,9 +75,11 @@ export function SeatPlaque({ name, avatar, isTurn, isVictim, out, isMe, compact 
   const plaqueStyle: CSSProperties | undefined = team
     ? { boxShadow: `inset 0 0 0 2px ${team.main}, inset 0 -4px 8px rgb(0 0 0 / 0.45), 0 3px 8px rgb(0 0 0 / 0.5)` }
     : undefined;
-  // La sub-línea solo existe si hay algo que mostrar: sin equipo, sin etiqueta y sin paquete, la
-  // placa queda solo con avatar + nombre. Las cartas en mano no se muestran: ya se ven en el
-  // abanico de cada jugador.
+  // La placa tiene tamaño fijo: el nombre ocupa siempre 10 caracteres (se recorta lo que sobre),
+  // la insignia de nivel ya tiene ancho fijo, y la sub-línea existe siempre — cuando no hay nada
+  // que mostrar queda un hueco invisible de la misma altura. Sin esto, la placa crecía y se
+  // encogía con el nombre, con el nivel 9→10, con "Salvó" al salir alguien y con la etiqueta, y
+  // todo lo de alrededor (abanico, fichas de puntaje, píldora de turno) se movía con ella.
   const hasSubLine = out || team !== undefined || tag !== undefined || packetCount !== undefined;
   return (
     <div
@@ -100,40 +103,40 @@ export function SeatPlaque({ name, avatar, isTurn, isVictim, out, isMe, compact 
           style={team && !isTurn && !isVictim ? { borderColor: team.main } : undefined}
         />
         <span className="relative min-w-0 leading-tight">
-          {/* El nombre se recorta y la insignia no se mueve: el nombre tiene
-              min-w-0 y la insignia shrink-0, así nada empuja fuera de la placa. */}
+          {/* El nombre tiene ancho fijo y se recorta: la insignia no se mueve y la placa no cambia
+              de ancho con el nombre. */}
           <span className="flex min-w-0 items-center gap-1">
-            <span className={`min-w-0 truncate font-bold text-amber-50 ${compact ? 'text-[clamp(9px,2.1dvh,12px)]' : 'text-[clamp(10px,2.8dvh,14px)]'}`}>{isMe ? 'Tú' : name}</span>
+            <span className={`w-[10ch] min-w-0 truncate font-bold text-amber-50 ${compact ? 'text-[clamp(9px,2.1dvh,12px)]' : 'text-[clamp(10px,2.8dvh,14px)]'}`}>{isMe ? 'Tú' : name}</span>
             {level !== undefined && <LevelBadge level={level} compact={compact} />}
           </span>
           {/*
-            La sub-línea se puede partir en dos líneas y solo existe si hay algo que mostrar. En vez
-            de texto con las cartas en mano (ya se ven en el abanico), el paquete se dibuja como un
-            mini mazo con el contador dentro.
+            La sub-línea siempre ocupa su fila (una sola línea, sin partirse): si no hay nada que
+            mostrar, un hueco invisible reserva la altura. En vez de texto con las cartas en mano
+            (ya se ven en el abanico), el paquete se dibuja como un mini mazo con el contador dentro.
           */}
-          {hasSubLine && (
-            <span className={`flex min-w-0 flex-wrap items-center gap-x-1 font-semibold leading-tight text-amber-200 ${compact ? 'text-[clamp(8px,1.9dvh,10px)]' : 'text-[clamp(9px,2.4dvh,12px)]'}`}>
-              {out ? (
-                <>
-                  <Check className="h-3 w-3 shrink-0" aria-hidden />
-                  <span>Salvó</span>
-                </>
-              ) : (
-                <>
-                  {team && (
-                    <span
-                      className="shrink-0 rounded px-1 text-[0.85em] font-extrabold leading-snug"
-                      style={{ backgroundColor: team.main, color: team.ink }}
-                    >
-                      {team.label}
-                    </span>
-                  )}
-                  {tag !== undefined && <span className="min-w-0">{tag}</span>}
-                  {packetCount !== undefined && <PacketIcon count={packetCount} compact={compact} />}
-                </>
-              )}
-            </span>
-          )}
+          <span className={`flex min-w-0 items-center gap-x-1 font-semibold leading-tight text-amber-200 ${compact ? 'text-[clamp(8px,1.9dvh,10px)]' : 'text-[clamp(9px,2.4dvh,12px)]'}`}>
+            {out ? (
+              <>
+                <Check className="h-3 w-3 shrink-0" aria-hidden />
+                <span>Salvó</span>
+              </>
+            ) : hasSubLine ? (
+              <>
+                {team && (
+                  <span
+                    className="shrink-0 rounded px-1 text-[0.85em] font-extrabold leading-snug"
+                    style={{ backgroundColor: team.main, color: team.ink }}
+                  >
+                    {team.label}
+                  </span>
+                )}
+                {tag !== undefined && <span className="min-w-0 max-w-[9ch] truncate">{tag}</span>}
+                {packetCount !== undefined && <PacketIcon count={packetCount} compact={compact} />}
+              </>
+            ) : (
+              <span aria-hidden className="invisible">Salvó</span>
+            )}
+          </span>
         </span>
       </div>
     </div>
@@ -208,7 +211,9 @@ export default function PlayerSeat({
     return (
       <div className="flex min-w-0 items-center justify-center gap-2">
         <SeatPlaque name={name} avatar={avatar} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} packetCount={packetCount} level={level} />
-        <div className="flex h-[calc(var(--oh)+14px)] min-w-0 items-center justify-center px-2">{fan}</div>
+        {/* El abanico tiene ancho fijo (su tope): si no, al jugarse cartas se estrecha y empuja la
+            placa y lo que haya al lado en la barra superior. */}
+        <div className="flex h-[calc(var(--oh)+14px)] w-[min(var(--top-avail,28dvw),300px)] min-w-0 shrink-0 items-center justify-center px-2">{fan}</div>
       </div>
     );
   }

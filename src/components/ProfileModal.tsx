@@ -23,11 +23,11 @@ export default function ProfileModal({ economy, avatar, name, onClose, onEditAva
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex overflow-y-auto bg-black/70 p-4 backdrop-blur-sm"
       role="dialog"
       aria-label="Mi perfil"
     >
-      <div className="wood-panel relative w-full max-w-sm space-y-5 p-5">
+      <div className="profile-panel wood-panel relative m-auto w-full max-w-sm space-y-5 p-5">
         <button
           type="button"
           onClick={onClose}
@@ -37,8 +37,8 @@ export default function ProfileModal({ economy, avatar, name, onClose, onEditAva
           <X className="h-4 w-4" />
         </button>
 
-        <div className="flex items-center gap-3">
-          <Avatar code={avatar} className="h-16 w-16 border-2 border-amber-900/70" />
+        <div className="profile-header flex items-center gap-3">
+          <Avatar code={avatar} className="profile-avatar h-16 w-16 border-2 border-amber-900/70" />
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-lg font-extrabold text-amber-50">
               <BarChart3 className="h-5 w-5 shrink-0 text-amber-300" aria-hidden />
@@ -59,7 +59,7 @@ export default function ProfileModal({ economy, avatar, name, onClose, onEditAva
           </button>
         </div>
 
-        <div className="space-y-2 rounded-xl bg-black/25 px-3 py-3 ring-1 ring-amber-200/15">
+        <div className="profile-level space-y-2 rounded-xl bg-black/25 px-3 py-3 ring-1 ring-amber-200/15">
           <p className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-base font-extrabold text-amber-50">
               <Star className="h-4 w-4 fill-amber-300 text-amber-300" aria-hidden />
@@ -84,7 +84,7 @@ export default function ProfileModal({ economy, avatar, name, onClose, onEditAva
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="profile-stats grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-black/25 px-2 py-3 ring-1 ring-amber-200/15">
             <p className="flex items-center justify-center gap-1 text-xl font-extrabold text-amber-50">
               <Trophy className="h-4 w-4 text-amber-300" aria-hidden />
@@ -109,7 +109,7 @@ export default function ProfileModal({ economy, avatar, name, onClose, onEditAva
           </div>
         </div>
 
-        <div className="space-y-2.5">
+        <div className="profile-modes space-y-2.5">
           <p className="text-sm font-extrabold text-amber-300">Victorias por juego</p>
           {GAME_ORDER.map((game) => {
             const wins = economy.winsByGame[game];

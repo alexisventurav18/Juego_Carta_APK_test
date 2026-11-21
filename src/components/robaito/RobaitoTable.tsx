@@ -300,7 +300,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
       topLeft={
         <>
           <LeaveButton onLeave={onLeave} />
-          <span className={`${CORNER_CHIP} cursor-default`} title={`Cartas en el mazo: ${deckDisplayCount}`}>
+          <span className={`${CORNER_CHIP} w-[4.5rem] cursor-default justify-center`} title={`Cartas en el mazo: ${deckDisplayCount}`}>
             <Layers className="h-4 w-4 text-amber-300" aria-hidden />
             {deckDisplayCount}
           </span>
@@ -475,15 +475,15 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
             ))}
 
           {game.gameOver && endNoticeDismissed && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/65 p-2 sm:p-3">
+            <div className="fixed inset-0 z-[60] flex overflow-y-auto bg-black/65 p-2 sm:p-3">
               <div
                 style={{ '--rh': 'clamp(34px, 10.6dvh, 67px)' } as CSSProperties}
-                className="wood-panel max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-md space-y-1.5 overflow-y-auto p-2 text-center sm:space-y-2 sm:p-4"
+                className="game-end-panel wood-panel my-auto max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-md space-y-1.5 overflow-y-auto p-2 text-center sm:space-y-2 sm:p-4"
               >
                 <h2 className="text-sm font-extrabold sm:text-xl">
                   {game.tie ? `¡Empate entre ${winnerNames}!` : game.iWon ? '¡Ganaste la partida!' : `${winnerNames} ganó la partida`}
                 </h2>
-                <div className="space-y-1">
+                <div className="game-end-rows space-y-1">
                   {standings.map(({ player, s, count }) => {
                     const won = state.winnerSeats.includes(s);
                     const top = state.piles[s][state.piles[s].length - 1];

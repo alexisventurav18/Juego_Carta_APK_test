@@ -508,10 +508,14 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
         <span className="flex items-center justify-between gap-1 text-[12px] font-semibold leading-tight text-amber-100">
           <span className="flex min-w-0 items-center gap-1 truncate">
             <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color.main }} />
-            {needs && <Lock className="h-2.5 w-2.5 shrink-0 text-amber-300" aria-label="Cierre obligatorio" />}
+            {/* El candado siempre ocupa su hueco: si aparece solo al entrar en cierre, la etiqueta se mueve. */}
+            <Lock
+              className={`h-2.5 w-2.5 shrink-0 text-amber-300 ${needs ? '' : 'invisible'}`}
+              aria-label={needs ? 'Cierre obligatorio' : undefined}
+            />
             <span className="truncate">{color.label}</span>
           </span>
-          <span className="flex shrink-0 items-center gap-0.5 text-amber-300">
+          <span className="flex shrink-0 items-center gap-0.5 tabular-nums text-amber-300">
             <Sparkles className="h-2.5 w-2.5" aria-hidden />
             {state.viraos[team]}
           </span>
@@ -545,7 +549,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
             type="button"
             onClick={() => setCapturedOpen(true)}
             aria-label={`Cartas capturadas: ${capturedTotal}`}
-            className={CORNER_CHIP}
+            className={`${CORNER_CHIP} w-[4.5rem] justify-center`}
           >
             <Layers className="h-4 w-4" aria-hidden />
             {capturedTotal}

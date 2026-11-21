@@ -108,7 +108,7 @@ export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = f
             <p className="text-xs font-bold text-amber-200 sm:text-sm">Buscando jugadores en línea…</p>
             <p className="room-waiting-matchmaking-note text-xs text-amber-100/85 sm:text-sm">
               {secondsLeft > 0
-                ? `Si no se llena en ${secondsLeft} s, se completa con bots y la partida empieza sola.`
+                ? 'Si no se llena, se completa con bots y la partida empieza sola.'
                 : 'Completando la mesa con bots…'}
             </p>
           </div>
@@ -138,7 +138,7 @@ export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = f
           <button
             type="button"
             onClick={copyCode}
-            className="btn-wood inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-bold transition-transform active:scale-95 sm:min-h-[44px] sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
+            className="btn-wood inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-bold transition-transform active:scale-95 sm:min-h-[44px] sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
           >
             {copied ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
             {copied ? 'Código copiado' : 'Copiar código'}
@@ -146,12 +146,13 @@ export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = f
           <button
             type="button"
             onClick={() => void shareInvite()}
-            className="btn-gold inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-extrabold transition-transform active:scale-95 sm:min-h-[44px] sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
+            className="btn-gold inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-extrabold transition-transform active:scale-95 sm:min-h-[44px] sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
           >
             <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Compartir invitación
           </button>
-          {shareMessage && <p role="status" className="text-xs text-amber-200">{shareMessage}</p>}
+          {/* El hueco del mensaje siempre está reservado: si aparece solo al compartir, la sala se mueve. */}
+          <p role="status" className="min-h-8 text-xs text-amber-200">{shareMessage ?? '\u00A0'}</p>
         </div>
         </div>
       )}
@@ -172,7 +173,7 @@ export default function WaitingRoom({ room, myId, busy, onStart, matchmaking = f
           {Array.from({ length: slots }, (_, i) => (
             <li
               key={`empty-${i}`}
-              className="room-waiting-empty-slot flex min-h-[44px] items-center rounded-xl border border-dashed border-amber-200/30 px-3 py-1.5 text-sm text-amber-100/50"
+              className="room-waiting-empty-slot flex min-h-9 items-center rounded-xl border border-dashed border-amber-200/30 px-3 py-1.5 text-sm text-amber-100/50 sm:min-h-[44px]"
             >
               Esperando jugador...
             </li>

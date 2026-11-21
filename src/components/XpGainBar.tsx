@@ -106,13 +106,13 @@ export default function XpGainBar({ xpGain }: XpGainBarProps) {
     <div
       role="status"
       aria-label={`+${xpGain.gained} XP, nivel ${xpGain.levelAfter}`}
-      className="mx-auto w-full max-w-xs space-y-1.5 text-center"
+      className="xp-gain-bar mx-auto w-full max-w-xs space-y-1.5 text-center"
     >
       <p className="flex items-center justify-center gap-1.5 text-base font-extrabold text-sky-300">
         <Star className="h-5 w-5 fill-sky-300" aria-hidden />
         +{shownXp} XP
       </p>
-      <div className="h-3.5 overflow-hidden rounded-full bg-black/40 ring-1 ring-sky-200/30">
+      <div className="xp-bar h-3.5 overflow-hidden rounded-full bg-black/40 ring-1 ring-sky-200/30">
         <div
           className={`h-full rounded-full ${
             isMaxLevel ? 'bg-gradient-to-r from-amber-500 to-amber-300' : 'bg-gradient-to-r from-[#7FB5D5] to-[#0EA5B7]'

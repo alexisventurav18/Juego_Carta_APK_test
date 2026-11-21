@@ -21,15 +21,15 @@ export default function DefeatNotice({
   const { playSound } = useGameSounds();
 
   return (
-    <div className="end-notice fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+    <div className="end-notice fixed inset-0 z-50 flex overflow-y-auto bg-black/75 p-4 backdrop-blur-sm">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-rose-950/40"
       />
-      <div className="relative w-full max-w-md space-y-8 text-center">
+      <div className="relative m-auto w-full max-w-md space-y-8 text-center">
         <span
           aria-hidden
-          className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-rose-500/15 ring-2 ring-rose-300/50 shadow-[0_0_40px_rgba(253,164,175,0.3)]"
+          className="end-notice-icon mx-auto grid h-20 w-20 place-items-center rounded-full bg-rose-500/15 ring-2 ring-rose-300/50 shadow-[0_0_40px_rgba(253,164,175,0.3)]"
           style={{ animation: 'victory-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 150ms both' }}
         >
           <HeartCrack className="h-10 w-10 text-rose-300" />
@@ -40,8 +40,8 @@ export default function DefeatNotice({
         >
           {title}
         </h2>
-        <p className="text-base text-amber-50">{message}</p>
-        <div className="flex flex-col items-center gap-2.5">
+        <p className="end-notice-message text-base text-amber-50">{message}</p>
+        <div className="end-notice-actions flex flex-col items-center gap-2.5">
           {onRematch && (
             <button
               type="button"

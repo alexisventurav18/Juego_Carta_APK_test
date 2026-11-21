@@ -52,12 +52,13 @@ export default function PilePad({ pile, name, targeted = false, mine = false, re
             style={{ height: 'var(--sh)', aspectRatio: '2.5/3.5' }}
           />
         )}
-        <span className="pointer-events-none absolute -right-2 -top-2 z-10 btn-gold rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none tabular-nums shadow sm:text-xs">
+        <span className="pointer-events-none absolute -right-2 -top-2 z-10 btn-gold min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-[10px] font-extrabold leading-none tabular-nums shadow sm:text-xs">
           {pile.length}
         </span>
       </div>
-      {/* Sin límite de ancho: "Tu paquete" tiene 10 caracteres y antes se veía "Tu pa...". */}
-      <span className="whitespace-nowrap rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-bold leading-none text-amber-100 sm:text-[11px]">
+      {/* Sin límite de ancho: "Tu paquete" tiene 10 caracteres y antes se veía "Tu pa...". El tope es
+          para nombres largos: la etiqueta no empuja el asiento de al lado en la barra superior. */}
+      <span className="max-w-24 truncate whitespace-nowrap rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-bold leading-none text-amber-100 sm:text-[11px]">
         {mine ? 'Tu paquete' : name}
       </span>
     </div>
