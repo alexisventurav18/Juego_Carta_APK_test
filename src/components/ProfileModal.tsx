@@ -1,7 +1,8 @@
-import { BarChart3, Coins, Flame, Pencil, Trophy, X } from 'lucide-react';
+import { BarChart3, Coins, Flame, Pencil, Star, Trophy, X } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId } from '@/games/shared';
 import type { EconomyState } from '@/lib/economy';
+import { levelFromXp, MAX_LEVEL } from '@/lib/experience';
 import Avatar from './avatar/Avatar';
 
 const GAME_ORDER: GameId[] = ['casino', 'tresydos', 'cagao', 'robaito'];
@@ -17,6 +18,8 @@ interface ProfileModalProps {
 export default function ProfileModal({ economy, avatar, name, onClose, onEditAvatar }: ProfileModalProps) {
   const winRate = economy.gamesPlayed > 0 ? Math.round((economy.wins / economy.gamesPlayed) * 100) : null;
   const maxWins = Math.max(1, ...GAME_ORDER.map((game) => economy.winsByGame[game]));
+  const level = levelFromXp(economy.xp);
+  const isMaxLevel = level.level >= MAX_LEVEL;
 
   return (
     <div
@@ -54,6 +57,31 @@ export default function ProfileModal({ economy, avatar, name, onClose, onEditAva
             <Pencil className="h-3.5 w-3.5" aria-hidden />
             Avatar
           </button>
+        </div>
+
+        <div className="space-y-2 rounded-xl bg-black/25 px-3 py-3 ring-1 ring-amber-200/15">
+          <p className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-base font-extrabold text-amber-50">
+              <Star className="h-4 w-4 fill-amber-300 text-amber-300" aria-hidden />
+              Nivel {level.level}
+            </span>
+            <span className="text-sm font-extrabold text-sky-300">
+              {isMaxLevel ? `${economy.xp} XP` : `${level.xpIntoLevel} / ${level.xpNeeded} XP`}
+            </span>
+          </p>
+          <div className="h-3 overflow-hidden rounded-full bg-black/35 ring-1 ring-amber-200/15">
+            <div
+              className={`h-full rounded-full ${
+                isMaxLevel ? 'bg-gradient-to-r from-amber-500 to-amber-300' : 'bg-gradient-to-r from-[#7FB5D5] to-[#0EA5B7]'
+              }`}
+              style={{ width: `${isMaxLevel ? 100 : (level.xpIntoLevel / level.xpNeeded) * 100}%` }}
+            />
+          </div>
+          <p className="text-xs font-bold text-amber-100/70">
+            {isMaxLevel
+              ? 'Nivel máximo: ya lo tienes todo.'
+              : `Faltan ${level.xpNeeded - level.xpIntoLevel} XP para el nivel ${level.level + 1}`}
+          </p>
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-center">

@@ -223,6 +223,7 @@ export default function GameTable({
       pickable={myTurn && game.stealableSeats.includes(s)}
       onPick={pickFromSeat}
       registerAnchor={registerAnchor}
+      level={state.players[s].level}
     />
   );
 
@@ -347,6 +348,7 @@ export default function GameTable({
           isTurn={myTurn}
           out={game.iAmOut}
           isMe
+          level={state.players[seat].level}
         />
       }
       bottomCenter={
@@ -430,7 +432,8 @@ export default function GameTable({
             title="¡TE SALVASTE!"
             message={`${loserName} se quedó con El Cagao.`}
             continueLabel="Continuar"
-            rewardCoins={game.iLost ? null : winReward}
+            rewardCoins={game.iLost ? null : (winReward?.coins ?? null)}
+            xpGain={game.iLost ? null : (winReward?.xpGain ?? null)}
             onRematch={onRematch}
             onContinue={() => setEndNoticeDismissed(true)}
           />

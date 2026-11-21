@@ -270,6 +270,7 @@ export default function TresYDosTable({
       onPick={() => undefined}
       registerAnchor={registerAnchor}
       tag={`${state.wins[s]} ganadas`}
+      level={state.players[s].level}
     />
   );
 
@@ -385,6 +386,7 @@ export default function TresYDosTable({
           out={false}
           isMe
           tag={`${state.wins[seat]} ganadas`}
+          level={state.players[seat].level}
         />
       }
       bottomCenter={
@@ -452,7 +454,8 @@ export default function TresYDosTable({
                 title="¡CANTASTE!"
                 message={`Llegaste a ${TARGET_WINS} rondas ganadas y te llevaste la partida.`}
                 continueLabel="Continuar"
-                rewardCoins={iWon ? winReward : null}
+                rewardCoins={iWon ? (winReward?.coins ?? null) : null}
+                xpGain={iWon ? (winReward?.xpGain ?? null) : null}
                 onRematch={onRematch}
                 onContinue={() => setEndNoticeDismissedRound(state.roundNo)}
               />

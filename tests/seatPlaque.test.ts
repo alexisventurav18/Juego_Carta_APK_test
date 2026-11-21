@@ -47,8 +47,26 @@ describe('placa de jugador (SeatPlaque)', () => {
   });
 
   it('el nombre sigue truncado y "Salvó" se mantiene cuando el jugador se queda sin cartas', () => {
-    assert.ok(seatPlaque.includes('block truncate'), 'el nombre sigue truncado como antes');
+    assert.ok(seatPlaque.includes('truncate'), 'el nombre sigue truncado como antes');
     assert.ok(seatPlaque.includes('Salvó'), 'salir sin cartas sigue mostrando "Salvó"');
+  });
+
+  it('la insignia de nivel va junto al nombre, compacta y sin empujar nada fuera', () => {
+    assert.ok(playerSeat.includes('level?: number'), 'SeatPlaque acepta level');
+    assert.ok(seatPlaque.includes('{level !== undefined && <LevelBadge level={level}'), 'la insignia solo se muestra si hay nivel');
+    assert.ok(seatPlaque.includes('flex min-w-0 items-center gap-1'), 'el nombre y la insignia comparten una fila flexible');
+    assert.ok(playerSeat.includes('shrink-0'), 'la insignia no se encoge ni empuja el nombre fuera');
+    assert.ok(playerSeat.includes('aria-label={`Nivel ${level}`}'), 'la insignia anuncia el nivel');
+    assert.ok(playerSeat.includes('text-xs'), 'la insignia es text-xs (compacta)');
+    assert.ok(playerSeat.includes('fill-sky-200'), 'la estrella va rellena en azul larimar');
+  });
+
+  it('PlayerSeat reenvía el nivel a la placa en las dos posiciones', () => {
+    assert.ok(playerSeat.includes('level?: number'), 'PlayerSeat acepta level');
+    // 3 usos de level={level}: la insignia dentro de SeatPlaque y los dos
+    // reenvíos de PlayerSeat (placa de arriba y placa lateral).
+    assert.equal(playerSeat.split('level={level}').length - 1, 3);
+    assert.equal(playerSeat.split('<SeatPlaque').length - 1, 2, 'hay dos placas (arriba y lateral)');
   });
 
   it('PlayerSeat reenvía el paquete a la placa sin tocar el abanico del rival', () => {

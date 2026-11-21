@@ -10,6 +10,7 @@ import {
   type MissionPeriod,
   type MissionsState,
 } from './missions';
+import { addXp, xpGainForWin, type XpGain } from './experience';
 import {
   CARD_BACK_THEMES,
   DEFAULT_VISUAL_PREFS,
@@ -44,6 +45,9 @@ export const WIN_REWARDS: Record<GameId, number> = {
 /** Bonus por racha: +10 por cada victoria consecutiva anterior, hasta +50. */
 export const STREAK_BONUS_PER_WIN = 10;
 export const STREAK_BONUS_MAX = 50;
+
+/** Monedas extra por cada nivel de experiencia que se sube al ganar. */
+export const LEVEL_UP_COIN_BONUS = 50;
 
 export type CosmeticCategory = 'cardBack' | 'table' | 'menu';
 export type WinOutcome = 'win' | 'tie' | 'loss';
@@ -131,6 +135,8 @@ export interface EconomyState {
   bestStreak: number;
   /** Victorias por modo. */
   winsByGame: Record<GameId, number>;
+  /** Experiencia total acumulada (niveles en src/lib/experience.ts). */
+  xp: number;
   lastDailyDate: string | null;
   ownedCardBacks: CardBackTheme[];
   ownedTables: TableTheme[];
@@ -150,6 +156,7 @@ export function defaultEconomy(): EconomyState {
     streak: 0,
     bestStreak: 0,
     winsByGame: { casino: 0, tresydos: 0, robaito: 0, cagao: 0 },
+    xp: 0,
     lastDailyDate: null,
     ownedCardBacks: [DEFAULT_VISUAL_PREFS.cardBack],
     ownedTables: [DEFAULT_VISUAL_PREFS.table],
@@ -180,6 +187,7 @@ export function migrateEconomy(state: EconomyState, prefs: VisualPrefs): Economy
     gamesPlayed: Math.max(0, Math.floor(state.gamesPlayed) || 0),
     losses: Math.max(0, Math.floor(state.losses) || 0),
     bestStreak: Math.max(0, Math.floor(state.bestStreak) || 0),
+    xp: Math.max(0, Math.floor(state.xp) || 0),
     ownedCardBacks: unique([
       ...state.ownedCardBacks.filter((id) => knownCardBacks.includes(id)),
       DEFAULT_VISUAL_PREFS.cardBack,
@@ -375,21 +383,29 @@ export function matchFingerprint(state: GameState): string {
   ]);
 }
 
+/**
+ * Registra una partida terminada: paga monedas (base + racha + bonus por
+ * subir de nivel) y suma experiencia. `awarded` incluye el bonus de nivel:
+ * la primera victoria en Casino paga 150 (100 + 50 por subir del nivel 1
+ * al 2). En derrota o partida ya premiada no hay XP ni monedas.
+ */
 export function recordWin(
   state: EconomyState,
   game: GameId,
   outcome: WinOutcome,
   matchKey: string,
-): { state: EconomyState; awarded: number | null } {
-  if (state.awarded.includes(matchKey)) return { state, awarded: null };
+): { state: EconomyState; awarded: number | null; xpGain: XpGain | null } {
+  if (state.awarded.includes(matchKey)) return { state, awarded: null, xpGain: null };
   const awarded = [...state.awarded, matchKey].slice(-50);
   if (outcome === 'loss') {
     return {
       state: { ...state, streak: 0, gamesPlayed: state.gamesPlayed + 1, losses: state.losses + 1, awarded },
       awarded: null,
+      xpGain: null,
     };
   }
-  const amount = winRewardAmount(game, outcome, state.streak);
+  const gain = addXp(state.xp, xpGainForWin(game, outcome));
+  const amount = winRewardAmount(game, outcome, state.streak) + LEVEL_UP_COIN_BONUS * gain.levelsGained;
   const newStreak = state.streak + 1;
   return {
     state: {
@@ -400,9 +416,11 @@ export function recordWin(
       streak: newStreak,
       bestStreak: Math.max(state.bestStreak, newStreak),
       winsByGame: { ...state.winsByGame, [game]: state.winsByGame[game] + 1 },
+      xp: gain.totalXp,
       awarded,
     },
     awarded: amount,
+    xpGain: gain,
   };
 }
 
@@ -475,27 +493,27 @@ export function awardMatch(matchKey: string, game: GameId, outcome: WinOutcome):
 
 /**
  * Como awardMatch, pero además registra las estadísticas de la partida en las misiones
- * (capturas y viraos del Casino). Devuelve las monedas pagadas y las misiones que se
- * completaron con esta partida.
+ * (capturas y viraos del Casino). Devuelve las monedas pagadas, la XP ganada y las
+ * misiones que se completaron con esta partida.
  */
 export function awardMatchWithStats(
   matchKey: string,
   game: GameId,
   outcome: WinOutcome,
   stats: MatchStats,
-): { awarded: number | null; completed: import('./missions').MissionDef[] } {
+): { awarded: number | null; xpGain: XpGain | null; completed: import('./missions').MissionDef[] } {
   // La huella evita contar dos veces la misma partida, también en las misiones:
   // una vista que se actualice varias veces en gameOver no suma progreso extra.
-  if (economy.awarded.includes(matchKey)) return { awarded: null, completed: [] };
+  if (economy.awarded.includes(matchKey)) return { awarded: null, xpGain: null, completed: [] };
   const result = recordWin(economy, game, outcome, matchKey);
   const beforeMissions = JSON.stringify(result.state.missions);
   const missions = applyMatch(result.state.missions, stats);
   const missionsChanged = JSON.stringify(missions.state) !== beforeMissions;
   if (result.state === economy && !missionsChanged) {
-    return { awarded: result.awarded, completed: [] };
+    return { awarded: result.awarded, xpGain: result.xpGain, completed: [] };
   }
   save({ ...result.state, missions: missions.state });
-  return { awarded: result.awarded, completed: missions.completed };
+  return { awarded: result.awarded, xpGain: result.xpGain, completed: missions.completed };
 }
 
 /** Reclama una misión completa: paga sus monedas. Devuelve las monedas otorgadas, o 0. */

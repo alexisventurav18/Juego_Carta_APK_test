@@ -5,6 +5,24 @@ export interface Player {
   name: string;
   /** Código del avatar (ver avatar.ts). Opcional: quien no lo envía recibe uno estable según su id. */
   avatar?: string;
+  /**
+   * Nivel de experiencia (1-100, ver src/lib/experience.ts). Opcional: un
+   * cliente viejo no lo envía y la placa simplemente no muestra insignia.
+   */
+  level?: number;
+}
+
+/** Nivel máximo de experiencia (la curva completa vive en src/lib/experience.ts). */
+export const MAX_LEVEL = 100;
+
+/**
+ * Nivel de un bot cercano al del humano: el nivel del humano ± hasta 5,
+ * entre 1 y 100. Así los rivales se sienten de tu liga sin ser idénticos.
+ * El azar se inyecta para poder probarlo con valores fijos.
+ */
+export function botLevelFor(humanLevel: number, random: () => number = Math.random): number {
+  const base = Math.max(1, Math.min(MAX_LEVEL, Math.floor(humanLevel) || 1));
+  return Math.max(1, Math.min(MAX_LEVEL, base + Math.floor(random() * 11) - 5));
 }
 
 export interface ScoreLine {

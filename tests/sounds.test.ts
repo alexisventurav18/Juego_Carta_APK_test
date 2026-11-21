@@ -215,6 +215,17 @@ describe('efectos de sonido', () => {
     assert.equal(echoSends, 2);
   });
 
+  it('levelUp: arpegio brillante ascendente con eco, distinto de la fanfarria', () => {
+    const { oscs, noises, echoSends } = play('levelUp');
+    assert.deepEqual(
+      oscs.map((o) => o.freq),
+      [523.25, 659.25, 783.99, 1046.5],
+    );
+    assert.ok(oscs.every((o) => o.type === 'triangle'));
+    assert.equal(noises.length, 0);
+    assert.equal(echoSends, 4);
+  });
+
   it('virao: roce y arpegio ascendente', () => {
     const { oscs, noises, echoSends } = play('virao');
     assert.deepEqual(

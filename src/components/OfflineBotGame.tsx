@@ -7,8 +7,11 @@ import type { CagaoMove } from '@/games/cagao';
 import type { CasinoMove } from '@/games/casino';
 import type { RobaitoMove } from '@/games/robaito';
 import type { GameId, Player } from '@/games/shared';
+import { botLevelFor } from '@/games/shared';
 import type { TresYDosMove } from '@/games/tresYDos';
 import { projectState } from '@/games/view';
+import { getEconomy } from '@/lib/economy';
+import { levelFromXp } from '@/lib/experience';
 import { getMyAvatar } from '@/lib/identity';
 import CagaoTable from './CagaoTable';
 import CasinoTable from './CasinoTable';
@@ -35,9 +38,18 @@ const NOTICE_MS = 4000;
  * corre en este dispositivo: no hay sala, cuenta ni red. Tú siempre eres el asiento 0.
  */
 export default function OfflineBotGame({ game, playerName, playerCount, onLeave }: OfflineBotGameProps) {
+  // Tu nivel sale de tu experiencia; los bots se sientan cerca de ti (±5) y
+  // ese nivel no cambia en toda la partida (los jugadores se fijan al crearla).
+  const humanLevel = useMemo(() => levelFromXp(getEconomy().xp).level, []);
   const players = useMemo<Player[]>(
-    () => createSoloPlayers(game, { id: 'local-human', name: playerName, avatar: getMyAvatar() }, playerCount),
-    [game, playerName, playerCount],
+    () =>
+      createSoloPlayers(
+        game,
+        { id: 'local-human', name: playerName, avatar: getMyAvatar(), level: humanLevel },
+        playerCount,
+        () => botLevelFor(humanLevel),
+      ),
+    [game, playerName, playerCount, humanLevel],
   );
   const [state, setState] = useState<GameState>(() => createGameState(game, players));
   const [matchKey, setMatchKey] = useState(0);

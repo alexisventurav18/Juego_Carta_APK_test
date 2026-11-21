@@ -143,29 +143,56 @@ describe('economía: victorias, rachas y pago único por partida', () => {
   it('ganar paga una sola vez por partida aunque se registre dos veces', () => {
     const key = 'partida-1';
     const first = recordWin(defaultEconomy(), 'casino', 'win', key);
-    assert.equal(first.awarded, 100);
-    assert.equal(first.state.coins, 100);
+    // 100 de la victoria + 50 por subir del nivel 1 al 2 con esos 100 XP.
+    assert.equal(first.awarded, 150);
+    assert.equal(first.state.coins, 150);
+    assert.equal(first.state.xp, 100);
+    assert.equal(first.xpGain?.gained, 100);
+    assert.equal(first.xpGain?.levelBefore, 1);
+    assert.equal(first.xpGain?.levelAfter, 2);
+    assert.equal(first.xpGain?.levelsGained, 1);
     assert.equal(first.state.streak, 1);
     assert.equal(first.state.winsByGame.casino, 1);
     const second = recordWin(first.state, 'casino', 'win', key);
     assert.equal(second.awarded, null);
-    assert.equal(second.state.coins, 100);
+    assert.equal(second.xpGain, null);
+    assert.equal(second.state.coins, 150);
+    assert.equal(second.state.xp, 100);
     assert.equal(second.state.streak, 1);
   });
 
-  it('perder reinicia la racha sin pagar', () => {
+  it('perder reinicia la racha sin pagar ni dar XP', () => {
     const won = recordWin(defaultEconomy(), 'tresydos', 'win', 'p1');
     assert.equal(won.state.streak, 1);
+    // 80 de la victoria y 80 XP: no cruzan el umbral de 100 del nivel 2,
+    // así que no hay bonus de subida de nivel en esta primera victoria.
+    assert.equal(won.awarded, 80);
+    assert.equal(won.state.xp, 80);
+    assert.equal(won.xpGain?.levelsGained, 0);
     const lost = recordWin(won.state, 'tresydos', 'loss', 'p2');
     assert.equal(lost.awarded, null);
+    assert.equal(lost.xpGain, null);
     assert.equal(lost.state.streak, 0);
     assert.equal(lost.state.coins, 80);
+    assert.equal(lost.state.xp, 80);
   });
 
   it('cuenta partidas jugadas, derrotas y mejor racha (para el perfil)', () => {
     const w1 = recordWin(defaultEconomy(), 'casino', 'win', 'p1');
+    // w1: 100 monedas + 50 por subir del nivel 1 al 2 (XP 0→100).
+    assert.equal(w1.awarded, 150);
+    assert.equal(w1.state.coins, 150);
+    assert.equal(w1.state.xp, 100);
     const w2 = recordWin(w1.state, 'casino', 'win', 'p2');
+    // w2: 100 + 10 de racha, sin subir de nivel (XP 100→200, el nivel 2 pide 120).
+    assert.equal(w2.awarded, 110);
+    assert.equal(w2.state.coins, 260);
+    assert.equal(w2.state.xp, 200);
     const w3 = recordWin(w2.state, 'casino', 'win', 'p3');
+    // w3: 100 + 20 de racha + 50 por subir al nivel 3 (XP 200→300, cruza 220).
+    assert.equal(w3.awarded, 170);
+    assert.equal(w3.state.coins, 430);
+    assert.equal(w3.state.xp, 300);
     assert.equal(w3.state.gamesPlayed, 3);
     assert.equal(w3.state.losses, 0);
     assert.equal(w3.state.bestStreak, 3);
@@ -183,6 +210,7 @@ describe('economía: victorias, rachas y pago único por partida', () => {
     assert.equal(old.gamesPlayed, 0);
     assert.equal(old.losses, 0);
     assert.equal(old.bestStreak, 0);
+    assert.equal(old.xp, 0);
   });
 });
 

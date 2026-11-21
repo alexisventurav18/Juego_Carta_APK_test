@@ -489,6 +489,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
       onPick={() => undefined}
       registerAnchor={registerAnchor}
       team={teamColor(teamOf(s), myTeam)}
+      level={state.players[s].level}
     />
   );
 
@@ -658,6 +659,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           out={false}
           isMe
           team={teamColor(myTeam, myTeam)}
+          level={state.players[seat].level}
         />
       }
       bottomCenter={
@@ -733,7 +735,8 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           {showEndNotice &&
             (iWon ? (
               <VictoryCelebration
-                rewardCoins={iWon ? winReward : null}
+                rewardCoins={iWon ? (winReward?.coins ?? null) : null}
+                xpGain={iWon ? (winReward?.xpGain ?? null) : null}
                 onRematch={onRematch}
                 onContinue={() => setEndNoticeDismissedRound(state.roundNo)}
               />

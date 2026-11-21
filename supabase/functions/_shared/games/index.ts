@@ -147,17 +147,28 @@ const BOT_NAMES: { name: string; gender: Gender }[] = [
   { name: 'Daniela', gender: 'f' },
 ];
 
-export function createSoloPlayers(game: GameId, human: Player, playerCount = GAMES[game].soloPlayerCount): Player[] {
-  return fillWithBots(game, [human], playerCount);
+export function createSoloPlayers(
+  game: GameId,
+  human: Player,
+  playerCount = GAMES[game].soloPlayerCount,
+  botLevel?: () => number,
+): Player[] {
+  return fillWithBots(game, [human], playerCount, botLevel);
 }
 
 /**
  * Completa la mesa con bots hasta `targetCount` jugadores. Los nombres y los
  * ids no se repiten con los que ya están sentados (sirve tanto para el modo
  * sin conexión como para completar una sala en línea). Si ya hay suficientes,
- * devuelve la lista tal cual.
+ * devuelve la lista tal cual. Con `botLevel`, cada bot recibe su nivel de
+ * esa función (cercano al del humano); sin ella, los bots no llevan nivel.
  */
-export function fillWithBots(game: GameId, players: Player[], targetCount: number): Player[] {
+export function fillWithBots(
+  game: GameId,
+  players: Player[],
+  targetCount: number,
+  botLevel?: () => number,
+): Player[] {
   void game;
   const needed = targetCount - players.length;
   if (needed <= 0) return players;
@@ -176,7 +187,12 @@ export function fillWithBots(game: GameId, players: Player[], targetCount: numbe
     let id = `bot-${nextBot++}`;
     while (usedIds.has(id)) id = `bot-${nextBot++}`;
     usedIds.add(id);
-    bots.push({ id, name: pick.name, avatar: encodeAvatar(randomAvatar(Math.random, pick.gender)) });
+    bots.push({
+      id,
+      name: pick.name,
+      avatar: encodeAvatar(randomAvatar(Math.random, pick.gender)),
+      ...(botLevel ? { level: botLevel() } : {}),
+    });
   }
   return [...players, ...bots];
 }

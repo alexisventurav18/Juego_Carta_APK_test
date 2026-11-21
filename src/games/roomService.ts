@@ -3,7 +3,7 @@ import { botStep } from './bots';
 import { randomInt } from './cards';
 import { applyGameMove } from './engine';
 import { canStartGame, createGameState, createSoloPlayers, fillWithBots, GAMES, type GameState, isGameFinished, minValidPlayerCount } from './index';
-import { type GameId, hostSeat, isBotPlayer, type Player } from './shared';
+import { type GameId, botLevelFor, hostSeat, isBotPlayer, MAX_LEVEL, type Player } from './shared';
 import { projectState } from './view';
 
 /*
@@ -69,9 +69,9 @@ interface Auth {
 }
 
 export type RoomRequest =
-  | ({ action: 'create'; game: GameId; solo?: boolean; name: string; avatar?: string } & Auth)
-  | ({ action: 'join'; code: string; name: string; avatar?: string } & Auth)
-  | ({ action: 'quickplay'; game: GameId; name: string; avatar?: string } & Auth)
+  | ({ action: 'create'; game: GameId; solo?: boolean; name: string; avatar?: string; level?: number } & Auth)
+  | ({ action: 'join'; code: string; name: string; avatar?: string; level?: number } & Auth)
+  | ({ action: 'quickplay'; game: GameId; name: string; avatar?: string; level?: number } & Auth)
   | ({ action: 'leave'; roomId: string } & Auth)
   | ({ action: 'abandon'; roomId: string } & Auth)
   | ({ action: 'view'; roomId: string } & Auth)
@@ -154,6 +154,28 @@ function readAvatar(req: Record<string, unknown>): string | undefined {
   return isAvatarCode(req.avatar) ? req.avatar : undefined;
 }
 
+/**
+ * El nivel es opcional: si falta o no es un entero entre 1 y 100 se ignora
+ * sin rechazar nada (un cliente viejo no lo envía y su placa no muestra
+ * insignia). El cliente no puede inventarse un nivel mayor que el máximo.
+ */
+function readLevel(req: Record<string, unknown>): number | undefined {
+  const level = req.level;
+  return typeof level === 'number' && Number.isInteger(level) && level >= 1 && level <= MAX_LEVEL
+    ? level
+    : undefined;
+}
+
+/** Jugador humano tal como se guarda en la sala: nombre, avatar y nivel si son válidos. */
+function buildHuman(auth: Auth, name: string, avatar: string | undefined, level: number | undefined): Player {
+  return {
+    id: auth.playerId,
+    name,
+    ...(avatar ? { avatar } : {}),
+    ...(level !== undefined ? { level } : {}),
+  };
+}
+
 function readRoomId(req: Record<string, unknown>): string {
   if (typeof req.roomId !== 'string' || !UUID_PATTERN.test(req.roomId)) throw new RoomError('Esta sala ya no existe.');
   return req.roomId;
@@ -210,9 +232,9 @@ async function create(store: RoomStore, req: Record<string, unknown>): Promise<R
   const name = readName(req);
   if (typeof req.game !== 'string' || !(req.game in GAMES)) throw new RoomError('Juego no válido.');
   const game = req.game as GameId;
-  const avatar = readAvatar(req);
-  const human: Player = avatar ? { id: auth.playerId, name, avatar } : { id: auth.playerId, name };
-  const players = req.solo === true ? createSoloPlayers(game, human) : [human];
+  const human = buildHuman(auth, name, readAvatar(req), readLevel(req));
+  // Contra bots, los bots se sientan cerca de tu nivel (±5).
+  const players = req.solo === true ? createSoloPlayers(game, human, GAMES[game].soloPlayerCount, () => botLevelFor(human.level ?? 1)) : [human];
   const stored = await store.create(
     { game, status: 'waiting', players, isPublic: false, createdAt: Date.now() },
     { state: null, keys: { [auth.playerId]: await hashKey(auth.key) } },
@@ -235,8 +257,7 @@ async function join(store: RoomStore, req: Record<string, unknown>): Promise<Roo
     }
     if (room.status !== 'waiting') throw new RoomError('Esa partida ya empezó.');
     if (room.players.length >= GAMES[room.game].maxPlayers) throw new RoomError('La sala está llena.');
-    const avatar = readAvatar(req);
-    const players = [...room.players, avatar ? { id: auth.playerId, name, avatar } : { id: auth.playerId, name }];
+    const players = [...room.players, buildHuman(auth, name, readAvatar(req), readLevel(req))];
     const keys = { ...secret.keys, [auth.playerId]: await hashKey(auth.key) };
     const result = await commit(store, stored, { players, keys }, players.length - 1);
     if (result.ok) return result;
@@ -255,7 +276,7 @@ async function quickplay(store: RoomStore, req: Record<string, unknown>): Promis
   const name = readName(req);
   if (typeof req.game !== 'string' || !(req.game in GAMES)) throw new RoomError('Juego no válido.');
   const game = req.game as GameId;
-  const avatar = readAvatar(req);
+  const human = buildHuman(auth, name, readAvatar(req), readLevel(req));
   const now = Date.now();
 
   for (let attempt = 0; attempt < JOIN_ATTEMPTS; attempt++) {
@@ -273,7 +294,6 @@ async function quickplay(store: RoomStore, req: Record<string, unknown>): Promis
     }
     const target = fresh[0];
     if (!target) {
-      const human: Player = avatar ? { id: auth.playerId, name, avatar } : { id: auth.playerId, name };
       const stored = await store.create(
         { game, status: 'waiting', players: [human], isPublic: true, createdAt: now },
         { state: null, keys: { [auth.playerId]: await hashKey(auth.key) } },
@@ -281,7 +301,7 @@ async function quickplay(store: RoomStore, req: Record<string, unknown>): Promis
       return { ok: true, room: toView(stored, 0) };
     }
     const { room, secret } = target;
-    const players = [...room.players, avatar ? { id: auth.playerId, name, avatar } : { id: auth.playerId, name }];
+    const players = [...room.players, human];
     const keys = { ...secret.keys, [auth.playerId]: await hashKey(auth.key) };
     const result = await commit(store, target, { players, keys }, players.length - 1);
     if (result.ok) {
@@ -333,7 +353,13 @@ async function abandon(store: RoomStore, req: Record<string, unknown>): Promise<
     return { ok: true, room: { ...toView(stored, seat), players: [], version: room.version + 1 } };
   }
   // Un bot nuevo en el asiento del que sale (nombre e id sin repetir).
-  const completed = fillWithBots(room.game, withoutLeaver, withoutLeaver.length + 1);
+  // Conserva el nivel del que sale para que su placa no cambie de golpe;
+  // si no tenía nivel, el bot se sienta cerca de otro humano de la mesa.
+  const leaver = room.players.find((p) => p.id === auth.playerId);
+  const anchor = withoutLeaver.find((p) => !isBotPlayer(p))?.level ?? 1;
+  const completed = fillWithBots(room.game, withoutLeaver, withoutLeaver.length + 1, () =>
+    leaver?.level !== undefined ? leaver.level : botLevelFor(anchor),
+  );
   const bot = completed[completed.length - 1];
   const players = room.players.map((p) => (p.id === auth.playerId ? bot : p));
   const state = stored.secret.state ? { ...stored.secret.state, players } : null;
@@ -362,7 +388,9 @@ async function maybeAutoStart(
   const full = room.players.length >= GAMES[room.game].maxPlayers;
   if (!full && now - room.createdAt < QUICKPLAY_WAIT_MS) return null;
   const target = minValidPlayerCount(room.game, room.players.length);
-  const players = fillWithBots(room.game, room.players, target);
+  // Los bots que completan la mesa se sientan cerca del nivel del primer humano.
+  const anchor = room.players.find((p) => !isBotPlayer(p))?.level ?? 1;
+  const players = fillWithBots(room.game, room.players, target, () => botLevelFor(anchor));
   const state = createGameState(room.game, players);
   const result = await commit(store, stored, { status: 'playing', players, state }, seat);
   if (result.ok) return result;

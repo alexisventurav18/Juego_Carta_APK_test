@@ -51,20 +51,20 @@ async function call(body: Record<string, unknown>): Promise<RoomRow> {
 }
 
 export function createRoom(game: GameId, player: Player): Promise<RoomRow> {
-  return call({ action: 'create', game, name: player.name, avatar: player.avatar });
+  return call({ action: 'create', game, name: player.name, avatar: player.avatar, level: player.level });
 }
 
 export function createSoloRoom(game: GameId, player: Player): Promise<RoomRow> {
-  return call({ action: 'create', game, solo: true, name: player.name, avatar: player.avatar });
+  return call({ action: 'create', game, solo: true, name: player.name, avatar: player.avatar, level: player.level });
 }
 
 export function joinRoom(code: string, player: Player): Promise<RoomRow> {
-  return call({ action: 'join', code, name: player.name, avatar: player.avatar });
+  return call({ action: 'join', code, name: player.name, avatar: player.avatar, level: player.level });
 }
 
 /** Matchmaking: entra en una sala pública en espera de ese juego o crea una. */
 export function quickplayRoom(game: GameId, player: Player): Promise<RoomRow> {
-  return call({ action: 'quickplay', game, name: player.name, avatar: player.avatar });
+  return call({ action: 'quickplay', game, name: player.name, avatar: player.avatar, level: player.level });
 }
 
 /** Salir de una sala en espera (si queda vacía, se borra). */

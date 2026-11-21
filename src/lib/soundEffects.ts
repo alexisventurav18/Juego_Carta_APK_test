@@ -11,7 +11,8 @@ export type SoundEffect =
   | 'click' // Al pulsar un botón
   | 'coin' // Al recibir monedas de recompensa
   | 'turn' // Cuando empieza tu turno
-  | 'virao'; // Al llevarse todas las cartas de la mesa (Casino)
+  | 'virao' // Al llevarse todas las cartas de la mesa (Casino)
+  | 'levelUp'; // Al subir de nivel (arpegio brillante, distinto de la fanfarria)
 
 // Conecta una ganancia al bus principal y, si echoAmount > 0, envía parte al bus de eco.
 function routeGain(ctx: AudioContext, gain: GainNode, bus: AudioNode, echo: AudioNode, echoAmount: number): void {
@@ -194,6 +195,14 @@ export function playEffect(engine: Engine, effect: SoundEffect): void {
       playCardNoise(ctx, sfx, echo, 0.18, now, 1100, 0.3);
       const rise = [392.0, 493.88, 587.33, 783.99];
       rise.forEach((freq, i) => playTone(ctx, sfx, echo, freq, 'triangle', now + i * 0.07, 0.16, 0.14, 0.4));
+      break;
+    }
+
+    case 'levelUp': {
+      // Subida de nivel: arpegio brillante Do5-Mi5-Sol5-Do6 con eco, más
+      // corto y agudo que la fanfarria de victoria, para que suene distinto.
+      const rise = [523.25, 659.25, 783.99, 1046.5];
+      rise.forEach((freq, i) => playTone(ctx, sfx, echo, freq, 'triangle', now + i * 0.12, 0.35, 0.16, 0.5));
       break;
     }
   }

@@ -403,3 +403,79 @@ describe('servidor de salas: abandono', () => {
     assert.match(await fail(store, { action: 'view', roomId: id, ...B }), /no existe/);
   });
 });
+
+describe('servidor de salas: niveles de experiencia', () => {
+  it('crear con nivel lo guarda y la vista lo proyecta al otro jugador y a la partida', async () => {
+    const store = new MemoryStore();
+    const created = await ok(store, { action: 'create', game: 'casino', name: 'Ana', level: 42, ...A });
+    assert.equal(created.players[0].level, 42);
+    const joined = await ok(store, { action: 'join', code: created.code, name: 'Beto', level: 7, ...B });
+    assert.equal(joined.players[1].level, 7);
+    const seenByBeto = await ok(store, { action: 'view', roomId: created.id, ...B });
+    assert.deepEqual(
+      seenByBeto.players.map((p) => p.level),
+      [42, 7],
+    );
+    const started = await ok(store, { action: 'start', roomId: created.id, ...A });
+    assert.deepEqual(
+      started.state?.players.map((p) => p.level),
+      [42, 7],
+    );
+  });
+
+  it('un nivel inválido o ausente se ignora sin rechazar nada y la vista no se rompe', async () => {
+    const store = new MemoryStore();
+    for (const level of [0, 101, 2.5, 'alto', null]) {
+      const created = await ok(store, {
+        action: 'create',
+        game: 'casino',
+        name: 'Ana',
+        level: level as never,
+        ...A,
+      });
+      assert.equal(created.players[0].level, undefined, `nivel ${String(level)}`);
+      await ok(store, { action: 'leave', roomId: created.id, ...A });
+    }
+    const noLevel = await ok(store, { action: 'create', game: 'casino', name: 'Ana', ...A });
+    assert.equal(noLevel.players[0].level, undefined);
+    const seen = await ok(store, { action: 'view', roomId: noLevel.id, ...A });
+    assert.equal(seen.players[0].level, undefined);
+  });
+
+  it('solo contra bots: los bots se sientan cerca del nivel del humano', async () => {
+    const store = new MemoryStore();
+    const created = await ok(store, { action: 'create', game: 'casino', solo: true, name: 'Ana', level: 50, ...A });
+    assert.equal(created.players[0].level, 50);
+    const bots = created.players.slice(1);
+    assert.ok(bots.length > 0, 'la sala solo debe completarse con bots');
+    for (const bot of bots) {
+      assert.ok(bot.level !== undefined && bot.level >= 45 && bot.level <= 55, `bot nivel ${bot.level}`);
+    }
+  });
+
+  it('quickplay: al arrancar por tiempo, el bot se sienta cerca del humano', async () => {
+    const store = new MemoryStore();
+    const created = await ok(store, { action: 'quickplay', game: 'casino', name: 'Ana', level: 30, ...A });
+    const stored = store.rooms.get(created.id);
+    assert.ok(stored, 'la sala debe existir');
+    stored.room.createdAt = Date.now() - 31_000;
+    const ticked = await ok(store, { action: 'tick', roomId: created.id, expectedVersion: 0, ...A });
+    assert.equal(ticked.status, 'playing');
+    assert.ok(ticked.state, 'la partida debe haber arrancado');
+    const bots = ticked.state.players.filter((p) => p.id.startsWith('bot-'));
+    assert.equal(bots.length, 1, 'Casino con 1 humano se completa con 1 bot');
+    assert.ok(bots[0].level !== undefined && bots[0].level >= 25 && bots[0].level <= 35, `bot nivel ${bots[0].level}`);
+    assert.equal(ticked.state.players[0].level, 30);
+  });
+
+  it('abandonar: el bot que toma el asiento conserva el nivel del que sale', async () => {
+    const store = new MemoryStore();
+    const created = await ok(store, { action: 'create', game: 'casino', name: 'Ana', level: 42, ...A });
+    await ok(store, { action: 'join', code: created.code, name: 'Beto', level: 7, ...B });
+    await ok(store, { action: 'start', roomId: created.id, ...A });
+    const after = await ok(store, { action: 'abandon', roomId: created.id, ...A });
+    assert.equal(after.players[0].id.startsWith('bot-'), true);
+    assert.equal(after.players[0].level, 42, 'el bot conserva el nivel 42 de Ana');
+    assert.equal(after.players[1].level, 7);
+  });
+});

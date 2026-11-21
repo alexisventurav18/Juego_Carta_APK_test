@@ -203,9 +203,12 @@ describe('misiones: integración con la economía', () => {
       capturedCards: 20,
       viraos: 1,
     });
-    assert.equal(result.awarded, 100);
+    // 100 de la victoria + 50 por subir del nivel 1 al 2 con esos 100 XP.
+    assert.equal(result.awarded, 150);
     const after = getEconomy();
-    assert.equal(after.coins, before.coins + 100);
+    assert.equal(after.coins, before.coins + 150);
+    assert.equal(after.xp, before.xp + 100);
+    assert.equal(result.xpGain?.levelsGained, 1);
     assert.ok(after.missions.daily.some((p) => p.progress > 0));
     assert.ok(after.missions.weekly.some((p) => p.progress > 0));
   });

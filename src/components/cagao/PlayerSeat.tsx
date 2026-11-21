@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Star } from 'lucide-react';
 import Avatar from '../avatar/Avatar';
 import { OpponentFan } from './Fans';
 import type { TeamColor } from '../table/teamColors';
@@ -23,6 +23,8 @@ interface SeatPlaqueProps {
   team?: TeamColor;
   /** Cartas en el paquete (El Robaíto): se dibuja un mini mazo con el contador centrado dentro. */
   packetCount?: number;
+  /** Nivel de experiencia (1-100): estrella + número junto al nombre. Sin nivel no hay insignia. */
+  level?: number;
 }
 
 /**
@@ -50,8 +52,25 @@ function PacketIcon({ count, compact = false }: { count: number; compact?: boole
   );
 }
 
+/** Insignia de nivel: estrella + número, compacta para caber junto al nombre sin empujar nada fuera. */
+function LevelBadge({ level, compact = false }: { level: number; compact?: boolean }) {
+  return (
+    <span
+      role="img"
+      aria-label={`Nivel ${level}`}
+      title={`Nivel ${level}`}
+      className={`flex shrink-0 items-center gap-0.5 rounded-full bg-sky-400/20 px-1 py-px font-extrabold leading-none text-sky-200 ring-1 ring-sky-300/50 ${
+        compact ? 'text-[9px]' : 'text-xs'
+      }`}
+    >
+      <Star className={`${compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} shrink-0 fill-sky-200`} aria-hidden />
+      {level}
+    </span>
+  );
+}
+
 /** Placa de madera con el avatar. Cuando es su turno se ilumina en dorado. */
-export function SeatPlaque({ name, avatar, isTurn, isVictim, out, isMe, compact = false, tag, team, packetCount }: SeatPlaqueProps) {
+export function SeatPlaque({ name, avatar, isTurn, isVictim, out, isMe, compact = false, tag, team, packetCount, level }: SeatPlaqueProps) {
   const plaqueStyle: CSSProperties | undefined = team
     ? { boxShadow: `inset 0 0 0 2px ${team.main}, inset 0 -4px 8px rgb(0 0 0 / 0.45), 0 3px 8px rgb(0 0 0 / 0.5)` }
     : undefined;
@@ -81,7 +100,12 @@ export function SeatPlaque({ name, avatar, isTurn, isVictim, out, isMe, compact 
           style={team && !isTurn && !isVictim ? { borderColor: team.main } : undefined}
         />
         <span className="relative min-w-0 leading-tight">
-          <span className={`block truncate font-bold text-amber-50 ${compact ? 'text-[clamp(9px,2.1dvh,12px)]' : 'text-[clamp(10px,2.8dvh,14px)]'}`}>{isMe ? 'Tú' : name}</span>
+          {/* El nombre se recorta y la insignia no se mueve: el nombre tiene
+              min-w-0 y la insignia shrink-0, así nada empuja fuera de la placa. */}
+          <span className="flex min-w-0 items-center gap-1">
+            <span className={`min-w-0 truncate font-bold text-amber-50 ${compact ? 'text-[clamp(9px,2.1dvh,12px)]' : 'text-[clamp(10px,2.8dvh,14px)]'}`}>{isMe ? 'Tú' : name}</span>
+            {level !== undefined && <LevelBadge level={level} compact={compact} />}
+          </span>
           {/*
             La sub-línea se puede partir en dos líneas y solo existe si hay algo que mostrar. En vez
             de texto con las cartas en mano (ya se ven en el abanico), el paquete se dibuja como un
@@ -135,6 +159,8 @@ interface PlayerSeatProps {
   team?: TeamColor;
   /** Cartas en el paquete (El Robaíto): mini mazo con contador en la placa. */
   packetCount?: number;
+  /** Nivel de experiencia del jugador (se muestra como insignia en la placa). */
+  level?: number;
   children?: ReactNode;
 }
 
@@ -159,6 +185,7 @@ export default function PlayerSeat({
   tag,
   team,
   packetCount,
+  level,
 }: PlayerSeatProps) {
   const vertical = side !== 'top';
   const fan =
@@ -180,7 +207,7 @@ export default function PlayerSeat({
   if (!vertical) {
     return (
       <div className="flex min-w-0 items-center justify-center gap-2">
-        <SeatPlaque name={name} avatar={avatar} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} packetCount={packetCount} />
+        <SeatPlaque name={name} avatar={avatar} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} packetCount={packetCount} level={level} />
         <div className="flex h-[calc(var(--oh)+14px)] min-w-0 items-center justify-center px-2">{fan}</div>
       </div>
     );
@@ -188,7 +215,7 @@ export default function PlayerSeat({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col items-center justify-center gap-1">
-      <SeatPlaque name={name} avatar={avatar} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} packetCount={packetCount} />
+      <SeatPlaque name={name} avatar={avatar} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} packetCount={packetCount} level={level} />
       {/* El abanico se gira 90°: la caja reserva su largo como alto y el alto de carta como ancho. */}
       <div
         className="relative flex shrink-0 items-center justify-center"

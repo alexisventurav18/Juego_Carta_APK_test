@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Coins, RotateCcw, Trophy } from 'lucide-react';
 import { useGameSounds } from '@/hooks/useGameSounds';
+import type { XpGain } from '@/lib/experience';
 import { CONFETTI_COLORS } from '../lib/dominicanPalette';
+import XpGainBar from './XpGainBar';
 
 interface VictoryCelebrationProps {
   onContinue: () => void;
@@ -13,6 +15,8 @@ interface VictoryCelebrationProps {
   continueLabel?: string;
   /** Monedas ganadas por esta victoria (null si no hay recompensa que mostrar). */
   rewardCoins?: number | null;
+  /** Experiencia ganada por esta victoria (null si no hay nada que animar). */
+  xpGain?: XpGain | null;
 }
 
 /** Confeti con los colores de la bandera dominicana + ámbar. */
@@ -37,6 +41,7 @@ export default function VictoryCelebration({
   message = 'Tu equipo se llevó la partida. Revisa el desglose de puntos.',
   continueLabel = 'Ver el desglose',
   rewardCoins = null,
+  xpGain = null,
 }: VictoryCelebrationProps) {
   const [pieces] = useState(makePieces);
   const { playSound } = useGameSounds();
@@ -49,7 +54,7 @@ export default function VictoryCelebration({
   }, [rewardCoins, playSound]);
 
   return (
-    <div className="end-notice fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/75 p-4 backdrop-blur-sm">
+    <div className="end-notice fixed inset-0 z-50 flex overflow-y-auto bg-black/75 p-4 backdrop-blur-sm">
       {pieces.map((piece) => (
         <span
           key={piece.id}
@@ -64,7 +69,7 @@ export default function VictoryCelebration({
           }}
         />
       ))}
-      <div className="relative w-full max-w-md space-y-8 text-center">
+      <div className="relative m-auto w-full max-w-md space-y-8 text-center">
         <span
           aria-hidden
           className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-amber-400/20 ring-2 ring-amber-300/70 shadow-[0_0_40px_rgba(252,211,77,0.45)]"
@@ -85,6 +90,7 @@ export default function VictoryCelebration({
             +{rewardCoins} monedas
           </p>
         )}
+        <XpGainBar xpGain={xpGain} />
         <div className="flex flex-col items-center gap-2.5">
           {onRematch && (
             <button

@@ -247,6 +247,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
       onPick={() => undefined}
       registerAnchor={registerAnchor}
       packetCount={state.piles[s].length}
+      level={state.players[s].level}
     />
   );
 
@@ -414,6 +415,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
             out={false}
             isMe
             packetCount={state.piles[seat].length}
+            level={state.players[seat].level}
           />
         </div>
       }
@@ -457,7 +459,8 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
                     : `Juntaste ${bestCount} cartas en tu paquete.`
                 }
                 continueLabel="Continuar"
-                rewardCoins={game.iWon ? winReward : null}
+                rewardCoins={game.iWon ? (winReward?.coins ?? null) : null}
+                xpGain={game.iWon ? (winReward?.xpGain ?? null) : null}
                 onRematch={onRematch}
                 onContinue={() => setEndNoticeDismissed(true)}
               />

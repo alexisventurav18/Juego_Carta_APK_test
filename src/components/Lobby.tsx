@@ -1,10 +1,11 @@
 import { useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BarChart3, BookOpen, Bot, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Target, Users, VolumeX, X, Zap } from 'lucide-react';
+import { BarChart3, BookOpen, Bot, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Star, Target, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
 import { createRoom, joinRoom, leaveRoom, quickplayRoom } from '@/lib/rooms';
 import { getMyAvatar, getPlayerId, getStoredName, hasChosenAvatar, resetPlayerIdentity, storeAvatar, storeName } from '@/lib/identity';
 import { isDailyAvailableNow, useEconomy } from '@/lib/economy';
+import { levelFromXp, MAX_LEVEL } from '@/lib/experience';
 import { unclaimedCompleted } from '@/lib/missions';
 import { useFullscreen } from '@/lib/platform';
 import { useMuted } from '@/lib/soundPrefs';
@@ -95,6 +96,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   // cierra sin girar, queda el botón del regalo hasta reclamarla.
   const [dailyWheelOpen, setDailyWheelOpen] = useState(isDailyAvailableNow);
   const economy = useEconomy();
+  const level = levelFromXp(economy.xp);
   const dailyAvailable = isDailyAvailableNow() && !dailyWheelOpen;
   const missionsReady = unclaimedCompleted(economy.missions);
   const [avatar, setAvatar] = useState(getMyAvatar);
@@ -136,7 +138,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
     setError(null);
     storeName(trimmedName);
     try {
-      const roomId = await action({ id: getPlayerId(), name: trimmedName, avatar });
+      const roomId = await action({ id: getPlayerId(), name: trimmedName, avatar, level: level.level });
       if (token !== searchRef.current) {
         // Se canceló mientras se buscaba: la sala quedó creada con tu asiento,
         // se libera para no dejarla ocupada y te quedas en el menú.
@@ -297,6 +299,21 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
               >
                 <Coins className="h-4 w-4 shrink-0" aria-hidden />
                 {economy.coins}
+              </button>
+              <button
+                type="button"
+                onClick={() => setProfileOpen(true)}
+                aria-label={
+                  level.level >= MAX_LEVEL
+                    ? 'Nivel máximo'
+                    : `Nivel ${level.level}, ${level.xpIntoLevel} de ${level.xpNeeded} XP para el siguiente nivel`
+                }
+                title="Mi nivel y experiencia"
+                className="flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg bg-amber-400/20 px-3 text-[clamp(13px,2.8dvh,14px)] font-extrabold text-amber-300 ring-1 ring-amber-300/60 transition-transform active:scale-95"
+              >
+                <Star className="h-4 w-4 shrink-0 fill-amber-300" aria-hidden />
+                <span className="max-[760px]:hidden [@media(max-height:500px)]:hidden">Nv.</span>
+                {level.level}
               </button>
               <button
                 type="button"
