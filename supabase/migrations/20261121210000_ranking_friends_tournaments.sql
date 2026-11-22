@@ -322,12 +322,12 @@ AS $$
   END;
 $$;
 
-REVOKE ALL ON FUNCTION apply_ranking_award(text, integer, text, jsonb) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION apply_ranking_award(text, integer, text, jsonb) TO service_role;
+REVOKE ALL ON FUNCTION apply_ranking_award(text, integer, text, text, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION apply_ranking_award(text, integer, text, text, jsonb) TO service_role;
 REVOKE ALL ON FUNCTION apply_tournament_award(text, integer, text, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION apply_tournament_award(text, integer, text, jsonb) TO service_role;
-REVOKE ALL ON FUNCTION ranking_position(text, text) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION ranking_position(text, text) TO service_role;
+REVOKE ALL ON FUNCTION ranking_position(text, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION ranking_position(text, text, text) TO service_role;
 REVOKE ALL ON FUNCTION tournament_position(text, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION tournament_position(text, text) TO service_role;
 
