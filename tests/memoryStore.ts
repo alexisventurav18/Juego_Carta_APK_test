@@ -12,6 +12,7 @@ import {
   type TournamentEntry,
 } from '../src/games/roomService';
 import type { GameId } from '../src/games/shared';
+import type { ProgressSnapshot } from '../src/games/progress';
 
 /**
  * Almacén en memoria con la misma interfaz que el de Supabase: salas,
@@ -32,6 +33,7 @@ export class MemoryStore implements RoomStore {
   private tournamentEntries = new Map<string, TournamentEntry>();
   private tournamentAwards = new Set<string>();
   private claims = new Set<string>();
+  private progress = new Map<string, { economy: ProgressSnapshot; updatedAt: number }>();
 
   async findById(id: string) {
     return this.rooms.get(id) ?? null;
@@ -301,6 +303,14 @@ export class MemoryStore implements RoomStore {
     if (this.claims.has(claimKey)) return false;
     this.claims.add(claimKey);
     return true;
+  }
+
+  // Respaldo del progreso en la nube (A+B): foto en memoria, por jugador.
+  async getProgress(playerId: string) {
+    return this.progress.get(playerId) ?? null;
+  }
+  async saveProgress(playerId: string, economy: ProgressSnapshot, updatedAt: number) {
+    this.progress.set(playerId, { economy, updatedAt });
   }
 }
 

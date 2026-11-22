@@ -15,6 +15,7 @@ import {
   type TournamentEntry,
 } from '../_shared/games/roomService.ts';
 import type { GameId } from '../_shared/games/shared.ts';
+import type { ProgressSnapshot } from '../_shared/games/progress.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -546,6 +547,24 @@ const store: RoomStore = {
       .select('player_id');
     if (error) throw new Error(error.message);
     return (data ?? []).length > 0;
+  },
+
+  // Respaldo del progreso en la nube (A+B): la foto del jugador, por id.
+  async getProgress(playerId: string): Promise<{ economy: ProgressSnapshot; updatedAt: number } | null> {
+    const { data, error } = await db
+      .from('player_progress')
+      .select('economy, updated_at')
+      .eq('player_id', playerId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    return { economy: data.economy as ProgressSnapshot, updatedAt: new Date(data.updated_at).getTime() };
+  },
+  async saveProgress(playerId: string, economy: ProgressSnapshot, updatedAt: number): Promise<void> {
+    const { error } = await db
+      .from('player_progress')
+      .upsert({ player_id: playerId, economy, updated_at: new Date(updatedAt).toISOString() }, { onConflict: 'player_id' });
+    if (error) throw new Error(error.message);
   },
 };
 

@@ -481,6 +481,23 @@ function save(next: EconomyState): void {
     // Sin almacenamiento: las monedas duran solo mientras la app esté abierta.
   }
   listeners.forEach((listener) => listener());
+  // Respaldo en la nube (A): la copia se sube con debounce. Import
+  // dinámico para no crear un ciclo estático con `progress.ts` (que a su
+  // vez importa la economía). Sin conexión el juego sigue 100 % local.
+  if (typeof window !== 'undefined') {
+    void import('./progress')
+      .then((module) => module.scheduleProgressUpload())
+      .catch(() => undefined);
+  }
+}
+
+/**
+ * Reemplaza la economía entera por una foto bajada de la nube: se revalida
+ * con `loadEconomy` (migra y limpia), se guarda y se avisa a los
+ * suscriptores como cualquier otro cambio.
+ */
+export function replaceEconomy(state: EconomyState): void {
+  save(loadEconomy(JSON.stringify(state), getVisualPrefs()));
 }
 
 export function getEconomy(): EconomyState {

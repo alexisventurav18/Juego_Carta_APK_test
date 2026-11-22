@@ -67,6 +67,26 @@ export function resetPlayerIdentity(): void {
 }
 
 /**
+ * Restaura la identidad desde un código de respaldo (playerId + clave
+ * secreta). Devuelve false si el formato no es válido. No toca el nombre
+ * ni el avatar: esos llegan del perfil del servidor al descargar el
+ * progreso. La sala guardada sí se limpia: pertenecía a la identidad
+ * anterior.
+ */
+export function restoreIdentity(playerId: string, key: string): boolean {
+  const idHex = playerId.replace(/-/g, '').toLowerCase();
+  if (!/^[0-9a-f]{32}$/.test(idHex) || !/^[0-9a-f]{48}$/.test(key.toLowerCase())) return false;
+  const normalizedId =
+    `${idHex.slice(0, 8)}-${idHex.slice(8, 12)}-${idHex.slice(12, 16)}-${idHex.slice(16, 20)}-${idHex.slice(20)}`;
+  sessionPlayerId = normalizedId;
+  sessionPlayerKey = key.toLowerCase();
+  writeStorage(PLAYER_ID_KEY, normalizedId);
+  writeStorage(PLAYER_SECRET_KEY, key.toLowerCase());
+  writeStorage(ROOM_ID_KEY, null);
+  return true;
+}
+
+/**
  * Clave secreta del jugador: demuestra ante el servidor que eres tú (el id es público).
  * Nunca se muestra ni se comparte; el servidor solo guarda su hash.
  */

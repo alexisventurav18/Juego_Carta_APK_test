@@ -7,12 +7,13 @@ import type { CagaoMove } from '@/games/cagao';
 import type { RobaitoMove } from '@/games/robaito';
 import { botTickDelay } from '@/games/bots';
 import { hostSeat, isBotPlayer, type Player } from '@/games/shared';
-import { getPlayerId } from '@/lib/identity';
+import { getPlayerId, storeRoomId } from '@/lib/identity';
 import { abandonNoticeText, detectAbandonedPlayers } from '@/lib/abandonedPlayers';
 import { setMusicTheme } from '@/lib/music';
 import { themeForGame } from '@/lib/musicThemes';
 import { useGameSounds } from '@/hooks/useGameSounds';
-import { abandonRoom, botTick, fetchRoom, leaveRoom, requestStart, type RoomConnectionStatus, type RoomRow, type RoomSubscription, sendMove, subscribeToRoom } from '@/lib/rooms';
+import { abandonRoom, botTick, fetchRoom, joinRoom, leaveRoom, requestRematch, requestStart, type RoomConnectionStatus, type RoomRow, type RoomSubscription, sendMove, subscribeToRoom } from '@/lib/rooms';
+import { isAllowedRematchSender, REMATCH_INVITE_MS, type RematchInvite } from '@/lib/roomRematch';
 import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
 import { CHAT_TOAST_MS, isAllowedChatSender, type RoomChatMessage } from '@/lib/roomChat';
 import RoomChat from './RoomChat';
@@ -38,11 +39,22 @@ function errorMessage(err: unknown): string {
 
 export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const [playerId] = useState(getPlayerId);
+  // Sala que se está viendo: empieza siendo la de la prop y cambia sin pasar
+  // por el menú al entrar a una revancha (App no se toca: el `key` sigue
+  // siendo la sala con la que se entró).
+  const [activeRoomId, setActiveRoomId] = useState(roomId);
   const [room, setRoom] = useState<RoomRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   // Si la sala no carga en 12 s, no se queda en "Cargando sala..." para
   // siempre: se ofrece reintentar o volver al inicio.
   const [loadTimedOut, setLoadTimedOut] = useState(false);
+  // Aviso de revancha de otro humano de la sala terminada: dura lo que tarda
+  // la sala nueva en arrancar sola, y se entra con un toque, sin código.
+  const [rematchInvite, setRematchInvite] = useState<RematchInvite | null>(null);
+  const [joiningRematch, setJoiningRematch] = useState(false);
+  const rematchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Doble toque en Revancha: el botón no tiene estado de carga y la acción es lenta.
+  const rematchBusyRef = useRef(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leavingGame, setLeavingGame] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -165,6 +177,68 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     [showChatMessage],
   );
 
+  /**
+   * Cambiar a otra sala sin pasar por el menú (revancha): se guarda la sala
+   * nueva para reanudarla si se recarga la app, se resetean los contadores
+   * y avisos de la sala vieja, y el efecto de suscripción vuelve a correr
+   * con el canal de la sala nueva. La sala que se pasa ya viene del servidor,
+   * así que se muestra sin pasar por "Cargando sala...".
+   */
+  const switchRoom = useCallback(
+    (row: RoomRow) => {
+      storeRoomId(row.id);
+      versionRef.current = -1;
+      botVersionRef.current = -1;
+      prevPlayersRef.current = null;
+      if (chatTimerRef.current !== null) {
+        clearTimeout(chatTimerRef.current);
+        chatTimerRef.current = null;
+      }
+      if (rematchTimerRef.current !== null) {
+        clearTimeout(rematchTimerRef.current);
+        rematchTimerRef.current = null;
+      }
+      if (botRetryTimerRef.current !== null) {
+        clearTimeout(botRetryTimerRef.current);
+        botRetryTimerRef.current = null;
+      }
+      setRematchInvite(null);
+      setJoiningRematch(false);
+      setChatToast(null);
+      setAbandonedNames([]);
+      setNotice(null);
+      setLoadError(null);
+      setLoadTimedOut(false);
+      setConfirmLeave(false);
+      setLeavingGame(false);
+      setBotRetries(0);
+      acceptRow(row);
+      setActiveRoomId(row.id);
+    },
+    [acceptRow],
+  );
+
+  /**
+   * Invitación a la revancha de otro humano: solo vale en la pantalla de fin
+   * de partida (si la partida no terminó, es un aviso viejo o ajeno y se
+   * ignora). El aviso dura lo que tarda la sala nueva en arrancar sola; el
+   * aviso de chat se quita para no solaparse con él.
+   */
+  const handleRematchInvite = useCallback((invite: RematchInvite) => {
+    const current = roomRef.current;
+    if (!current || !current.state || !isGameFinished(current.state)) return;
+    if (!isAllowedRematchSender(invite, current.players)) return;
+    if (invite.code === current.code) return;
+    if (chatTimerRef.current !== null) {
+      clearTimeout(chatTimerRef.current);
+      chatTimerRef.current = null;
+    }
+    setChatToast(null);
+    setRematchInvite(invite);
+    if (rematchTimerRef.current !== null) clearTimeout(rematchTimerRef.current);
+    rematchTimerRef.current = setTimeout(() => setRematchInvite(null), REMATCH_INVITE_MS);
+  }, []);
+
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
@@ -195,7 +269,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
 
     const refresh = () => {
       setConnection('connecting');
-      fetchRoom(roomId)
+      fetchRoom(activeRoomId)
         .then((row) => {
           if (!active) return;
           setLoadError(null);
@@ -213,7 +287,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
 
     refresh();
     const subscription = subscribeToRoom(
-      roomId,
+      activeRoomId,
       (version) => {
         if (version > versionRef.current) refresh();
       },
@@ -223,6 +297,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         if (!isAllowedChatSender(msg, roomRef.current?.players ?? [])) return;
         showChatMessage(msg);
       },
+      handleRematchInvite,
     );
     subscriptionRef.current = subscription;
     const refreshTimer = window.setInterval(refresh, 15000);
@@ -235,12 +310,13 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       subscription.unsubscribe();
       subscriptionRef.current = null;
       if (chatTimerRef.current !== null) clearTimeout(chatTimerRef.current);
+      if (rematchTimerRef.current !== null) clearTimeout(rematchTimerRef.current);
       window.clearInterval(refreshTimer);
       window.removeEventListener('focus', refresh);
       window.removeEventListener('online', refresh);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [roomId, acceptRow, retryToken, showChatMessage]);
+  }, [activeRoomId, acceptRow, retryToken, showChatMessage, handleRematchInvite]);
 
   useEffect(() => {
     if (!notice) return;
@@ -356,7 +432,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       acceptRow(await action());
     } catch (err) {
       setNotice(errorMessage(err));
-      fetchRoom(roomId).then(acceptRow).catch(() => undefined);
+      fetchRoom(room.id).then(acceptRow).catch(() => undefined);
     } finally {
       setSaving(false);
     }
@@ -380,6 +456,75 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     void run(() => requestStart(room.id, dealer));
   };
 
+  /**
+   * Pedir la revancha: el servidor crea la sala nueva (o devuelve la que ya
+   * se creó para esta partida) y se avisa a los demás por Broadcast. Se
+   * cambia a la sala nueva y LUEGO se abandona la vieja: si se abandona
+   * antes, el sondeo de la sala vieja vería la clave borrada y enseñaría
+   * el error fatal "No estás en esta sala.". Si el aviso falla, la revancha
+   * sigue: quien no lo recibió puede tocar Revancha y el servidor le
+   * devuelve la misma sala. Si la revancha falla (sala no terminó, sin
+   * conexión), se enseña el error y se sigue en la partida terminada.
+   */
+  const handleRematch = async () => {
+    if (!state || !isGameFinished(state) || rematchBusyRef.current) return;
+    rematchBusyRef.current = true;
+    const oldRoom = room;
+    let switched = false;
+    try {
+      const next = await requestRematch(oldRoom.id);
+      const invite: RematchInvite = {
+        code: next.code,
+        game: next.game,
+        fromId: playerId,
+        fromName: oldRoom.players.find((p) => p.id === playerId)?.name ?? 'Jugador',
+        at: Date.now(),
+      };
+      const sendInvite = subscriptionRef.current
+        ? subscriptionRef.current.sendRematchInvite(invite)
+        : Promise.resolve();
+      // El aviso no bloquea el cambio de sala: 3 s como máximo, y si falla
+      // es mejor esfuerzo (la revancha ya está creada).
+      await Promise.race([sendInvite, new Promise<void>((resolve) => setTimeout(resolve, 3_000))]).catch(
+        () => undefined,
+      );
+      switchRoom(next);
+      switched = true;
+    } catch (err) {
+      setNotice(errorMessage(err));
+    } finally {
+      rematchBusyRef.current = false;
+    }
+    if (!switched) {
+      // El cambio de sala no se dio (revancha fallida): no se abandona nada.
+      return;
+    }
+    void abandonRoom(oldRoom.id).catch(() => undefined);
+  };
+
+  /**
+   * Unirse a la revancha desde el aviso, con un toque y sin escribir código:
+   * se entra a la sala nueva con el mismo nombre/avatar/nivel y se cambia
+   * a ella; la sala vieja se abandona después, como al pedirla uno mismo.
+   * Si la entrada falla (sala llena, ya arrancó, ya no existe), se quita el
+   * aviso y se enseña el error.
+   */
+  const joinRematchInvite = async () => {
+    if (!rematchInvite || joiningRematch) return;
+    setJoiningRematch(true);
+    const oldRoom = room;
+    try {
+      const next = await joinRoom(rematchInvite.code, oldRoom.players[seat]);
+      switchRoom(next);
+      void abandonRoom(oldRoom.id).catch(() => undefined);
+    } catch (err) {
+      setRematchInvite(null);
+      setNotice(errorMessage(err));
+    } finally {
+      setJoiningRematch(false);
+    }
+  };
+
   const state = room.state;
   const info = GAMES[room.game];
 
@@ -398,6 +543,8 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       onRetry: retryConnection,
       notice,
       onDealingChange: handleDealingChange,
+      // Revancha online: las mesas la muestran solo en la pantalla de fin de partida.
+      onRematch: handleRematch,
       resultFooter:
         // Jugar otra partida lo ofrece el anfitrión efectivo: si quien creó la
         // sala abandonó, el primer humano que queda hereda el papel.
@@ -462,6 +609,40 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
             >
               <X className="h-4 w-4" />
             </button>
+          </div>
+        )}
+
+        {/* Aviso de revancha: otro humano de la partida terminada creó una
+            sala nueva y te invita a entrar con un toque, sin escribir código.
+            Va debajo del aviso de abandono y en el mismo sitio que el aviso
+            de chat, que se quita al llegar este para no solaparse. Después
+            en el DOM que el aviso de fin de partida, así pinta por encima. */}
+        {state && isGameFinished(state) && rematchInvite && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="fixed left-1/2 top-[6.75rem] z-50 flex w-[min(92vw,26rem)] flex-col gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-left text-xs font-bold text-white shadow-xl ring-1 ring-emerald-300/60 sm:text-sm"
+          >
+            <p>
+              {rematchInvite.fromName} te invita a la revancha de {GAMES[rematchInvite.game].name}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={joinRematchInvite}
+                disabled={joiningRematch}
+                className="btn-gold min-h-[44px] flex-1 rounded-lg px-3 py-2 text-sm font-extrabold transition-transform active:scale-95 disabled:opacity-60"
+              >
+                {joiningRematch ? 'Entrando…' : 'Unirse a la revancha'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRematchInvite(null)}
+                className="btn-wood min-h-[44px] rounded-lg px-3 py-2 text-sm font-bold transition-transform active:scale-95"
+              >
+                Descartar
+              </button>
+            </div>
           </div>
         )}
 

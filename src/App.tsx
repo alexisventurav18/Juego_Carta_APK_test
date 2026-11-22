@@ -1,4 +1,5 @@
-import { Component, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import Lobby from '@/components/Lobby';
 import OrientationGuard from '@/components/OrientationGuard';
 import RoomView from '@/components/RoomView';
@@ -10,46 +11,8 @@ import { getResumableRoomId, storeRoomId } from '@/lib/identity';
 import { setMusicTheme } from '@/lib/music';
 import { themeForGame } from '@/lib/musicThemes';
 import { leaveRoomBestEffort } from '@/lib/rooms';
+import { restoreCloudProgressIfFresh } from '@/lib/progress';
 import { MENU_THEMES, TABLE_THEMES, useVisualPrefs } from '@/lib/visualPrefs';
-
-/**
- * Red de seguridad: si una pantalla rompe al dibujarse (por ejemplo, la sala
- * en línea), la app mostraba solo el fondo marrón y había que cerrarla. Con
- * esto se ve un mensaje y un botón para volver al inicio.
- */
-class ScreenErrorBoundary extends Component<
-  { onReset: () => void; children: ReactNode },
-  { hasError: boolean }
-> {
-  state = { hasError: false };
-
-  static getDerivedStateFromError(): { hasError: boolean } {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: unknown): void {
-    console.error('Error en la pantalla del juego', error);
-  }
-
-  render(): ReactNode {
-    if (!this.state.hasError) return this.props.children;
-    return (
-      <div className="wood-stage safe-screen flex flex-col items-center justify-center gap-4 px-4 text-center">
-        <p className="max-w-md text-amber-50">Algo salió mal en esta pantalla.</p>
-        <button
-          type="button"
-          onClick={() => {
-            this.setState({ hasError: false });
-            this.props.onReset();
-          }}
-          className="btn-gold min-h-[44px] rounded-lg px-5 py-2.5 text-sm font-extrabold transition-transform active:scale-95"
-        >
-          Volver al inicio
-        </button>
-      </div>
-    );
-  }
-}
 
 export default function App() {
   const [inviteCode, setInviteCode] = useState<string | undefined>(() =>
@@ -80,6 +43,15 @@ export default function App() {
     setRoomId(null);
   };
 
+  /** Volver al menú desde el seguro de errores: no queda ni sala guardada ni
+      partida en curso, así que el menú se dibuja limpio. */
+  const resetToMenu = () => {
+    storeRoomId(null);
+    setRoomId(null);
+    setOfflineGame(null);
+    setInviteCode(undefined);
+  };
+
   const startOffline = (setup: OfflineSetup) => {
     storeRoomId(null);
     setRoomId(null);
@@ -92,6 +64,14 @@ export default function App() {
     if (offlineGame) setMusicTheme(themeForGame(offlineGame.game));
     else if (!roomId) setMusicTheme('lobby');
   }, [offlineGame, roomId]);
+
+  // Respaldo en la nube (A): al arrancar, si este teléfono no tiene
+  // economía local, se baja la copia de la nube (si la hay). Es
+  // best-effort y silencioso: sin conexión o sin copia, el juego sigue
+  // normal con una economía nueva.
+  useEffect(() => {
+    void restoreCloudProgressIfFresh().catch(() => undefined);
+  }, []);
 
   // Al cerrar la aplicación (pagehide) se avisa al servidor para liberar el
   // asiento y se borra la sala guardada: al volver a abrir, el juego no
@@ -117,6 +97,11 @@ export default function App() {
       {/* El bloqueo de orientación es silencioso y puede fallar: en vertical se
           muestra el aviso "Gira tu teléfono" en lugar de una mesa cortada. */}
       <OrientationGuard />
+      {/* Red de seguridad raíz: si el menú (o un modal sin su propio
+          boundary) rompe al dibujarse, se ve el mensaje en vez de la
+          pantalla en blanco. La sala y la partida offline tienen además
+          su propio boundary, que atrapa el error antes que este. */}
+      <ErrorBoundary onReset={resetToMenu}>
       {!booted ? (
         <SplashScreen onDone={() => setBooted(true)} />
       ) : (
@@ -131,24 +116,27 @@ export default function App() {
         } as CSSProperties}
       >
         {offlineGame ? (
-          <ScreenErrorBoundary
+          <ErrorBoundary
             key={`offline-${offlineGame.game}-${offlineGame.playerCount}`}
             onReset={() => setOfflineGame(null)}
           >
             <OfflineBotGame {...offlineGame} onLeave={() => setOfflineGame(null)} />
-          </ScreenErrorBoundary>
+          </ErrorBoundary>
         ) : (
           <div className="wood-stage fixed inset-0 antialiased">
             {roomId ? (
-              <ScreenErrorBoundary
+              <ErrorBoundary
                 key={`room-${roomId}`}
                 onReset={() => {
-                  storeRoomId(null);
-                  setRoomId(null);
+                  // El asiento se libera en el servidor (un bot lo toma): sin
+                  // esto la sala quedaría ocupada aunque la pantalla ya no
+                  // exista. Es el mismo aviso best-effort del cierre de app.
+                  leaveRoomBestEffort(roomId);
+                  resetToMenu();
                 }}
               >
                 <RoomView key={roomId} roomId={roomId} onLeave={leaveRoom} />
-              </ScreenErrorBoundary>
+              </ErrorBoundary>
             ) : (
               <Lobby initialJoinCode={inviteCode || undefined} onEnter={enterRoom} onStartOffline={startOffline} />
             )}
@@ -156,6 +144,7 @@ export default function App() {
         )}
       </div>
       )}
+      </ErrorBoundary>
     </OptionsProvider>
   );
 }

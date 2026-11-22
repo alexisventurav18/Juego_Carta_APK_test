@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BarChart3, BookOpen, Bot, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Star, Target, Trophy, Users, VolumeX, X, Zap } from 'lucide-react';
+import { BarChart3, BookOpen, Bot, CloudDownload, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Star, Target, Trophy, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
 import { createRoom, friendsList, joinRoom, leaveRoom, quickplayRoom, tournamentInfo, type TournamentData } from '@/lib/rooms';
@@ -13,12 +13,14 @@ import { formatCountdown } from '@/lib/tournament';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import Avatar from './avatar/Avatar';
 import AvatarEditor from './avatar/AvatarEditor';
+import ErrorBoundary from './ErrorBoundary';
 import { useOptions } from './options/OptionsProvider';
 import Tutorial from './tutorial/Tutorial';
 import Store from './Store';
 import MissionsModal from './MissionsModal';
 import DailyWheel from './DailyWheel';
 import ProfileModal from './ProfileModal';
+import RecoveryModal from './RecoveryModal';
 import RankingModal from './RankingModal';
 import FriendsModal from './FriendsModal';
 import TournamentModal from './TournamentModal';
@@ -96,6 +98,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const [storeOpen, setStoreOpen] = useState(false);
   const [missionsOpen, setMissionsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [rankingOpen, setRankingOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [tournamentOpen, setTournamentOpen] = useState(false);
@@ -249,6 +252,22 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
     setTournamentOpen(false);
     setGame(tournamentGame);
     void run('quickplay', async (player) => (await quickplayRoom(tournamentGame, player)).id);
+  };
+
+  /** Cierra todas las ventanas del menú: es el reset del seguro de errores
+      de los modales (si uno rompe, solo se cierra esa ventana y el menú
+      sigue entero; sin esto, el error tumbaría todo el menú). */
+  const closeAllModals = () => {
+    setStoreOpen(false);
+    setMissionsOpen(false);
+    setRankingOpen(false);
+    setFriendsOpen(false);
+    setTournamentOpen(false);
+    setDailyWheelOpen(false);
+    setProfileOpen(false);
+    setRecoveryOpen(false);
+    setEditorOpen(false);
+    setTutorialOpen(false);
   };
 
   const changePlayer = () => {
@@ -563,6 +582,18 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
             </button>
           </footer>
 
+          {/* Recuperar el progreso guardado en la nube con el código de respaldo. */}
+          <div className="flex shrink-0 justify-center">
+            <button
+              type="button"
+              onClick={() => setRecoveryOpen(true)}
+              className="flex min-h-[32px] touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[13px] font-bold text-amber-100/70 transition-transform hover:text-amber-50 active:scale-95"
+            >
+              <CloudDownload className="h-4 w-4 shrink-0" aria-hidden />
+              Recuperar mi progreso
+            </button>
+          </div>
+
           {/* Mientras se busca partida (crear, unirse u online) se puede cancelar y quedarse en el menú. */}
           {busy !== null && (
             <div className="flex shrink-0 justify-center">
@@ -633,6 +664,10 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           </Modal>
         )}
       </div>
+      {/* Capa de modales con su propio seguro: si una ventana rompe al
+          dibujarse (como Amigos), solo se cierra esa ventana con un aviso y
+          el menú sigue entero, en vez de quedar la app en blanco. */}
+      <ErrorBoundary compact onReset={closeAllModals}>
       {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
       {missionsOpen && <MissionsModal onClose={() => setMissionsOpen(false)} />}
       {rankingOpen && <RankingModal onClose={() => setRankingOpen(false)} />}
@@ -661,6 +696,16 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           }}
         />
       )}
+      {recoveryOpen && (
+        <RecoveryModal
+          onClose={() => setRecoveryOpen(false)}
+          onRestored={() => {
+            setName(getStoredName());
+            setAvatar(getMyAvatar());
+            setAvatarChosen(hasChosenAvatar());
+          }}
+        />
+      )}
       {editorOpen && (
         <AvatarEditor
           initial={avatarChosen ? avatar : null}
@@ -683,6 +728,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           }}
         />
       )}
+      </ErrorBoundary>
     </div>
   );
 }

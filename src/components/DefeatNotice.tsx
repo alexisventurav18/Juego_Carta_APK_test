@@ -3,7 +3,7 @@ import { useGameSounds } from '@/hooks/useGameSounds';
 
 interface DefeatNoticeProps {
   onContinue: () => void;
-  /** Revancha inmediata (sin conexión): si se pasa, es el botón principal. */
+  /** Revancha inmediata (online y sin conexión): si se pasa, es el botón principal. */
   onRematch?: () => void;
   /** Textos opcionales: por defecto son los del Casino (partida por equipos a 21). */
   title?: string;

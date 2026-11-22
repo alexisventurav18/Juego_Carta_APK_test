@@ -18,6 +18,8 @@ import {
   type TournamentInfo,
 } from './ranking.ts';
 import { type GameId, botLevelFor, hostSeat, isBotPlayer, MAX_LEVEL, type Player } from './shared.ts';
+import { loadProgress, saveProgress } from './progress.ts';
+import type { ProgressSnapshot } from './progress.ts';
 import { projectState } from './view.ts';
 
 /*
@@ -115,6 +117,10 @@ export interface RoomStore {
   getTournamentEntry(tournamentId: string, playerId: string): Promise<{ entry: TournamentEntry; rank: number } | null>;
   /** Reclama un premio del podio. Devuelve false si ya se reclamó. */
   claimPrize(scope: 'season' | 'tournament', key: string, playerId: string, place: number, coins: number): Promise<boolean>;
+  // Respaldo del progreso en la nube (A+B): la foto del jugador (monedas,
+  // XP, cosméticos, misiones) con su fecha. El servidor solo la guarda.
+  getProgress(playerId: string): Promise<{ economy: ProgressSnapshot; updatedAt: number } | null>;
+  saveProgress(playerId: string, economy: ProgressSnapshot, updatedAt: number): Promise<void>;
 }
 
 /** Perfil público de un jugador: su identidad es su id + su clave (sin cuentas). */
@@ -203,6 +209,7 @@ export type RoomRequest =
   | ({ action: 'quickplay'; game: GameId; name: string; avatar?: string; level?: number } & Auth)
   | ({ action: 'leave'; roomId: string } & Auth)
   | ({ action: 'abandon'; roomId: string } & Auth)
+  | ({ action: 'rematch'; roomId: string } & Auth)
   | ({ action: 'view'; roomId: string } & Auth)
   | ({ action: 'start'; roomId: string; dealer?: number } & Auth)
   | ({ action: 'move'; roomId: string; move: unknown } & Auth)
@@ -217,7 +224,9 @@ export type RoomRequest =
   | ({ action: 'invite_friend'; friendId: string; game?: GameId } & Auth)
   | ({ action: 'tournament' } & Auth)
   | ({ action: 'tournament_claim' } & Auth)
-  | ({ action: 'season_claim' } & Auth);
+  | ({ action: 'season_claim' } & Auth)
+  | ({ action: 'save_progress'; economy: unknown; baseUpdatedAt?: number } & Auth)
+  | ({ action: 'load_progress' } & Auth);
 
 export interface RoomView {
   id: string;
@@ -259,6 +268,14 @@ export type SocialPayload =
       me: TournamentStanding | null;
     }
   | { kind: 'claim'; scope: 'season' | 'tournament'; ref: string; coins: number; place: number }
+  | { kind: 'progress_saved'; updatedAt: number }
+  | {
+      kind: 'progress';
+      economy: ProgressSnapshot | null;
+      updatedAt: number | null;
+      profile: { name: string; avatar?: string; level?: number } | null;
+    }
+  | { kind: 'progress_conflict'; economy: ProgressSnapshot; updatedAt: number }
   | { kind: 'ok' };
 
 export type RoomResponse =
@@ -280,10 +297,12 @@ const SEASON_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 /** Cuánto espera una sala pública a que se llene antes de completarse con bots y arrancar. */
 export const QUICKPLAY_WAIT_MS = 30_000;
+/** Ventana en la que una segunda revancha de la misma partida terminada reutiliza la sala ya creada. */
+export const REMATCH_DEDUP_MS = 120_000;
 /** Una sala pública en espera más vieja que esto ya no se ofrece en matchmaking. */
 export const QUICKPLAY_STALE_MS = 5 * 60_000;
 
-class RoomError extends Error {}
+export class RoomError extends Error {}
 
 export function makeRoomCode(): string {
   let code = '';
@@ -308,7 +327,7 @@ function asRecord(raw: unknown): Record<string, unknown> {
   return raw as Record<string, unknown>;
 }
 
-function readAuth(req: Record<string, unknown>): Auth {
+export function readAuth(req: Record<string, unknown>): Auth {
   const { playerId, key } = req;
   if (typeof playerId !== 'string' || !ID_PATTERN.test(playerId) || /^bot-/i.test(playerId)) {
     throw new RoomError('Identificador de jugador no válido.');
@@ -387,7 +406,7 @@ function readRankingGame(req: Record<string, unknown>): GameId | 'all' {
  * Confirma que (playerId, key) corresponde al perfil guardado. Las acciones
  * sociales no entran a ninguna sala, así que esta es su autenticación.
  */
-async function authenticateProfile(store: RoomStore, auth: Auth): Promise<PlayerProfile> {
+export async function authenticateProfile(store: RoomStore, auth: Auth): Promise<PlayerProfile> {
   const profile = await store.getProfile(auth.playerId);
   if (!profile) throw new RoomError('Aún no tienes perfil. Crea o entra a una sala primero.');
   if (!safeEqual(profile.keyHash, await hashKey(auth.key))) {
@@ -725,6 +744,95 @@ async function abandon(store: RoomStore, req: Record<string, unknown>): Promise<
 }
 
 /**
+ * Revancha online: crea una sala NUEVA con el mismo juego para volver a
+ * jugar con los mismos humanos, o devuelve la que ya se creó para esta
+ * partida (la doble revancha no duplica: si dos tocan Revancha a la vez,
+ * el segundo entra a la sala del primero).
+ *
+ * La sala nueva es pública: así el auto-inicio de quickplay (ver
+ * `maybeAutoStart`) la arranca sola a los ~30 s completando con bots a los
+ * humanos que no se unieron. Quien no se une en 30 s lo reemplaza un bot,
+ * y si queda un solo humano juega contra bots como en quickplay. En cuanto
+ * se unen todos los humanos de la partida terminada, la revancha arranca
+ * al momento (ver `startRematchIfComplete`) en vez de esperar los 30 s.
+ *
+ * La sala nueva es pública y aparece en matchmaking: un extraño podría
+ * entrar por "Jugar online" en esos ~30 s si es la sala en espera más
+ * vieja. Es el precio de reutilizar el auto-inicio sin otro temporizador;
+ * la ventana es corta y el aviso de revancha llega al instante por
+ * Broadcast. Sin migración: la sala usa las columnas que ya existen.
+ */
+async function rematch(store: RoomStore, req: Record<string, unknown>): Promise<RoomResponse> {
+  const auth = readAuth(req);
+  const stored = await loadById(store, readRoomId(req));
+  const seat = await authenticate(stored, auth);
+  const { room, secret } = stored;
+  if (room.status !== 'playing' || !secret.state || !isGameFinished(secret.state)) {
+    throw new RoomError('La partida todavía no terminó.');
+  }
+  const requester = room.players[seat];
+  const humans = new Set(room.players.filter((p) => !isBotPlayer(p)).map((p) => p.id));
+  const now = Date.now();
+  // Doble revancha: si ya hay una sala de revancha en espera para esta
+  // partida (creada hace poco, solo con humanos de la partida terminada),
+  // se reutiliza en vez de crear otra.
+  const waiting = await store.findWaiting(room.game);
+  const existing = waiting.find(
+    (candidate) =>
+      now - candidate.room.createdAt <= REMATCH_DEDUP_MS &&
+      candidate.room.players.length >= 1 &&
+      candidate.room.players.every((p) => humans.has(p.id)),
+  );
+  if (existing) {
+    const alreadyIn = existing.room.players.findIndex((p) => p.id === auth.playerId);
+    if (alreadyIn !== -1) {
+      const started = await startRematchIfComplete(store, existing, alreadyIn, humans);
+      if (started) return started;
+      return { ok: true, room: toView(existing, alreadyIn) };
+    }
+    if (existing.room.players.length < GAMES[room.game].maxPlayers) {
+      const players = [...existing.room.players, requester];
+      const keys = { ...existing.secret.keys, [auth.playerId]: await hashKey(auth.key) };
+      const joined = await commit(store, existing, { players, keys }, players.length - 1);
+      if (joined.ok) {
+        const fresh = await loadById(store, existing.room.id);
+        const started = await startRematchIfComplete(store, fresh, players.length - 1, humans);
+        if (started) return started;
+        return joined;
+      }
+      // Conflicto de versión: la sala cambió mientras se entraba; se crea una nueva abajo.
+    }
+  }
+  const created = await store.create(
+    { game: room.game, status: 'waiting', players: [requester], isPublic: true, createdAt: now },
+    { state: null, keys: { [auth.playerId]: await hashKey(auth.key) } },
+  );
+  // Partida de un solo humano (contra bots): ya están todos, arranca al momento.
+  const started = await startRematchIfComplete(store, created, 0, humans);
+  if (started) return started;
+  return { ok: true, room: toView(created, 0) };
+}
+
+/**
+ * Si ya están en la sala todos los humanos de la partida terminada, la
+ * revancha arranca al momento (con bots hasta la menor cantidad válida)
+ * en vez de esperar los 30 s del auto-inicio de quickplay. Si falta
+ * alguien, devuelve null y la sala sigue esperando (o la arranca el
+ * auto-inicio a los 30 s).
+ */
+async function startRematchIfComplete(
+  store: RoomStore,
+  stored: StoredRoom,
+  seat: number,
+  humans: Set<string>,
+): Promise<RoomResponse | null> {
+  const { room } = stored;
+  if (room.status !== 'waiting') return null;
+  if (![...humans].every((id) => room.players.some((p) => p.id === id))) return null;
+  return startRoomNow(store, stored, seat);
+}
+
+/**
  * Arranque automático de una sala pública en espera. Lo dispara cualquier
  * jugador de la sala al consultarla (view/tick) o al entrar (quickplay): no
  * depende de quién sea el anfitrión. Arranca cuando se llena, o cuando pasa
@@ -743,6 +851,20 @@ async function maybeAutoStart(
   if (!room.players.some((p) => !isBotPlayer(p))) return null;
   const full = room.players.length >= GAMES[room.game].maxPlayers;
   if (!full && now - room.createdAt < QUICKPLAY_WAIT_MS) return null;
+  return startRoomNow(store, stored, seat);
+}
+
+/**
+ * Arranca una sala en espera al momento: completa con bots hasta la menor
+ * cantidad válida, crea el estado y la pone en juego. Si otro jugador ya
+ * la arrancó (conflicto de versión), devuelve su vista.
+ */
+async function startRoomNow(
+  store: RoomStore,
+  stored: StoredRoom,
+  seat: number,
+): Promise<RoomResponse> {
+  const { room } = stored;
   const target = minValidPlayerCount(room.game, room.players.length);
   // Los bots que completan la mesa se sientan cerca del nivel del primer humano.
   const anchor = room.players.find((p) => !isBotPlayer(p))?.level ?? 1;
@@ -1002,6 +1124,8 @@ export async function handleRequest(store: RoomStore, raw: unknown): Promise<Roo
         return await leave(store, req);
       case 'abandon':
         return await abandon(store, req);
+      case 'rematch':
+        return await rematch(store, req);
       case 'view':
         return await view(store, req);
       case 'start':
@@ -1032,6 +1156,10 @@ export async function handleRequest(store: RoomStore, raw: unknown): Promise<Roo
         return await claimTournamentPrize(store, req);
       case 'season_claim':
         return await claimSeasonPrize(store, req);
+      case 'save_progress':
+        return await saveProgress(store, req);
+      case 'load_progress':
+        return await loadProgress(store, req);
       default:
         throw new RoomError('Acción no válida.');
     }

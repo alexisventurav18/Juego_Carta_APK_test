@@ -35,7 +35,7 @@ export interface GameTableProps {
   notice?: string | null;
   /** Contenido extra del resultado (p. ej. el botón "Jugar otra partida"). */
   resultFooter?: ReactNode;
-  /** Revancha inmediata en la pantalla de fin de partida (solo sin conexión). */
+  /** Revancha inmediata en la pantalla de fin de partida (online y sin conexión). */
   onRematch?: () => void;
   /**
    * Aviso de cuándo se está repartiendo en pantalla: mientras el reparto está activo nadie

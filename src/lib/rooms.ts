@@ -3,6 +3,7 @@ import type { GameId, Player } from '@/games/shared';
 import { serverErrorMessage } from './functionsError';
 import { getPlayerId, getPlayerKey } from './identity';
 import { isValidChatPayload, ROOM_CHAT_EVENT, type RoomChatMessage } from './roomChat';
+import { isValidRematchInvite, ROOM_REMATCH_INVITE_EVENT, type RematchInvite } from './roomRematch';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from './supabase';
 
 export type RoomStatus = 'waiting' | 'playing';
@@ -39,7 +40,7 @@ interface ServerResponse {
  * mensaje del servidor cuando rechaza y solo usa el genérico de "sin conexión"
  * si no hay ninguno (p. ej. fallo de red). Devuelve la respuesta tal cual.
  */
-async function callRaw<T>(body: Record<string, unknown>): Promise<T> {
+export async function callRaw<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(FUNCTION_NAME, {
     body: { ...body, playerId: getPlayerId(), key: getPlayerKey() },
   });
@@ -125,6 +126,17 @@ export function fetchRoom(roomId: string): Promise<RoomRow> {
   return call({ action: 'view', roomId });
 }
 
+/**
+ * Pedir la revancha de una partida online terminada: el servidor crea una
+ * sala nueva con el mismo juego (o devuelve la que ya se creó para esta
+ * partida) y el cliente avisa a los demás por Broadcast (ver
+ * `sendRematchInvite`). La sala nueva es pública y arranca sola a los ~30 s
+ * completando con bots a los que no se unieron.
+ */
+export function requestRematch(roomId: string): Promise<RoomRow> {
+  return call({ action: 'rematch', roomId });
+}
+
 /** Empieza (o repite) la partida. `dealer` solo se usa en Casino contra bots, tras el sorteo en pantalla. */
 export function requestStart(roomId: string, dealer?: number): Promise<RoomRow> {
   return call({ action: 'start', roomId, dealer });
@@ -144,6 +156,8 @@ export interface RoomSubscription {
   unsubscribe: () => void;
   /** Envía un mensaje de chat por Broadcast a los demás jugadores de la sala. */
   sendChat: (msg: RoomChatMessage) => void;
+  /** Avisa a los demás de la sala terminada que hay una revancha (Broadcast; el remitente no la recibe). */
+  sendRematchInvite: (invite: RematchInvite) => Promise<void>;
 }
 
 /**
@@ -154,12 +168,15 @@ export interface RoomSubscription {
  * (evento 'chat'): los mensajes llegan por `onChat` ya validados contra el
  * catálogo cerrado (ver `isValidChatPayload`); el remitente no recibe su
  * propio Broadcast, así que quien envía muestra su mensaje en local.
+ * La invitación a la revancha viaja por el mismo canal (evento
+ * 'rematch_invite') y llega por `onRematchInvite` ya validada.
  */
 export function subscribeToRoom(
   roomId: string,
   onVersion: (version: number) => void,
   onStatus?: (status: RoomConnectionStatus) => void,
   onChat?: (msg: RoomChatMessage) => void,
+  onRematchInvite?: (invite: RematchInvite) => void,
 ): RoomSubscription {
   const channel = supabase
     .channel(`room:${roomId}`)
@@ -172,6 +189,10 @@ export function subscribeToRoom(
       // Solo mensajes del catálogo cerrado: cualquier otra cosa se descarta en silencio.
       if (isValidChatPayload(payload)) onChat?.(payload);
     })
+    .on('broadcast', { event: ROOM_REMATCH_INVITE_EVENT }, ({ payload }) => {
+      // Solo invitaciones con forma válida: cualquier otra cosa se descarta en silencio.
+      if (isValidRematchInvite(payload)) onRematchInvite?.(payload);
+    })
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') onStatus?.('connected');
       else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') onStatus?.('offline');
@@ -183,6 +204,9 @@ export function subscribeToRoom(
     },
     sendChat: (msg) => {
       void channel.send({ type: 'broadcast', event: ROOM_CHAT_EVENT, payload: msg });
+    },
+    sendRematchInvite: async (invite) => {
+      await channel.send({ type: 'broadcast', event: ROOM_REMATCH_INVITE_EVENT, payload: invite });
     },
   };
 }
