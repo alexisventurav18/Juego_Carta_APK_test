@@ -16,7 +16,7 @@ describe('amigos (cliente): llamadas al servidor', () => {
   it('rooms.ts pide la lista con "friends_list" y trae código, amigos, solicitudes e invitaciones', () => {
     const rooms = read('src/lib/rooms.ts');
     assert.ok(rooms.includes("action: 'friends_list'"), 'rooms: la acción debe ser "friends_list"');
-    assert.ok(rooms.includes('export function friendsList'), 'rooms: debe existir friendsList()');
+    assert.ok(rooms.includes('export async function friendsList'), 'rooms: debe existir friendsList()');
     assert.ok(rooms.includes('myCode: string'), 'rooms: la lista trae mi código de amigo');
     assert.ok(rooms.includes('friends: FriendEntry[]'), 'rooms: la lista trae los amigos');
     assert.ok(rooms.includes('pendingIn: FriendRequestEntry[]'), 'rooms: la lista trae solicitudes entrantes');
@@ -29,7 +29,7 @@ describe('amigos (cliente): llamadas al servidor', () => {
   it('rooms.ts busca por nombre o código con "friend_search"', () => {
     const rooms = read('src/lib/rooms.ts');
     assert.ok(rooms.includes("action: 'friend_search'"), 'rooms: la acción debe ser "friend_search"');
-    assert.ok(rooms.includes('export function friendSearch(query: string)'), 'rooms: debe existir friendSearch(query)');
+    assert.ok(rooms.includes('export async function friendSearch(query: string)'), 'rooms: debe existir friendSearch(query)');
     assert.ok(rooms.includes("query }"), 'rooms: la búsqueda envía el texto');
     assert.ok(rooms.includes('players: FriendSearchResult[]'), 'rooms: la búsqueda trae jugadores');
   });

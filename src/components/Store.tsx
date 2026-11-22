@@ -96,7 +96,7 @@ export default function Store({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="wood-panel flex max-h-full w-full max-w-2xl flex-col overflow-hidden p-4"
+        className="wood-panel flex max-h-full w-full max-w-2xl flex-col overflow-hidden p-4 [@media(min-width:640px)_and_(min-height:600px)]:max-w-4xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera fija: título, monedas y cierre siempre a la vista. */}
@@ -174,7 +174,10 @@ export default function Store({ onClose }: { onClose: () => void }) {
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {/* En escritorio grande el panel es más ancho y caben 4 columnas:
+              los 8 dorsos se ven en 2 filas sin tanto scroll. En el teléfono
+              (o ventana baja) siguen 2-3 columnas como antes. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 [@media(min-width:640px)_and_(min-height:600px)]:grid-cols-4">
             {items.map((item) => {
               const owned = isOwned(economy, item.category, item.id);
               const equipped = equippedId === item.id;

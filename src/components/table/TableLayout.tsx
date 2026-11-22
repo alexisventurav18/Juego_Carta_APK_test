@@ -7,9 +7,11 @@ const BASE_VARS = {
   '--corner': 'clamp(28px, 9dvh, 60px)',
   '--medal': 'clamp(26px, 8dvh, 56px)',
   // Alto de cartas: tu mano, las de los rivales y las de la pila central.
-  '--ch': 'clamp(58px, 23.5dvh, 157px)',
-  '--oh': 'clamp(34px, 12.3dvh, 83px)',
-  '--ph': 'clamp(45px, 17.9dvh, 108px)',
+  // El tope es una variable (--ch-max...) para que el CSS de escritorio
+  // grande pueda subirlo sin tocar el estilo inline (ver index.css).
+  '--ch': 'clamp(58px, 23.5dvh, var(--ch-max, 157px))',
+  '--oh': 'clamp(34px, 12.3dvh, var(--oh-max, 83px))',
+  '--ph': 'clamp(45px, 17.9dvh, var(--ph-max, 108px))',
 } as CSSProperties;
 
 interface TableLayoutProps {
@@ -90,7 +92,7 @@ export default function TableLayout({
 
   return (
     <div
-      className="fixed inset-0 z-30 touch-none select-none overflow-hidden overscroll-none bg-[#2a160a] bg-[radial-gradient(ellipse_at_50%_35%,#4a2a12,#1e0e05_75%)] text-amber-50"
+      className="table-stage fixed inset-0 z-30 touch-none select-none overflow-hidden overscroll-none bg-[#2a160a] bg-[radial-gradient(ellipse_at_50%_35%,#4a2a12,#1e0e05_75%)] text-amber-50"
       style={{ ...BASE_VARS, ...vars }}
     >
       {/* Marco a sangre: la madera llega hasta los bordes físicos de la pantalla (sin franjas negras). */}
@@ -109,7 +111,7 @@ export default function TableLayout({
           Filas: controles | rivales de arriba | tablero | pista | tu zona. Las dos primeras y la pista van a
           todo lo ancho; el tablero y tu zona usan las tres columnas de siempre. */}
       <div
-        className="absolute grid"
+        className="table-grid absolute grid"
         style={{
           top: 'calc(var(--frame) + 4px + var(--sat))',
           right: 'calc(var(--frame) + 4px + var(--sar))',

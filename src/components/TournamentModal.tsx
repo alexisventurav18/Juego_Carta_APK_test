@@ -57,6 +57,11 @@ export default function TournamentModal({
   }, []);
 
   const tournament = data?.tournament ?? null;
+  // La sección de clasificación se muestra cuando hay torneo (data no nulo),
+  // pero TypeScript no estrecha `data` a partir de `tournament`: se sacan
+  // aquí sus campos con valores seguros.
+  const entries = data?.entries ?? [];
+  const me = data?.me ?? null;
   const myRank =
     data?.me?.rank ??
     (data && data.me ? data.entries.findIndex((entry) => entry.playerId === data.me?.playerId) + 1 || null : null);
@@ -198,21 +203,21 @@ export default function TournamentModal({
                 <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-amber-50">
                   Clasificación
                 </h3>
-                {data.entries.length === 0 ? (
+                {entries.length === 0 ? (
                   <p className="py-3 text-center text-sm text-amber-100/70">
                     Nadie ha sumado puntos todavía. ¡Sé el primero!
                   </p>
                 ) : (
                   <ol className="space-y-1.5">
-                    {data.entries.map((entry, index) => (
+                    {entries.map((entry, index) => (
                       <TournamentRow key={entry.playerId} entry={entry} rank={entry.rank ?? index + 1} isMe={entry.playerId === myId} />
                     ))}
-                    {data.me && !data.entries.some((entry) => entry.playerId === data.me?.playerId) && (
+                    {me && !entries.some((entry) => entry.playerId === me.playerId) && (
                       <li className="mt-2">
                         <p className="mb-1 text-center text-xs font-bold text-amber-100/60">
                           {myRank ? `Tu puesto: #${myRank}` : 'Aún no has sumado puntos'}
                         </p>
-                        <TournamentRow entry={data.me} rank={myRank ?? 0} isMe />
+                        <TournamentRow entry={me} rank={myRank ?? 0} isMe />
                       </li>
                     )}
                   </ol>

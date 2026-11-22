@@ -536,7 +536,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
 
   return (
     <TableLayout
-      vars={{ '--ch': 'clamp(54px, 21.3dvh, 143px)' } as CSSProperties}
+      vars={{ '--ch': 'clamp(54px, 21.3dvh, var(--ch-max, 143px))' } as CSSProperties}
       sideCols="17%"
       accent={GAME_ENVIRONMENTS[state.game].accent}
       centerRef={boardRef}

@@ -728,6 +728,41 @@ button,
   }
 }
 
+/* Escritorio grande (navegador de escritorio): la mesa crece con la ventana.
+   En el teléfono las cartas tienen topes pensados para ~360 px de alto; en
+   una ventana de escritorio esos topes dejaban el fieltro grande y vacío y
+   las cartas pequeñas. Solo ancho Y altura mínima: un teléfono en horizontal
+   mide ~800x360 y no entra aquí, así que el APK no cambia. */
+@media (min-width: 640px) and (min-height: 600px) {
+  /* Cartas más grandes en los 4 modos: el dvh ya pedía más, el tope lo
+     frenaba. --ch-max/--oh-max/--ph-max los lee el clamp de TableLayout
+     (y el de Casino); sin ellos el tope de teléfono seguiría mandando. */
+  .table-stage {
+    --ch-max: 208px;
+    --oh-max: 112px;
+    --ph-max: 148px;
+  }
+
+  /* CartaUI (mano y mesa de Casino): mismo tope más alto. Las variables
+     --mano-h-sm/--mesa-h-sm se respetan: si la mesa está llena, Casino las
+     baja y las cartas se achican igual que en el teléfono. */
+  .cu-mano {
+    --cu-h: min(var(--mano-h-sm, 24dvh), 13.5rem);
+  }
+
+  .cu-mesa {
+    --cu-h: min(var(--mesa-h-sm, 20dvh), 12rem);
+  }
+
+  /* Tablero más ancho: las columnas laterales pasan de 16% a 12% y el
+     fieltro crece. !important porque la rejilla lleva las columnas en
+     estilo inline (teléfono). La fila de tu zona sigue en 32%: con cartas
+     más altas necesita ese hueco. */
+  .table-grid {
+    grid-template-columns: 12% minmax(0, 1fr) 12% !important;
+  }
+}
+
 /* Carta elegida: se eleva con aro dorado, igual que al arrastrar en El Cagao. */
 .card-picked {
   transform: translateY(-0.75rem);

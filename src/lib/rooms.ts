@@ -49,9 +49,14 @@ async function callRaw<T>(body: Record<string, unknown>): Promise<T> {
     // ninguno (p. ej. fallo de red).
     throw new Error((await serverErrorMessage(error)) ?? SERVER_UNREACHABLE);
   }
-  const response = data as (T & { ok?: boolean; error?: string }) | null;
+  const response = data as (T & { ok?: boolean; error?: string; data?: T }) | null;
   if (!response?.ok) throw new Error(response?.error ?? 'Respuesta inesperada del servidor.');
-  return response;
+  // Las acciones de datos (ranking, amigos, torneo, premios) vienen envueltas
+  // en { ok, data }: quien llama espera la carga pelada, no el sobre. Si se
+  // devolviera el sobre, el modal leería data.friends sobre undefined y la
+  // app quedaría en blanco al abrir Amigos (o el Ranking). Las acciones de
+  // sala ({ ok, room }) no traen `data` y pasan tal cual.
+  return response.data ?? response;
 }
 
 /** Todas las operaciones pasan por la Edge Function: el navegador no lee ni escribe las partidas directamente. */
@@ -261,8 +266,43 @@ export interface FriendsListData {
 }
 
 /** Lista de amigos, solicitudes pendientes e invitaciones recibidas. */
-export function friendsList(): Promise<FriendsListData> {
-  return callRaw<FriendsListData>({ action: 'friends_list' });
+export async function friendsList(): Promise<FriendsListData> {
+  const list = await callRaw<FriendsListData>({ action: 'friends_list' });
+  return normalizeFriendsList(list);
+}
+
+/** La lista nunca llega rota al modal: sin arrays no hay `.length` que rompa. */
+function normalizeFriendsList(list: FriendsListData): FriendsListData {
+  const entries = (rows: unknown): FriendEntry[] =>
+    (Array.isArray(rows) ? rows : []).filter(
+      (row): row is FriendEntry =>
+        !!row && typeof (row as FriendEntry).playerId === 'string',
+    );
+  const requests = (rows: unknown): FriendRequestEntry[] =>
+    (Array.isArray(rows) ? rows : []).filter(
+      (row): row is FriendRequestEntry =>
+        !!row && typeof (row as FriendRequestEntry).playerId === 'string',
+    );
+  return {
+    myCode: typeof list?.myCode === 'string' ? list.myCode : '',
+    friends: entries(list?.friends).map((friend) => {
+      // El servidor manda el código de sala en `inRoom` (o null): el modal
+      // solo necesita saber si está en partida o no.
+      const rawInRoom = (friend as unknown as Record<string, unknown>).inRoom;
+      return {
+        ...friend,
+        name: friend.name || 'Jugador',
+        online: friend.online === true,
+        inRoom: rawInRoom === true || typeof rawInRoom === 'string',
+      };
+    }),
+    pendingIn: requests(list?.pendingIn).map((request) => ({ ...request, name: request.name || 'Jugador' })),
+    pendingOut: requests(list?.pendingOut).map((request) => ({ ...request, name: request.name || 'Jugador' })),
+    invites: (Array.isArray(list?.invites) ? list.invites : []).filter(
+      (invite): invite is FriendInvite =>
+        !!invite && typeof invite.code === 'string' && typeof invite.fromName === 'string',
+    ),
+  };
 }
 
 /** Un jugador encontrado por nombre o por código de amigo. */
@@ -280,8 +320,14 @@ export interface FriendSearchResponse {
 }
 
 /** Busca jugadores por nombre o por código de amigo. */
-export function friendSearch(query: string): Promise<FriendSearchResponse> {
-  return callRaw<FriendSearchResponse>({ action: 'friend_search', query });
+export async function friendSearch(query: string): Promise<FriendSearchResponse> {
+  const res = await callRaw<FriendSearchResponse>({ action: 'friend_search', query });
+  return {
+    players: (Array.isArray(res?.players) ? res.players : []).filter(
+      (player): player is FriendSearchResult =>
+        !!player && typeof player.playerId === 'string',
+    ),
+  };
 }
 
 /** Envía una solicitud de amistad. */

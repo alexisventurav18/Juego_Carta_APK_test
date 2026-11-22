@@ -64,10 +64,14 @@ describe('menú principal', () => {
     );
   });
 
-  it('las tarjetas son 2x2 en vertical y el arte tiene tope de altura', () => {
+  it('las tarjetas son 2x2 en vertical y el arte llena su panel', () => {
     const cards = read('src/components/GameCards.tsx');
     assert.ok(cards.includes('grid-cols-2'), 'GameCards: en vertical las tarjetas van en 2 columnas');
-    assert.ok(cards.includes('max-h-[52%]'), 'GameCards: el arte debe tener tope de altura');
+    // Sin tope de altura: el arte ocupa todo lo que sobra de la tarjeta y
+    // la imagen cubre el panel (antes, con tope y contain, quedaban bandas
+    // oscuras y hueco marrón en el menú web).
+    assert.ok(!cards.includes('max-h-[52%]'), 'GameCards: el arte no debe tener tope de altura');
+    assert.ok(cards.includes('object-cover'), 'GameCards: la imagen debe cubrir su panel');
     assert.ok(cards.includes('whitespace-nowrap'), 'GameCards: la línea de jugadores no debe partirse');
     // En vertical el nombre no se parte ("Tres / y Dos") y la descripción
     // baja a 12 px para caber en la tarjeta angosta.

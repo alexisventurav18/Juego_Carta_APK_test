@@ -114,7 +114,7 @@ export default function FriendsModal({
             )}
           </h2>
           <div className="flex shrink-0 items-center gap-2">
-            {data && (
+            {data && data.myCode && (
               <span className="rounded-lg bg-black/30 px-2.5 py-1.5 text-xs font-extrabold text-amber-300 ring-1 ring-amber-300/40" title="Tu código de amigo: compártelo para que te añadan">
                 Mi código: <span className="font-mono tracking-widest">{data.myCode}</span>
               </span>
@@ -137,9 +137,18 @@ export default function FriendsModal({
               Cargando amigos…
             </p>
           ) : error && !data ? (
-            <p className="py-8 text-center text-sm font-bold text-rose-200" role="alert">
-              {error}
-            </p>
+            <div className="flex flex-col items-center gap-3 py-8">
+              <p className="text-center text-sm font-bold text-rose-200" role="alert">
+                {error}
+              </p>
+              <button
+                type="button"
+                onClick={load}
+                className="btn-gold flex touch-manipulation items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-extrabold transition-transform active:scale-95"
+              >
+                Reintentar
+              </button>
+            </div>
           ) : (
             <div className="space-y-4">
               {error && (
