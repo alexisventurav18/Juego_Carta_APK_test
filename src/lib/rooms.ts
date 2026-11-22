@@ -34,8 +34,12 @@ interface ServerResponse {
   error?: string;
 }
 
-/** Todas las operaciones pasan por la Edge Function: el navegador no lee ni escribe las partidas directamente. */
-async function call(body: Record<string, unknown>): Promise<RoomRow> {
+/**
+ * Llamada genérica a la Edge Function: añade `playerId` y `key`, preserva el
+ * mensaje del servidor cuando rechaza y solo usa el genérico de "sin conexión"
+ * si no hay ninguno (p. ej. fallo de red). Devuelve la respuesta tal cual.
+ */
+async function callRaw<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(FUNCTION_NAME, {
     body: { ...body, playerId: getPlayerId(), key: getPlayerKey() },
   });
@@ -45,8 +49,15 @@ async function call(body: Record<string, unknown>): Promise<RoomRow> {
     // ninguno (p. ej. fallo de red).
     throw new Error((await serverErrorMessage(error)) ?? SERVER_UNREACHABLE);
   }
-  const response = data as ServerResponse | null;
-  if (!response?.ok || !response.room) throw new Error(response?.error ?? 'Respuesta inesperada del servidor.');
+  const response = data as (T & { ok?: boolean; error?: string }) | null;
+  if (!response?.ok) throw new Error(response?.error ?? 'Respuesta inesperada del servidor.');
+  return response;
+}
+
+/** Todas las operaciones pasan por la Edge Function: el navegador no lee ni escribe las partidas directamente. */
+async function call(body: Record<string, unknown>): Promise<RoomRow> {
+  const response = await callRaw<ServerResponse>(body);
+  if (!response.room) throw new Error('Respuesta inesperada del servidor.');
   return response.room;
 }
 
@@ -169,4 +180,188 @@ export function subscribeToRoom(
       void channel.send({ type: 'broadcast', event: ROOM_CHAT_EVENT, payload: msg });
     },
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Ranking, amigos y torneos                                           */
+/*                                                                     */
+/* Los puntos los pone el servidor al terminar cada partida (victoria = */
+/* puntos del modo, empate la mitad, derrota 0); el cliente solo pide  */
+/* y muestra. Las temporadas y los torneos también los define el       */
+/* servidor: aquí no se calcula ninguna rotación ni clasificación.     */
+/* ------------------------------------------------------------------ */
+
+/** Una fila del ranking o de un torneo: puntos y balance del jugador. */
+export interface RankingEntry {
+  playerId: string;
+  name: string;
+  avatar?: string;
+  level?: number;
+  points: number;
+  wins: number;
+  losses: number;
+  matches: number;
+  /** Puesto en la tabla, cuando el servidor lo incluye. */
+  rank?: number;
+}
+
+export interface RankingBoard {
+  /** Temporada que muestra la tabla (p. ej. "2026-11"). */
+  season: string;
+  entries: RankingEntry[];
+  /** Mi fila (con mi puesto), o null si aún no tengo puntos. */
+  me: RankingEntry | null;
+}
+
+/**
+ * Tabla de clasificación. `game` filtra por modo; sin él (o 'all') es la
+ * tabla general. `season` pide una temporada concreta; sin ella, la actual.
+ */
+export function rankingBoard(season?: string, game?: GameId | 'all'): Promise<RankingBoard> {
+  const body: Record<string, unknown> = { action: 'ranking' };
+  if (season) body.season = season;
+  if (game && game !== 'all') body.game = game;
+  return callRaw<RankingBoard>(body);
+}
+
+/** Un amigo de la lista: nivel, avatar y si está en línea o en partida. */
+export interface FriendEntry {
+  playerId: string;
+  name: string;
+  avatar?: string;
+  level?: number;
+  online: boolean;
+  inRoom: boolean;
+}
+
+/** Una solicitud de amistad (entrante o saliente). */
+export interface FriendRequestEntry {
+  playerId: string;
+  name: string;
+  avatar?: string;
+  level?: number;
+}
+
+/** Una invitación a una sala privada, enviada por un amigo. */
+export interface FriendInvite {
+  from: string;
+  fromName: string;
+  code: string;
+  game: GameId;
+  createdAt: number;
+}
+
+export interface FriendsListData {
+  /** Mi código de amigo, para compartirlo. */
+  myCode: string;
+  friends: FriendEntry[];
+  pendingIn: FriendRequestEntry[];
+  pendingOut: FriendRequestEntry[];
+  invites: FriendInvite[];
+}
+
+/** Lista de amigos, solicitudes pendientes e invitaciones recibidas. */
+export function friendsList(): Promise<FriendsListData> {
+  return callRaw<FriendsListData>({ action: 'friends_list' });
+}
+
+/** Un jugador encontrado por nombre o por código de amigo. */
+export interface FriendSearchResult {
+  playerId: string;
+  name: string;
+  avatar?: string;
+  level?: number;
+  /** Su código de amigo. */
+  code: string;
+}
+
+export interface FriendSearchResponse {
+  players: FriendSearchResult[];
+}
+
+/** Busca jugadores por nombre o por código de amigo. */
+export function friendSearch(query: string): Promise<FriendSearchResponse> {
+  return callRaw<FriendSearchResponse>({ action: 'friend_search', query });
+}
+
+/** Envía una solicitud de amistad. */
+export function friendRequest(targetId: string): Promise<{ ok: boolean }> {
+  return callRaw<{ ok: boolean }>({ action: 'friend_request', targetId });
+}
+
+/** Acepta una solicitud de amistad entrante. */
+export function friendAccept(requesterId: string): Promise<{ ok: boolean }> {
+  return callRaw<{ ok: boolean }>({ action: 'friend_accept', requesterId });
+}
+
+/** Rechaza una solicitud de amistad entrante. */
+export function friendReject(requesterId: string): Promise<{ ok: boolean }> {
+  return callRaw<{ ok: boolean }>({ action: 'friend_reject', requesterId });
+}
+
+/** Elimina a un amigo de la lista. */
+export function friendRemove(friendId: string): Promise<{ ok: boolean }> {
+  return callRaw<{ ok: boolean }>({ action: 'friend_remove', friendId });
+}
+
+/**
+ * Invita a un amigo a una sala privada: el servidor crea la sala y devuelve
+ * su código y el modo. Quien invita entra a esa sala y espera; el amigo
+ * recibe la invitación y se une con el mismo código.
+ */
+export function inviteFriend(friendId: string): Promise<{ ok: boolean; code: string; game: GameId }> {
+  return callRaw<{ ok: boolean; code: string; game: GameId }>({ action: 'invite_friend', friendId });
+}
+
+export type TournamentStatus = 'upcoming' | 'active' | 'ended';
+
+/** Una fila del torneo en curso (top 10). */
+export interface TournamentEntry {
+  playerId: string;
+  name: string;
+  avatar?: string;
+  level?: number;
+  points: number;
+  wins: number;
+  matches: number;
+  rank?: number;
+}
+
+export interface TournamentData {
+  /** El torneo próximo, activo o recién terminado; null si no hay ninguno. */
+  tournament: {
+    id: string;
+    game: GameId;
+    startsAt: number;
+    endsAt: number;
+    status: TournamentStatus;
+  } | null;
+  entries: TournamentEntry[];
+  /** Mi fila (con mi puesto), o null si no estoy participando. */
+  me: TournamentEntry | null;
+}
+
+/** El torneo del momento: modo, fechas, top 10 y mi posición. */
+export function tournamentInfo(): Promise<TournamentData> {
+  return callRaw<TournamentData>({ action: 'tournament' });
+}
+
+/** Premio reclamado: monedas y puesto conseguido. */
+export interface PrizeClaim {
+  coins: number;
+  place: number;
+  season?: string;
+}
+
+/**
+ * Reclama el premio del torneo terminado. Si no hay premio pendiente, el
+ * servidor lo rechaza y el error se muestra tal cual.
+ */
+export function tournamentClaim(): Promise<PrizeClaim> {
+  return callRaw<PrizeClaim>({ action: 'tournament_claim' });
+}
+
+/** Reclama el premio de la temporada pasada, si quedé en el podio. */
+export function seasonClaim(): Promise<PrizeClaim> {
+  return callRaw<PrizeClaim>({ action: 'season_claim' });
 }

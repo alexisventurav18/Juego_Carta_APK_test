@@ -1,14 +1,15 @@
-import { useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BarChart3, BookOpen, Bot, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Star, Target, Users, VolumeX, X, Zap } from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { BarChart3, BookOpen, Bot, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Star, Target, Trophy, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
-import { createRoom, joinRoom, leaveRoom, quickplayRoom } from '@/lib/rooms';
+import { createRoom, friendsList, joinRoom, leaveRoom, quickplayRoom, tournamentInfo, type TournamentData } from '@/lib/rooms';
 import { getMyAvatar, getPlayerId, getStoredName, hasChosenAvatar, resetPlayerIdentity, storeAvatar, storeName } from '@/lib/identity';
 import { isDailyAvailableNow, useEconomy } from '@/lib/economy';
 import { levelFromXp, MAX_LEVEL } from '@/lib/experience';
 import { unclaimedCompleted } from '@/lib/missions';
 import { useFullscreen } from '@/lib/platform';
 import { useMuted } from '@/lib/soundPrefs';
+import { formatCountdown } from '@/lib/tournament';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import Avatar from './avatar/Avatar';
 import AvatarEditor from './avatar/AvatarEditor';
@@ -18,6 +19,9 @@ import Store from './Store';
 import MissionsModal from './MissionsModal';
 import DailyWheel from './DailyWheel';
 import ProfileModal from './ProfileModal';
+import RankingModal from './RankingModal';
+import FriendsModal from './FriendsModal';
+import TournamentModal from './TournamentModal';
 import { WoodFrame } from './cagao/CardAssets';
 import GameCards from './GameCards';
 import type { OfflineSetup } from './OfflineBotGame';
@@ -92,6 +96,15 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const [storeOpen, setStoreOpen] = useState(false);
   const [missionsOpen, setMissionsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [rankingOpen, setRankingOpen] = useState(false);
+  const [friendsOpen, setFriendsOpen] = useState(false);
+  const [tournamentOpen, setTournamentOpen] = useState(false);
+  /** Solicitudes e invitaciones pendientes: insignia del botón Amigos. */
+  const [friendsBadge, setFriendsBadge] = useState(0);
+  /** Torneo del momento, si lo hay: alimenta la tarjeta del menú. */
+  const [tournamentSummary, setTournamentSummary] = useState<TournamentData | null>(null);
+  /** Reloj de la tarjeta del torneo: se actualiza cada 30 s. */
+  const [now, setNow] = useState(() => Date.now());
   // Rueda diaria: se abre sola la primera vez que se entra cada día; si se
   // cierra sin girar, queda el botón del regalo hasta reclamarla.
   const [dailyWheelOpen, setDailyWheelOpen] = useState(isDailyAvailableNow);
@@ -116,10 +129,58 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const fullscreen = useFullscreen();
   const { playSound } = useGameSounds();
 
+  // Al entrar al menú se piden (sin bloquear nada) la insignia de Amigos y la
+  // tarjeta del torneo. Si no hay conexión, simplemente no aparecen: el menú
+  // sigue funcionando sin conexión, como siempre.
+  useEffect(() => {
+    let cancelled = false;
+    void friendsList()
+      .then((list) => {
+        if (!cancelled) setFriendsBadge(list.pendingIn.length + list.invites.length);
+      })
+      .catch(() => undefined);
+    void tournamentInfo()
+      .then((info) => {
+        if (!cancelled) setTournamentSummary(info);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // La cuenta atrás de la tarjeta del torneo avanza cada 30 s.
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  /** Vuelve a pedir la insignia de Amigos (al cerrar su modal, p. ej.). */
+  const refreshFriendsBadge = () => {
+    void friendsList()
+      .then((list) => setFriendsBadge(list.pendingIn.length + list.invites.length))
+      .catch(() => undefined);
+  };
+
   const info = GAMES[game];
   const trimmedName = name.trim();
   const bots = botCounts[game] ?? info.soloPlayerCount - 1;
   const botChoices = botOptions(game);
+
+  // Texto de la tarjeta del torneo, según su estado (próximo, en curso o terminado).
+  const tournament = tournamentSummary?.tournament ?? null;
+  const tournamentBanner =
+    tournament === null
+      ? null
+      : tournament.status === 'upcoming'
+        ? `Torneo de ${GAMES[tournament.game].name} · empieza en ${formatCountdown(tournament.startsAt - now)}`
+        : tournament.status === 'active'
+          ? `Torneo de ${GAMES[tournament.game].name} · termina en ${formatCountdown(tournament.endsAt - now)}${
+              tournamentSummary?.me ? ` · tus puntos: ${tournamentSummary.me.points}` : ''
+            }`
+          : `Torneo de ${GAMES[tournament.game].name} terminado${
+              tournamentSummary?.me?.rank ? ` · quedaste #${tournamentSummary.me.rank}` : ''
+            } · ver resultados`;
 
   const selectGame = (id: GameId) => {
     if (id !== game) playSound('cardSlide');
@@ -174,6 +235,20 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
       return;
     }
     void run('join', async (player) => (await joinRoom(code, player)).id);
+  };
+
+  /** Entra a una sala por su código (invitación de un amigo, o sala que yo creé al invitar). */
+  const joinByCode = (roomCode: string) => {
+    setFriendsOpen(false);
+    setCode(roomCode.trim().toUpperCase());
+    void run('join', async (player) => (await joinRoom(roomCode.trim().toUpperCase(), player)).id);
+  };
+
+  /** "Jugar torneo": matchmaking en el modo del torneo; cada partida suma puntos de torneo. */
+  const playTournament = (tournamentGame: GameId) => {
+    setTournamentOpen(false);
+    setGame(tournamentGame);
+    void run('quickplay', async (player) => (await quickplayRoom(tournamentGame, player)).id);
   };
 
   const changePlayer = () => {
@@ -344,6 +419,35 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                   </span>
                 )}
               </button>
+              <button
+                type="button"
+                onClick={() => setRankingOpen(true)}
+                aria-label="Ranking de la temporada"
+                title="Ranking: los mejores de la temporada"
+                className="btn-wood flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
+              >
+                <Trophy className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+                <span className="max-[760px]:hidden [@media(max-height:500px)]:hidden">Ranking</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFriendsOpen(true)}
+                aria-label={
+                  friendsBadge > 0
+                    ? `Amigos, tienes ${friendsBadge} ${friendsBadge === 1 ? 'aviso pendiente' : 'avisos pendientes'}`
+                    : 'Amigos'
+                }
+                title="Amigos: solicitudes, invitaciones y salas privadas"
+                className="btn-wood relative flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
+              >
+                <Users className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+                <span className="max-[760px]:hidden [@media(max-height:500px)]:hidden">Amigos</span>
+                {friendsBadge > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[11px] font-extrabold text-amber-950 ring-2 ring-amber-950/60">
+                    {friendsBadge}
+                  </span>
+                )}
+              </button>
               {lastOffline && (
                 <button
                   type="button"
@@ -382,6 +486,18 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
 
           {/* Los modos de juego, lado a lado y todos a la vista */}
           <GameCards games={GAME_ORDER} selected={game} onSelect={selectGame} />
+
+          {/* Tarjeta del torneo del fin de semana, cuando lo hay: abre su modal. */}
+          {tournamentBanner && (
+            <button
+              type="button"
+              onClick={() => setTournamentOpen(true)}
+              className="btn-gold flex min-h-[clamp(34px,9dvh,42px)] w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-xl px-3 text-[clamp(13px,2.8dvh,14px)] font-extrabold transition-transform active:scale-[0.98]"
+            >
+              <Trophy className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="min-w-0 truncate">{tournamentBanner}</span>
+            </button>
+          )}
 
           {/* Configuración de la partida: cuántos bots y el tutorial */}
           <div className="flex shrink-0 flex-wrap items-center justify-center gap-[clamp(8px,2dvw,20px)]">
@@ -519,6 +635,19 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
       </div>
       {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
       {missionsOpen && <MissionsModal onClose={() => setMissionsOpen(false)} />}
+      {rankingOpen && <RankingModal onClose={() => setRankingOpen(false)} />}
+      {friendsOpen && (
+        <FriendsModal
+          onClose={() => {
+            setFriendsOpen(false);
+            refreshFriendsBadge();
+          }}
+          onJoinRoom={joinByCode}
+        />
+      )}
+      {tournamentOpen && (
+        <TournamentModal onClose={() => setTournamentOpen(false)} onPlayTournament={playTournament} />
+      )}
       {dailyWheelOpen && <DailyWheel onClose={() => setDailyWheelOpen(false)} />}
       {profileOpen && (
         <ProfileModal

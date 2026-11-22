@@ -3,6 +3,7 @@ import type { GameState } from '../games/index';
 import { teamOf, type GameId } from '../games/shared';
 import {
   applyMatch,
+  claimAllMissions as claimAllMissionsPure,
   claimMission as claimMissionPure,
   defaultMissions,
   refreshMissions,
@@ -521,6 +522,45 @@ export function claimMissionReward(period: MissionPeriod, id: string): number {
   const result = claimMissionPure(economy.missions, period, id);
   if (result.granted <= 0) return 0;
   save({ ...economy, coins: economy.coins + result.granted, missions: result.state });
+  return result.granted;
+}
+
+/**
+ * Reclama de una vez todas las misiones completadas sin reclamar (diarias y
+ * semanales). Devuelve las monedas totales y cuántas misiones se reclamaron.
+ */
+export function claimAllMissionRewards(): { granted: number; count: number } {
+  const result = claimAllMissionsPure(economy.missions);
+  if (result.granted <= 0) return { granted: 0, count: 0 };
+  save({ ...economy, coins: economy.coins + result.granted, missions: result.state });
+  return { granted: result.granted, count: result.claimed.length };
+}
+
+/**
+ * Otorga las monedas de un premio (torneo o temporada) una sola vez por clave
+ * ("tournament:<id>" o "season:<temporada>"): la clave queda en `awarded`,
+ * como las huellas de partida, así que un segundo reclamo de la misma
+ * respuesta no vuelve a pagar. Función pura para poder probarla.
+ */
+export function grantPrizeCoins(
+  state: EconomyState,
+  key: string,
+  coins: number,
+): { state: EconomyState; granted: number } {
+  if (coins <= 0 || state.awarded.includes(key)) return { state, granted: 0 };
+  return {
+    state: { ...state, coins: state.coins + coins, awarded: [...state.awarded, key].slice(-50) },
+    granted: coins,
+  };
+}
+
+/**
+ * Suma las monedas de un premio que el servidor ya confirmó, una sola vez por
+ * clave. Devuelve las monedas otorgadas, o 0 si ya se reclamó.
+ */
+export function claimPrize(key: string, coins: number): number {
+  const result = grantPrizeCoins(economy, key, coins);
+  if (result.granted > 0) save(result.state);
   return result.granted;
 }
 

@@ -5,61 +5,15 @@ import { chooseCagaoMove, hasPair } from '../src/games/cagao';
 import { chooseTresYDosMove } from '../src/games/tresYDos';
 import {
   handleRequest,
-  makeRoomCode,
-  type RoomPatch,
-  type RoomRecord,
   type RoomRequest,
   type RoomResponse,
   type RoomStore,
   type RoomView,
-  type StoredRoom,
 } from '../src/games/roomService';
 import type { GameState } from '../src/games';
 import { encodeAvatar, randomAvatar, seededRandom } from '../src/games/avatar';
 import type { GameId } from '../src/games/shared';
-
-class MemoryStore implements RoomStore {
-  rooms = new Map<string, StoredRoom>();
-  failNextUpdate = false;
-  private seq = 0;
-
-  async findById(id: string) {
-    return this.rooms.get(id) ?? null;
-  }
-  async findByCode(code: string) {
-    return [...this.rooms.values()].find((r) => r.room.code === code) ?? null;
-  }
-  async findWaiting(game: GameId) {
-    return [...this.rooms.values()]
-      .filter((r) => r.room.game === game && r.room.isPublic && r.room.status === 'waiting')
-      .sort((a, b) => a.room.createdAt - b.room.createdAt);
-  }
-  async create(room: Pick<RoomRecord, 'game' | 'status' | 'players'>, secret: StoredRoom['secret']) {
-    const id = `00000000-0000-4000-8000-${String(++this.seq).padStart(12, '0')}`;
-    const stored: StoredRoom = { room: { ...room, id, code: makeRoomCode(), version: 0 }, secret };
-    this.rooms.set(id, stored);
-    return stored;
-  }
-  async update(roomId: string, expectedVersion: number, patch: RoomPatch) {
-    const stored = this.rooms.get(roomId);
-    if (this.failNextUpdate) {
-      this.failNextUpdate = false;
-      return false;
-    }
-    if (!stored || stored.room.version !== expectedVersion) return false;
-    stored.room = { ...stored.room, status: patch.status, players: patch.players, version: expectedVersion + 1 };
-    stored.secret = { state: patch.state, keys: patch.keys };
-    return true;
-  }
-  async remove(roomId: string) {
-    this.rooms.delete(roomId);
-  }
-  fullState(roomId: string): GameState {
-    const state = this.rooms.get(roomId)?.secret.state;
-    if (!state) throw new Error('sin estado');
-    return state;
-  }
-}
+import { MemoryStore } from './memoryStore';
 
 const KEY_A = 'clave-secreta-de-ana-0123456789';
 const KEY_B = 'clave-secreta-de-beto-012345678';
@@ -69,6 +23,7 @@ const B = { playerId: 'jugador-beto-0002', key: KEY_B };
 async function ok(store: RoomStore, req: RoomRequest): Promise<RoomView> {
   const res = await handleRequest(store, req);
   assert.ok(res.ok, res.ok ? '' : res.error);
+  assert.ok('room' in res, 'se esperaba una sala');
   return res.room;
 }
 async function fail(store: RoomStore, req: unknown): Promise<string> {
@@ -153,8 +108,8 @@ describe('servidor de salas: autenticación', () => {
     const { id, code } = await twoPlayerRoom('casino', store);
     const intruder = { playerId: 'intruso-12345678', key: 'otra-clave-cualquiera-123456' };
     assert.match(await fail(store, { action: 'join', code, name: 'Eve', ...intruder }), /ya empezó/);
-    // Conocer el id público de Ana no basta sin su clave.
-    assert.match(await fail(store, { action: 'join', code, name: 'Eve', playerId: A.playerId, key: intruder.key }), /No estás/);
+    // Conocer el id público de Ana no basta sin su clave: el perfil ya existe con otra clave.
+    assert.match(await fail(store, { action: 'join', code, name: 'Eve', playerId: A.playerId, key: intruder.key }), /otra clave/);
     assert.match(await fail(store, { action: 'move', roomId: id, move: { type: 'nextRound' }, playerId: A.playerId, key: intruder.key }), /No estás/);
   });
 

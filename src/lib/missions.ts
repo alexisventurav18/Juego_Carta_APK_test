@@ -213,6 +213,44 @@ export function unclaimedCompleted(state: MissionsState): number {
   return [...state.daily, ...state.weekly].filter((p) => !p.claimed && isMissionComplete(p)).length;
 }
 
+/** Monedas pendientes de reclamar (diarias + semanales juntas) y cuántas misiones son. */
+export function unclaimedRewards(state: MissionsState): { count: number; coins: number } {
+  const pending = [...state.daily, ...state.weekly].filter((p) => !p.claimed && isMissionComplete(p));
+  return {
+    count: pending.length,
+    coins: pending.reduce((sum, p) => sum + (missionDef(p.id)?.reward ?? 0), 0),
+  };
+}
+
+/**
+ * Reclama de una vez todas las misiones completadas sin reclamar (diarias y
+ * semanales). Devuelve las monedas totales y las misiones reclamadas. Una
+ * misión ya reclamada no vuelve a pagar.
+ */
+export function claimAllMissions(
+  state: MissionsState,
+  date: Date = new Date(),
+): { state: MissionsState; granted: number; claimed: MissionDef[] } {
+  const refreshed = refreshMissions(state, date);
+  const claimed: MissionDef[] = [];
+  let granted = 0;
+  const mark = (list: MissionProgress[]) =>
+    list.map((p) => {
+      const def = missionDef(p.id);
+      if (!p.claimed && def && isMissionComplete(p)) {
+        claimed.push(def);
+        granted += def.reward;
+        return { ...p, claimed: true };
+      }
+      return p;
+    });
+  return {
+    state: { ...refreshed, daily: mark(refreshed.daily), weekly: mark(refreshed.weekly) },
+    granted,
+    claimed,
+  };
+}
+
 /**
  * Reclama una misión completa. Devuelve las monedas otorgadas (0 si no estaba completa o ya se reclamó).
  * Quien llama suma las monedas al saldo; esta función solo marca la misión como reclamada.

@@ -5,60 +5,13 @@ import {
   handleRequest,
   QUICKPLAY_STALE_MS,
   QUICKPLAY_WAIT_MS,
-  type RoomPatch,
-  type RoomRecord,
   type RoomRequest,
   type RoomResponse,
   type RoomStore,
   type RoomView,
-  type StoredRoom,
 } from '../src/games/roomService';
 import { isBotPlayer } from '../src/games/shared';
-
-class MemoryStore implements RoomStore {
-  rooms = new Map<string, StoredRoom>();
-  private seq = 0;
-
-  async findById(id: string) {
-    return this.rooms.get(id) ?? null;
-  }
-  async findByCode(code: string) {
-    return [...this.rooms.values()].find((r) => r.room.code === code) ?? null;
-  }
-  async findWaiting(game: GameId) {
-    return [...this.rooms.values()]
-      .filter((r) => r.room.game === game && r.room.isPublic && r.room.status === 'waiting')
-      .sort((a, b) => a.room.createdAt - b.room.createdAt);
-  }
-  async create(room: Pick<RoomRecord, 'game' | 'status' | 'players' | 'isPublic' | 'createdAt'>, secret: StoredRoom['secret']) {
-    const id = `00000000-0000-4000-8000-${String(++this.seq).padStart(12, '0')}`;
-    const stored: StoredRoom = {
-      room: { ...room, id, code: `QP${String(this.seq).padStart(3, '0')}`, version: 0 },
-      secret,
-    };
-    this.rooms.set(id, stored);
-    return stored;
-  }
-  async update(roomId: string, expectedVersion: number, patch: RoomPatch) {
-    const stored = this.rooms.get(roomId);
-    if (!stored || stored.room.version !== expectedVersion) return false;
-    stored.room = {
-      ...stored.room,
-      status: patch.status,
-      players: patch.players,
-      version: expectedVersion + 1,
-      isPublic: patch.isPublic,
-    };
-    stored.secret = { state: patch.state, keys: patch.keys };
-    return true;
-  }
-  async remove(roomId: string) {
-    this.rooms.delete(roomId);
-  }
-  setCreatedAt(roomId: string, createdAt: number) {
-    this.rooms.get(roomId)!.room.createdAt = createdAt;
-  }
-}
+import { MemoryStore } from './memoryStore';
 
 const PLAYERS = [
   { playerId: 'jugador-ana-0001', key: 'clave-secreta-de-ana-0123456789' },
@@ -71,6 +24,7 @@ const PLAYERS = [
 async function ok(store: RoomStore, req: RoomRequest): Promise<RoomView> {
   const res = await handleRequest(store, req);
   assert.ok(res.ok, res.ok ? '' : res.error);
+  assert.ok('room' in res, 'se esperaba una sala');
   return res.room;
 }
 async function fail(store: RoomStore, req: unknown): Promise<string> {

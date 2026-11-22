@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Check, Coins, Target, X } from 'lucide-react';
-import { claimMissionReward, useEconomy } from '@/lib/economy';
+import { Check, Coins, Gift, Target, X } from 'lucide-react';
+import { claimAllMissionRewards, claimMissionReward, useEconomy } from '@/lib/economy';
 import {
   isMissionComplete,
   missionDef,
   timeUntilReset,
+  unclaimedRewards,
   type MissionPeriod,
   type MissionProgress,
 } from '@/lib/missions';
@@ -93,6 +94,19 @@ function MissionRow({ progress, period }: { progress: MissionProgress; period: M
 
 export default function MissionsModal({ onClose }: { onClose: () => void }) {
   const economy = useEconomy();
+  const { playSound } = useGameSounds();
+  const [claimedAll, setClaimedAll] = useState<{ granted: number; count: number } | null>(null);
+  // Lo pendiente de reclamar (diarias + semanales): el botón se apaga cuando no hay nada.
+  const pending = unclaimedRewards(economy.missions);
+
+  const claimAll = () => {
+    const result = claimAllMissionRewards();
+    if (result.granted > 0) {
+      playSound('coin');
+      setClaimedAll(result);
+      window.setTimeout(() => setClaimedAll(null), 4000);
+    }
+  };
 
   return (
     <div
@@ -129,6 +143,22 @@ export default function MissionsModal({ onClose }: { onClose: () => void }) {
           Completa misiones jugando y reclama monedas para la Tienda. El progreso se guarda en este
           dispositivo.
         </p>
+        <button
+          type="button"
+          onClick={claimAll}
+          disabled={pending.count === 0}
+          className="btn-gold mb-3 flex min-h-[40px] w-full shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-extrabold transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Gift className="h-4 w-4 shrink-0" aria-hidden />
+          {pending.count === 0
+            ? 'Reclamar todo'
+            : `Reclamar todo · +${pending.coins} monedas (${pending.count} ${pending.count === 1 ? 'misión' : 'misiones'})`}
+        </button>
+        {claimedAll !== null && (
+          <p className="mb-3 shrink-0 rounded-xl bg-amber-400/15 px-3 py-2 text-center text-sm font-extrabold text-amber-300 ring-1 ring-amber-300/50" role="status">
+            ¡Reclamaste {claimedAll.granted} monedas de {claimedAll.count} {claimedAll.count === 1 ? 'misión' : 'misiones'}!
+          </p>
+        )}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {SECTIONS.map(({ period, title, hint }) => {
             const list = period === 'daily' ? economy.missions.daily : economy.missions.weekly;
