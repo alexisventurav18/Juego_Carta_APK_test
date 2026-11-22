@@ -197,11 +197,15 @@ export default function PlayerSeat({
   stacked = false,
 }: PlayerSeatProps) {
   const vertical = side !== 'top';
+  // En la rama apilada el abanico usa --oh-s, una variable distinta: redefinir --oh como
+  // calc(var(--oh) * 0.7) se referencia a sí misma y el navegador invalida la propiedad
+  // (las cartas de arriba colapsaban a 0 px). --oh-s sí puede calcularse desde --oh.
+  const fanHeightVar = !vertical && stacked ? '--oh-s' : '--oh';
   const fan =
     count > 0 ? (
       <OpponentFan
         count={count}
-        heightVar="--oh"
+        heightVar={fanHeightVar}
         avail={vertical ? 'min(16dvh, 120px)' : 'min(var(--top-avail, 14dvw), 110px)'}
         rotation={ROTATION[side]}
         active={pickable}
@@ -210,7 +214,7 @@ export default function PlayerSeat({
         containerRef={(el) => registerAnchor(seat, el)}
       />
     ) : (
-      <span ref={(el) => registerAnchor(seat, el)} aria-hidden className="block h-[var(--oh)] w-[var(--oh)]" />
+      <span ref={(el) => registerAnchor(seat, el)} aria-hidden className="block" style={{ height: `var(${fanHeightVar})`, width: `var(${fanHeightVar})` }} />
     );
 
   if (!vertical) {
@@ -218,10 +222,21 @@ export default function PlayerSeat({
       // Tres rivales arriba: la placa compacta va encima del abanico. En fila, tres placas con su
       // abanico no caben en la fila de arriba sin recortar los nombres hasta perderlos; apilados,
       // cada asiento ocupa lo que mide su placa y los tres caben en cualquier ancho.
+      // El abanico apilado usa cartas más pequeñas (--oh al 70%, en la variable propia --oh-s):
+      // a tamaño completo la unidad apilada (placa + abanico) mide ~88 px y la fila superior se
+      // come ~30 px del tablero, que quedaba más bajo que en los otros modos. Con el 70% la unidad
+      // mide ~75 px en el teléfono y ~128 px en escritorio, dentro del mínimo de la fila superior
+      // (ver .table-top-row en index.css) y del alto de la fila sin apilar, y el tablero de
+      // El Cagao con 6 jugadores mide lo mismo que el de los demás juegos (a 2-3 px). El hueco
+      // del abanico es .stacked-fan-wrap en index.css: 10 px de holgura en pantallas cortas y
+      // 14 px en escritorio, lo que pide la rotación de la carta a cada tamaño.
       return (
-        <div className="flex min-w-0 flex-col items-center justify-center gap-1">
+        <div
+          className="flex min-w-0 flex-col items-center justify-center gap-1"
+          style={{ '--oh-s': 'calc(var(--oh) * 0.7)' } as CSSProperties}
+        >
           <SeatPlaque name={name} avatar={avatar} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} packetCount={packetCount} level={level} compact />
-          <div className="flex h-[calc(var(--oh)+14px)] w-[min(var(--top-avail,14dvw),110px)] min-w-0 shrink-0 items-center justify-center px-2">{fan}</div>
+          <div className="stacked-fan-wrap flex w-[min(var(--top-avail,14dvw),110px)] min-w-0 shrink-0 items-center justify-center px-2">{fan}</div>
         </div>
       );
     }

@@ -43,8 +43,17 @@ describe('menú principal', () => {
       );
     }
     // El título no se parte en dos líneas y se recorta en vez de solaparse.
+    // En horizontal corto se acorta a "Cartas" (span aparte) para que la
+    // barra superior quepa en una sola fila y las tarjetas ganen altura.
     assert.ok(lobby.includes('whitespace-nowrap'), 'Lobby: el título debe llevar whitespace-nowrap');
-    assert.ok(lobby.includes('truncate">Cartas Dominicanas</span>'), 'Lobby: el título debe recortarse, no solaparse');
+    assert.ok(
+      lobby.includes('truncate [@media(max-height:500px)]:hidden">Cartas Dominicanas</span>'),
+      'Lobby: el título debe recortarse, no solaparse',
+    );
+    assert.ok(
+      lobby.includes('[@media(max-height:500px)]:inline">Cartas</span>'),
+      'Lobby: en horizontal corto el título se acorta a "Cartas"',
+    );
     // En vertical el título ocupa su propia fila.
     assert.ok(lobby.includes('order-first'), 'Lobby: el título debe ir primero en pantallas angostas');
   });

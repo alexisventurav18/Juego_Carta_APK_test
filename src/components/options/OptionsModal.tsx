@@ -1,12 +1,13 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, BellOff, Lock, Music, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
+import { Bell, BellOff, CloudDownload, Lock, Music, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { buyCosmetic, isOwned, shopPrice, useEconomy, type CosmeticCategory } from '@/lib/economy';
 import { requestNotificationPermission } from '@/lib/notify';
 import { usePrefs } from '@/lib/soundPrefs';
 import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
 import BuyConfirmDialog from '../BuyConfirmDialog';
+import { OPEN_RECOVERY_EVENT } from '../RecoveryModal';
 import { CARD_BACK_THEMES, MENU_THEMES, TABLE_THEMES, useVisualPrefs } from '@/lib/visualPrefs';
 
 interface OptionsModalProps {
@@ -168,6 +169,16 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
   const toggleNotifications = (value: boolean) => {
     update({ notifications: value });
     if (value) void requestNotificationPermission();
+  };
+
+  /**
+   * Abre el flujo de recuperación: el modal vive en el menú, así que se
+   * cierran las Opciones y se le pide al menú que lo abra. Sin este cierre,
+   * el modal de recuperación quedaría tapado por el de Opciones.
+   */
+  const openRecovery = () => {
+    onClose();
+    window.dispatchEvent(new CustomEvent(OPEN_RECOVERY_EVENT));
   };
 
   /**
@@ -373,6 +384,27 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
                 />
               </div>
             </div>
+          </section>
+
+          {/* Progreso en la nube: restaurar en este teléfono el progreso
+              guardado con el código de respaldo de otro teléfono. */}
+          <section className="space-y-2 rounded-xl bg-black/25 p-3 ring-1 ring-amber-200/15" aria-label="Progreso en la nube">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-amber-50">
+              <CloudDownload className="h-4 w-4 text-amber-300" aria-hidden />
+              Progreso en la nube
+            </h3>
+            <p className="text-xs leading-relaxed text-amber-100/70">
+              Restaura tus monedas, nivel y cosméticos en este teléfono con el código de respaldo de tu otro
+              teléfono.
+            </p>
+            <button
+              type="button"
+              onClick={openRecovery}
+              className="btn-gold flex min-h-[40px] w-full touch-manipulation items-center justify-center gap-2 rounded-lg px-3 text-sm font-extrabold transition-transform active:scale-[0.98]"
+            >
+              <CloudDownload className="h-4 w-4 shrink-0" aria-hidden />
+              Recuperar mi progreso
+            </button>
           </section>
         </div>
       </div>

@@ -131,8 +131,12 @@ export default function TableLayout({
         </div>
 
         {/* Rivales de arriba: su propio carril a todo lo ancho. Si en una pantalla muy estrecha no caben
-            en una línea, se parten en dos antes que montarse unos sobre otros. */}
-        <div className="col-span-3 z-20 flex min-w-0 flex-wrap items-center justify-center gap-x-[clamp(8px,2dvw,20px)] gap-y-1 px-1 pt-1">
+            en una línea, se parten en dos antes que montarse unos sobre otros. La altura mínima (ver
+            .table-top-row en index.css, solo en pantallas cortas) iguala la fila superior en los 4
+            modos: sin ella, el paquete de El Robaíto (con su etiqueta) y las placas apiladas de El
+            Cagao con 6 jugadores hacen la fila más alta y el tablero de esos modos queda más bajo
+            que el de Casino y Tres y Dos. */}
+        <div className="table-top-row col-span-3 z-20 flex min-w-0 flex-wrap items-center justify-center gap-x-[clamp(8px,2dvw,20px)] gap-y-1 px-1 pt-1">
           {topSeats}
         </div>
 
@@ -142,14 +146,17 @@ export default function TableLayout({
         </div>
         <div className="min-h-0 min-w-0">{right}</div>
 
-        {/* Carril de la pista: entre el tablero y la mano, nunca sobre el tablero. Cuando no hay pista el
-            carril se colapsa y el tablero crece (la pista solo se muestra al empezar la partida). También
-            vive aquí el aviso de la última jugada: antes iba pegado arriba del tablero y tapaba la parte
-            superior del mazo y su contador. */}
+        {/* Carril de la pista: entre el tablero y la mano, nunca sobre el tablero. También vive aquí el
+            aviso de la última jugada: antes iba pegado arriba del tablero y tapaba la parte superior
+            del mazo y su contador. La altura mínima (.table-hint-row en index.css) reserva el hueco
+            de una pista aunque no haya ninguna: en Casino y Tres y Dos la pista se esconde para
+            siempre al terminar tu primer turno, mientras que en El Cagao y El Robaíto queda el aviso de
+            la última jugada; sin la reserva, el tablero de Casino y Tres y Dos crecería 24 px a mitad
+            de partida y dejaría de medir lo mismo que el de los otros modos. */}
         {hint ? (
-          <div className="col-span-3 z-20 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2">{hint}</div>
+          <div className="table-hint-row col-span-3 z-20 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2">{hint}</div>
         ) : (
-          <div className="col-span-3" aria-hidden />
+          <div className="table-hint-row col-span-3" aria-hidden />
         )}
 
         <div className="z-30 flex items-end p-1 pl-[calc(var(--corner)*0.75)]">{bottomLeft}</div>

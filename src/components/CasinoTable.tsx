@@ -537,7 +537,9 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
   return (
     <TableLayout
       vars={{ '--ch': 'clamp(54px, 21.3dvh, var(--ch-max, 143px))' } as CSSProperties}
-      sideCols="17%"
+      // Mismas columnas laterales que los demás modos (16%): con 17% el tablero de Casino medía
+      // 15 px menos de ancho que el de Tres y Dos, El Cagao y El Robaíto a igualdad de pantalla.
+      sideCols="16%"
       accent={GAME_ENVIRONMENTS[state.game].accent}
       centerRef={boardRef}
       bottomCenterRef={mineRef}

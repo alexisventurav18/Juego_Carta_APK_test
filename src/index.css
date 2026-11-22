@@ -612,6 +612,22 @@ button,
   background-size: cover;
 }
 
+/* En horizontal corto (teléfono apaisado, ~360 px de alto) el menú no tiene
+   altura de sobra: la barra superior se aprieta para caber en una sola fila
+   (con el perfil acotado y el título corto, ver Lobby.tsx) y las tarjetas
+   ganan ~40 px. Sin esto la cabecera ocupaba dos filas (78 px) y el arte
+   de cada modo se veía recortado a una franja del 23% de su altura. */
+@media (max-height: 500px) {
+  .lobby-stage header > div:last-child {
+    gap: 4px;
+  }
+  .lobby-stage header > div:last-child button {
+    height: 30px;
+    min-height: 30px;
+    padding-inline: 8px;
+  }
+}
+
 /* Resplandor que se desplaza despacio por el fondo: luces tenues en colores
    de bandera que flotan sobre el fondo sin tocar el contenido. Solo se
    mueve con transform, nunca con layout. */
@@ -725,6 +741,46 @@ button,
 
   .cu-mesa {
     --cu-h: min(var(--mesa-h-sm, 16.8dvh), 10rem);
+  }
+}
+
+/* Mesa igual en los 4 modos: el tablero es la fila flexible de la rejilla, así que su alto es
+   lo que sobra tras las demás filas. Para que sobre lo mismo en los 4 juegos, las dos filas
+   que cambian de un modo a otro tienen altura mínima. La de arriba es más alta en El Robaíto
+   (el paquete con su etiqueta) y mucho más en El Cagao con 6 jugadores (placas apiladas, ver
+   PlayerSeat); la de la pista se vacía en Casino y Tres y Dos al terminar tu primer turno.
+   Sin estas reservas, el tablero de El Cagao con 6 jugadores medía ~30 px menos que los
+   demás y el de Casino y Tres y Dos crecía 24 px a mitad de partida. */
+
+/* Fila superior: altura mínima del contenido más alto de un modo sin apilar (el paquete de
+   El Robaíto: su carta --oh más la etiqueta y el respiro superior). En pantallas altas no
+   se aplica: en escritorio la fila ya mide lo mismo en Casino, Tres y Dos y El Robaíto, y
+   en vertical (retrato) la fila se parte en varias líneas y la mínima no la igualaría. */
+@media (max-height: 599px) {
+  .table-top-row {
+    min-height: calc(var(--oh) + 28px);
+  }
+}
+
+/* Carril de la pista: reserva el hueco de una píldora aunque no haya pista. Una píldora
+   mide ~24 px (texto de 11 px con su relleno); con dos en la misma línea sigue midiendo
+   lo mismo, y si se parten en dos líneas la fila crece sola porque esto es solo un mínimo. */
+.table-hint-row {
+  min-height: 24px;
+}
+
+/* Hueco del abanico apilado de El Cagao con 6 jugadores: la carta más la holgura que pide
+   su rotación (giro de hasta 13° más la caída del abanico: ~17% del alto de la carta). En
+   pantallas cortas la carta apilada mide ~31-52 px y bastan 10 px; en escritorio mide
+   ~78 px y hacen falta 14 px. Con 14 px en todas partes la unidad apilada se pasaba ~4 px
+   del mínimo de la fila superior y el tablero de El Cagao quedaba más bajo que los demás. */
+.stacked-fan-wrap {
+  height: calc(var(--oh-s) + 14px);
+}
+
+@media (max-height: 599px) {
+  .stacked-fan-wrap {
+    height: calc(var(--oh-s) + 10px);
   }
 }
 

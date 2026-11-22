@@ -18,6 +18,13 @@ interface RecoveryModalProps {
   onRestored: () => void;
 }
 
+/**
+ * Evento que abre el modal de recuperación desde otro sitio de la app (hoy,
+ * el apartado de Opciones): el modal vive en el menú, que es quien escucha
+ * este evento y lo abre.
+ */
+export const OPEN_RECOVERY_EVENT = 'cartas:open-recovery';
+
 type Step = 'code' | 'checking' | 'conflict' | 'done' | 'error';
 
 /** La economía local está vacía cuando nunca se jugó ni se ganó nada en este teléfono. */

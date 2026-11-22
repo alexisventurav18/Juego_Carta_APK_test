@@ -301,7 +301,6 @@ export function applyCagaoMove(state: CagaoState, seat: number, move: CagaoMove)
  * no dice nada: el índice se elige al azar.
  */
 export function chooseCagaoMove(state: CagaoState): CagaoMove {
-  const seat = state.turn;
   const victim = chooseCagaoVictim(state);
   const hand = state.hands[victim] ?? [];
   return { type: 'draw', index: randomInt(Math.max(hand.length, 1)), from: victim };

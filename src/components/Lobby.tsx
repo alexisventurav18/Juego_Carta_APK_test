@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BarChart3, BookOpen, Bot, CloudDownload, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Star, Target, Trophy, Users, VolumeX, X, Zap } from 'lucide-react';
+import { BarChart3, BookOpen, Bot, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Star, Target, Trophy, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
 import { createRoom, friendsList, joinRoom, leaveRoom, quickplayRoom, tournamentInfo, type TournamentData } from '@/lib/rooms';
@@ -20,7 +20,7 @@ import Store from './Store';
 import MissionsModal from './MissionsModal';
 import DailyWheel from './DailyWheel';
 import ProfileModal from './ProfileModal';
-import RecoveryModal from './RecoveryModal';
+import RecoveryModal, { OPEN_RECOVERY_EVENT } from './RecoveryModal';
 import RankingModal from './RankingModal';
 import FriendsModal from './FriendsModal';
 import TournamentModal from './TournamentModal';
@@ -156,6 +156,14 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  // La recuperación vive en Opciones (su propio apartado) pero el modal sigue
+  // aquí: al restaurar hay que refrescar nombre y avatar del menú.
+  useEffect(() => {
+    const openRecovery = () => setRecoveryOpen(true);
+    window.addEventListener(OPEN_RECOVERY_EVENT, openRecovery);
+    return () => window.removeEventListener(OPEN_RECOVERY_EVENT, openRecovery);
   }, []);
 
   /** Vuelve a pedir la insignia de Amigos (al cerrar su modal, p. ej.). */
@@ -313,12 +321,12 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
       <div className="absolute" style={{ top: 'var(--sat)', right: 'var(--sar)', bottom: 'var(--sab)', left: 'var(--sal)' }}>
         {/* El relleno lateral también mira el ancho: en vertical el marco (que
             escala con la altura) se comería media pantalla. */}
-        <div className="absolute inset-[calc(var(--frame)+4px)] flex flex-col gap-[1.6dvh] px-[clamp(8px,4vw,calc(var(--corner)*0.9))] pb-[calc(var(--corner)*0.25)] pt-[calc(var(--corner)*0.2)]">
+        <div className="absolute inset-[calc(var(--frame)+4px)] flex flex-col gap-[1.6dvh] px-[clamp(8px,4vw,calc(var(--corner)*0.9))] pb-[calc(var(--corner)*0.25)] pt-[calc(var(--corner)*0.2)] [@media(max-height:500px)]:gap-[1.1dvh]">
           {/* Barra superior: perfil, título y ajustes. En pantallas angostas el
               título ocupa su propia fila arriba; en horizontal corto la barra
               derecha colapsa a solo iconos para no apretarlo nunca. */}
           <header className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-            <div className="wood-block flex min-w-0 max-w-[34%] items-center gap-2 rounded-xl py-1 pl-1 pr-2">
+            <div className="wood-block flex min-w-0 max-w-[34%] items-center gap-2 rounded-xl py-1 pl-1 pr-2 [@media(max-height:500px)]:max-w-[150px]">
               <button
                 type="button"
                 onClick={() => setEditorOpen(true)}
@@ -359,9 +367,14 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
             {/* Título con espacio reservado: flex-1 en horizontal, fila propia
                 en vertical; nunca se parte ni se solapa con los controles. */}
             <div className="order-first flex min-w-0 basis-full flex-col items-center text-center leading-none min-[640px]:order-none min-[640px]:basis-auto min-[640px]:flex-1">
-              <h1 className="flex w-full min-w-0 items-center justify-center gap-2 whitespace-nowrap text-[clamp(15px,4.6dvh,28px)] font-extrabold uppercase tracking-[0.12em] text-amber-50 max-[640px]:text-[20px]">
+              <h1 className="flex w-full min-w-0 items-center justify-center gap-2 whitespace-nowrap text-[clamp(15px,4.6dvh,28px)] font-extrabold uppercase tracking-[0.12em] text-amber-50 max-[640px]:text-[20px] [@media(max-height:500px)]:text-[15px]">
                 <Spade className="h-[1em] w-[1em] shrink-0 text-amber-300" aria-hidden />
-                <span className="min-w-0 truncate">Cartas Dominicanas</span>
+                {/* En horizontal corto el título largo no cabe en la fila con
+                    el perfil y los botones: se acorta a "Cartas" para que la
+                    barra superior sea una sola fila y las tarjetas ganen
+                    ~40 px de altura (el arte se veía recortado al 23%). */}
+                <span className="min-w-0 truncate [@media(max-height:500px)]:hidden">Cartas Dominicanas</span>
+                <span className="hidden min-w-0 truncate [@media(max-height:500px)]:inline">Cartas</span>
               </h1>
               <p className="mt-1 text-[12px] text-amber-100/70 [@media(max-height:500px)]:hidden">
                 Elige tu juego y a la mesa
@@ -506,18 +519,6 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           {/* Los modos de juego, lado a lado y todos a la vista */}
           <GameCards games={GAME_ORDER} selected={game} onSelect={selectGame} />
 
-          {/* Tarjeta del torneo del fin de semana, cuando lo hay: abre su modal. */}
-          {tournamentBanner && (
-            <button
-              type="button"
-              onClick={() => setTournamentOpen(true)}
-              className="btn-gold flex min-h-[clamp(34px,9dvh,42px)] w-full shrink-0 touch-manipulation items-center justify-center gap-2 rounded-xl px-3 text-[clamp(13px,2.8dvh,14px)] font-extrabold transition-transform active:scale-[0.98]"
-            >
-              <Trophy className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="min-w-0 truncate">{tournamentBanner}</span>
-            </button>
-          )}
-
           {/* Configuración de la partida: cuántos bots y el tutorial */}
           <div className="flex shrink-0 flex-wrap items-center justify-center gap-[clamp(8px,2dvw,20px)]">
             <div className="wood-block flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-1">
@@ -582,17 +583,20 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
             </button>
           </footer>
 
-          {/* Recuperar el progreso guardado en la nube con el código de respaldo. */}
-          <div className="flex shrink-0 justify-center">
+          {/* Aviso del torneo del fin de semana, cuando lo hay: abre su modal.
+              Vive abajo del todo, aprovechando el espacio que sobra: en el
+              medio competía con las tarjetas y les robaba altura. Es una
+              píldora fina y apagada, centrada, no una banda dorada. */}
+          {tournamentBanner && (
             <button
               type="button"
-              onClick={() => setRecoveryOpen(true)}
-              className="flex min-h-[32px] touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[13px] font-bold text-amber-100/70 transition-transform hover:text-amber-50 active:scale-95"
+              onClick={() => setTournamentOpen(true)}
+              className="btn-wood mx-auto flex min-h-[28px] w-auto max-w-full shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-bold text-amber-200 transition-transform active:scale-[0.98]"
             >
-              <CloudDownload className="h-4 w-4 shrink-0" aria-hidden />
-              Recuperar mi progreso
+              <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
+              <span className="min-w-0 truncate">{tournamentBanner}</span>
             </button>
-          </div>
+          )}
 
           {/* Mientras se busca partida (crear, unirse u online) se puede cancelar y quedarse en el menú. */}
           {busy !== null && (

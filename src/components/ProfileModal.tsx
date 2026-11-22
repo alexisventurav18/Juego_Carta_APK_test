@@ -189,7 +189,7 @@ export default function ProfileModal({ economy, avatar, name, onClose, onEditAva
           )}
           <p className="text-xs font-bold text-amber-100/70">
             {sync.hasConflict
-              ? `Hay una copia más reciente en la nube (${formatSyncDate(sync.conflictAt)}). Usa «Recuperar mi progreso» en el menú para verla.`
+              ? `Hay una copia más reciente en la nube (${formatSyncDate(sync.conflictAt)}). Usa «Recuperar mi progreso» en Opciones para verla.`
               : sync.lastSyncedAt
                 ? `Último respaldo: ${formatSyncDate(sync.lastSyncedAt)}.`
                 : 'Aún no hay respaldo en la nube: se sube solo cuando ganas o compras algo.'}
