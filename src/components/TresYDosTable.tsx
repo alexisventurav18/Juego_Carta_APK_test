@@ -301,7 +301,7 @@ export default function TresYDosTable({
       controlsRight={<OptionsButton />}
       hint={
         playing && showStartHint && hint ? (
-          <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
+          <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-0.5 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
             {hint}
           </p>
         ) : undefined

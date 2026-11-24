@@ -5,9 +5,9 @@ import { publicAsset } from './publicAsset';
 
 const STORAGE_KEY = 'cartas-dominicanas:visual-prefs';
 
-export type CardBackTheme = 'cacao' | 'azul' | 'rojo' | 'madera-turquesa' | 'dominicano-azul' | 'dominicano-bandera' | 'larimar' | 'ambar';
-export type TableTheme = 'madera' | 'verde' | 'azul' | 'rojo' | 'bandera' | 'tropical' | 'mar-caribe' | 'cana';
-export type MenuTheme = 'madera' | 'verde' | 'azul' | 'playa-ilustrada' | 'atardecer-tropical' | 'fiesta-tropical' | 'palmeras';
+export type CardBackTheme = 'cacao' | 'azul' | 'rojo' | 'madera-turquesa' | 'dominicano-azul' | 'dominicano-bandera' | 'larimar' | 'ambar' | 'palma-real' | 'larimar-mar';
+export type TableTheme = 'madera' | 'verde' | 'azul' | 'rojo' | 'bandera' | 'tropical' | 'mar-caribe' | 'cana' | 'arena-playa' | 'selva' | 'atardecer-mesa';
+export type MenuTheme = 'madera' | 'verde' | 'azul' | 'playa-ilustrada' | 'atardecer-tropical' | 'fiesta-tropical' | 'palmeras' | 'amanecer-caribe' | 'carnaval' | 'cafetal';
 
 export interface VisualPrefs {
   cardBack: CardBackTheme;
@@ -30,6 +30,8 @@ export const CARD_BACK_THEMES: { id: CardBackTheme; label: string; color: string
   { id: 'dominicano-bandera', label: 'Bandera dominicana', color: '#e8e1cf' },
   { id: 'larimar', label: 'Larimar', color: DOMINICAN_PALETTE.azulLarimar },
   { id: 'ambar', label: 'Ámbar', color: DOMINICAN_PALETTE.ambar },
+  { id: 'palma-real', label: 'Palma real', color: DOMINICAN_PALETTE.azulBandera },
+  { id: 'larimar-mar', label: 'Larimar y mar', color: DOMINICAN_PALETTE.turquesaCaribe },
 ];
 
 export const TABLE_THEMES: { id: TableTheme; label: string; color: string; image: string }[] = [
@@ -81,6 +83,24 @@ export const TABLE_THEMES: { id: TableTheme; label: string; color: string; image
     color: DOMINICAN_PALETTE.verdePalma,
     image: 'radial-gradient(ellipse at 50% 40%, #2ec4b6 0%, #1b7a3d 55%, #0b3d20 100%)',
   },
+  {
+    id: 'arena-playa',
+    label: 'Arena de playa',
+    color: DOMINICAN_PALETTE.ambar,
+    image: `url("${publicAsset('images/temas/mesas/mesa-arena-playa.webp')}")`,
+  },
+  {
+    id: 'selva',
+    label: 'Selva',
+    color: DOMINICAN_PALETTE.verdePalma,
+    image: `url("${publicAsset('images/temas/mesas/mesa-selva.webp')}")`,
+  },
+  {
+    id: 'atardecer-mesa',
+    label: 'Atardecer',
+    color: DOMINICAN_PALETTE.rosaBayahibe,
+    image: `url("${publicAsset('images/temas/mesas/mesa-atardecer.webp')}")`,
+  },
 ];
 
 export const MENU_THEMES: { id: MenuTheme; label: string; color: string; image: string }[] = [
@@ -125,6 +145,24 @@ export const MENU_THEMES: { id: MenuTheme; label: string; color: string; image: 
     label: 'Palmeras',
     color: '#0b2e4f',
     image: 'radial-gradient(ellipse at 50% 0%, #2ec4d4 0%, transparent 55%), linear-gradient(180deg, #002d62 0%, #0b4a6b 50%, #1b7a3d 100%)',
+  },
+  {
+    id: 'amanecer-caribe',
+    label: 'Amanecer caribe',
+    color: DOMINICAN_PALETTE.turquesaCaribe,
+    image: `url("${publicAsset('images/temas/menu/amanecer-caribe.webp')}")`,
+  },
+  {
+    id: 'carnaval',
+    label: 'Carnaval',
+    color: DOMINICAN_PALETTE.azulBandera,
+    image: `url("${publicAsset('images/temas/menu/carnaval.webp')}")`,
+  },
+  {
+    id: 'cafetal',
+    label: 'Cafetal',
+    color: DOMINICAN_PALETTE.verdePalma,
+    image: `url("${publicAsset('images/temas/menu/cafetal.webp')}")`,
   },
 ];
 

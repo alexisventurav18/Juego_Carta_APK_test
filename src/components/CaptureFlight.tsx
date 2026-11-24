@@ -1,4 +1,5 @@
 import type { Card } from '@/games/cards';
+import { DOMINICAN_PALETTE } from '../lib/dominicanPalette';
 import PlayingCard, { CardBack } from './PlayingCard';
 import type { TeamColor } from './table/teamColors';
 
@@ -18,11 +19,20 @@ export default function CaptureFlight({ playerName, card, capturedCount, virao, 
   return (
     <div className="pointer-events-none absolute inset-x-2 bottom-4 z-20 flex justify-center">
       <div
-        className="animate-capture-flight wood-panel flex items-end gap-1.5 !rounded-2xl px-3 py-2 shadow-xl"
+        className="animate-capture-flight wood-panel relative flex items-end gap-1.5 !rounded-2xl px-3 py-2 shadow-xl"
         style={team ? { boxShadow: `0 0 0 3px ${team.main}, 0 0 18px 2px ${team.main}, 0 18px 40px rgb(0 0 0 / 0.6)` } : undefined}
         role="status"
         aria-live="polite"
       >
+        {/* Destello al capturar: un pulso de luz del color del equipo (o ámbar)
+            que se expande y se apaga mientras dura el aviso. */}
+        <span
+          aria-hidden
+          className="capture-glow"
+          style={{
+            background: `radial-gradient(ellipse at center, ${team?.main ?? DOMINICAN_PALETTE.ambar}59 0%, transparent 70%)`,
+          }}
+        />
         <div className="flex flex-col items-center gap-1">
           <PlayingCard card={card} size="sm" />
           <span className="max-w-24 truncate text-[10px] font-medium">{playerName}</span>

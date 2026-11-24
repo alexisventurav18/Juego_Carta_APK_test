@@ -752,27 +752,86 @@ button,
    Sin estas reservas, el tablero de El Cagao con 6 jugadores medía ~30 px menos que los
    demás y el de Casino y Tres y Dos crecía 24 px a mitad de partida. */
 
-/* Fila superior: altura mínima del contenido más alto de un modo sin apilar (el paquete de
-   El Robaíto: su carta --oh más la etiqueta y el respiro superior). En pantallas altas no
-   se aplica: en escritorio la fila ya mide lo mismo en Casino, Tres y Dos y El Robaíto, y
+/* Fila superior: altura mínima del contenido más alto de un modo sin apilar (el abanico de
+   arriba: su carta --oh más los 14 px de holgura de su giro y el respiro superior). En pantallas
+   altas no se aplica: en escritorio la fila ya mide lo mismo en Casino, Tres y Dos y El Robaíto, y
    en vertical (retrato) la fila se parte en varias líneas y la mínima no la igualaría. */
 @media (max-height: 599px) {
   .table-top-row {
-    min-height: calc(var(--oh) + 28px);
+    min-height: calc(var(--oh) + 22px);
   }
 }
 
-/* Carril de la pista: reserva el hueco de una píldora aunque no haya pista. Una píldora
-   mide ~24 px (texto de 11 px con su relleno); con dos en la misma línea sigue midiendo
-   lo mismo, y si se parten en dos líneas la fila crece sola porque esto es solo un mínimo. */
-.table-hint-row {
-  min-height: 24px;
+/* Mesas más grandes en pantallas cortas (teléfono en horizontal y ventanas bajas): el
+   tablero es la fila flexible, así que crece con lo que se le quita a las demás filas.
+   Todo vive aquí, solo bajo 600 px de alto, para no tocar el escritorio ni el retrato:
+   - la fila de tu zona baja del 30% al 26% y las columnas laterales del 16% al 15%: el
+     fieltro gana ~7 px de alto y ~15 px de ancho a 800x360. !important porque la rejilla
+     lleva filas y columnas en estilo inline. El abanico cabe: la mano mide 76 px y la
+     celda le deja ~87 px; los botones de Casino en 2 columnas suman ~84 px.
+   - mano (--ch), rivales (--oh) y paquetes (--sh) bajan un poco (85→76 px la mano a
+     800x360): la fila superior pasa de ~72-75 px a ~68 px y el abanico cabe en la fila
+     del 26% con el relleno recortado de su celda. En escritorio los topes (--ch-max y
+     --oh-max) seguirían mandando, así que aquí no se tocan.
+   - --corner baja (32→22 px a 800x360): el relleno de la esquina inferior derecha
+     (corner*0.75) se achica y los botones de Casino en 2 columnas ("Hacer Par",
+     "Convertir") siguen cabiendo con la fuente a 8 px (ver table/styles.ts).
+   - la fila superior baja con su mínimo (ver arriba) y el asiento apilado de El Cagao
+     con 6 jugadores se achica solo aquí (--oh-s al 56%, hueco 2 px, holgura del abanico
+     8 px): la unidad apilada pasa de ~66 px a ~58 px y cabe en el mínimo nuevo; en
+     escritorio sigue al 65% para no romper la igualdad de la fila superior allí.
+   - los botones de El Cagao de abajo a la derecha ("Bajar todos los pares" y "Mezclar
+     mano") bajan de 44 px a 36 px: los dos juntos suman ~86 px y caben en la fila
+     del 26%; con 44 px se salían ~8 px por arriba de su celda cuando aparecía el
+     de bajar pares (ya pasaba con la fila del 28%). */
+@media (max-height: 599px) {
+  .table-stage {
+    --ch: clamp(54px, 21dvh, 157px) !important;
+    --oh: clamp(34px, 11dvh, 83px) !important;
+    --sh: clamp(34px, 11dvh, 84px) !important;
+    --corner: clamp(22px, 6dvh, 60px) !important;
+  }
+
+  .table-grid {
+    grid-template-rows: auto auto minmax(0, 1fr) 26% !important;
+    grid-template-columns: 15% minmax(0, 1fr) 15% !important;
+  }
+
+  /* Barra de controles más baja: los botones pasan de 40 px a 30 px y la fila
+     deja ~4 px más de tablero. Solo aquí: en escritorio la barra se queda en 36 px. */
+  .table-controls-row .h-10 {
+    height: 30px;
+  }
+
+  /* Asiento apilado de El Cagao con 6 jugadores, solo en pantallas cortas: --oh-s
+     vive en el estilo inline de la unidad, así que el !important es obligatorio;
+     el hueco entre placa y abanico también se recorta aquí. En escritorio la unidad
+     sigue al 65% con su hueco de 4 px. */
+  .stacked-seat {
+    --oh-s: calc(var(--oh) * 0.56) !important;
+    gap: 2px !important;
+  }
+
+  /* Botones de El Cagao de abajo a la derecha, solo en pantallas cortas: el mínimo
+     de 44 px y el relleno vertical de 8 px hacían que los dos juntos midieran ~102 px
+     y se salieran de su celda; con 36 px y relleno de 4 px suman ~86 px. */
+  .cagao-side-btn {
+    min-height: 36px !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
 }
+
+/* Carril de la pista: ya no existe. La pista flota sobre la franja inferior del tablero
+   (ver TableLayout): el tablero gana los 24 px de la fila y la igualdad entre modos ya no
+   depende de que la pista se esconda o no. La franja está vacía en los 4 modos porque las
+   cartas no bajan del 24% inferior en Casino y El Robaíto, el contenido va centrado en Tres
+   y Dos y la pila va centrada en El Cagao. */
 
 /* Hueco del abanico apilado de El Cagao con 6 jugadores: la carta más la holgura que pide
    su rotación (giro de hasta 13° más la caída del abanico: ~17% del alto de la carta). En
-   pantallas cortas la carta apilada mide ~31-52 px y bastan 10 px; en escritorio mide
-   ~78 px y hacen falta 14 px. Con 14 px en todas partes la unidad apilada se pasaba ~4 px
+   pantallas cortas la carta apilada mide ~22 px (56% de --oh) y bastan 8 px; en escritorio
+   mide ~62 px y hacen falta 14 px. Con 14 px en todas partes la unidad apilada se pasaba ~4 px
    del mínimo de la fila superior y el tablero de El Cagao quedaba más bajo que los demás. */
 .stacked-fan-wrap {
   height: calc(var(--oh-s) + 14px);
@@ -780,7 +839,7 @@ button,
 
 @media (max-height: 599px) {
   .stacked-fan-wrap {
-    height: calc(var(--oh-s) + 10px);
+    height: calc(var(--oh-s) + 8px);
   }
 }
 
@@ -792,10 +851,12 @@ button,
 @media (min-width: 640px) and (min-height: 600px) {
   /* Cartas más grandes en los 4 modos: el dvh ya pedía más, el tope lo
      frenaba. --ch-max/--oh-max/--ph-max los lee el clamp de TableLayout
-     (y el de Casino); sin ellos el tope de teléfono seguiría mandando. */
+     (y el de Casino); sin ellos el tope de teléfono seguiría mandando.
+     --oh-max baja de 104 px a 96 px: la fila superior pasa de ~122 px a
+     ~114 px y el tablero gana ese hueco; la mano se queda en 208 px. */
   .table-stage {
     --ch-max: 208px;
-    --oh-max: 112px;
+    --oh-max: 96px;
     --ph-max: 148px;
   }
 
@@ -810,12 +871,21 @@ button,
     --cu-h: min(var(--mesa-h-sm, 20dvh), 12rem);
   }
 
-  /* Tablero más ancho: las columnas laterales pasan de 16% a 12% y el
+  /* Tablero más ancho: las columnas laterales pasan de 16% a 11% y el
      fieltro crece. !important porque la rejilla lleva las columnas en
-     estilo inline (teléfono). La fila de tu zona sigue en 32%: con cartas
-     más altas necesita ese hueco. */
+     estilo inline (teléfono). Con 11% los botones de Casino en 2 columnas
+     siguen cabiendo a 1600x900 ("Hacer Par" pide ~55 px y el botón mide
+     ~59 px); con 10% se cortaban. La fila de tu zona baja del 30% al 28%:
+     con cartas de 208 px necesita ~224 px y la fila le deja ~239 px. */
   .table-grid {
-    grid-template-columns: 12% minmax(0, 1fr) 12% !important;
+    grid-template-columns: 11% minmax(0, 1fr) 11% !important;
+    grid-template-rows: auto auto minmax(0, 1fr) 28% !important;
+  }
+
+  /* Barra de controles algo más baja: los botones pasan de 40 px a 36 px y la
+     fila deja ~4 px más de tablero. */
+  .table-controls-row .h-10 {
+    height: 36px;
   }
 }
 
@@ -828,6 +898,90 @@ button,
 .card-playable {
   box-shadow: 0 0 0 2px rgb(190 242 100 / 0.8), 0 0 10px rgb(190 242 100 / 0.45);
 }
+
+/* Cartas 3D: giro de reparto, inclinación al jugarse o presionarse y sombras con
+   profundidad. Solo transformaciones visuales: sin cambios de tamaño, layout ni
+   manejo de toques. El giro corre al montar la carta (las manos se reparten carta a
+   carta, así el escalonado sale solo); `rotate` es una propiedad independiente y
+   compone con el `transform` de Tailwind (`active:scale-95`, `hover:-translate-y-1`)
+   en vez de pisarlo. Las reglas de `.card-picked` y `.card-playable` de esta sección
+   van después de las originales y las afinan sin cambiar su comportamiento. */
+@keyframes card-deal-flip {
+  from {
+    transform: perspective(650px) rotateY(75deg) translateY(4px);
+    opacity: 0.55;
+  }
+  to {
+    transform: perspective(650px) rotateY(0deg) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Giro 3D al repartir: la carta entra girando de dorso a cara (200-350 ms). Solo se
+   aplica a la cara: los dorsos del mazo se remontan a cada tick del barajado. */
+.card-deal {
+  animation: card-deal-flip 280ms ease-out;
+}
+
+/* Cara/dorso de la carta: sombra en capas (contacto + caída + ambiental). */
+.card-3d {
+  box-shadow:
+    0 2px 4px rgb(0 0 0 / 0.35),
+    0 10px 24px rgb(0 0 0 / 0.45);
+  transition: box-shadow 200ms ease-out;
+}
+
+/* Envoltorio interactivo de la carta (CartaUI y PlayingCard): al presionar se inclina
+   un poco; `rotate` compone con `active:scale-95` en vez de pisarlo. */
+.card-press {
+  transition-property: transform, rotate, box-shadow, opacity;
+}
+
+.card-press:active {
+  rotate: -2deg;
+}
+
+/* Carta elegida: misma elevación y aro dorado de siempre, con una leve inclinación 3D
+   y una sombra con más profundidad. */
+.card-picked {
+  transform: perspective(700px) translateY(-0.75rem) rotateX(-6deg);
+  box-shadow:
+    0 0 0 2px #facc15,
+    0 4px 8px rgb(0 0 0 / 0.4),
+    0 16px 32px rgb(0 0 0 / 0.55);
+}
+
+/* Carta jugable: mismo aro verde de siempre, con sombra con profundidad; al pasar el
+   dedo o el ratón la sombra se marca más. */
+.card-playable {
+  box-shadow:
+    0 0 0 2px rgb(190 242 100 / 0.8),
+    0 0 10px rgb(190 242 100 / 0.45),
+    0 10px 22px rgb(0 0 0 / 0.5);
+}
+
+.card-playable:hover {
+  box-shadow:
+    0 0 0 2px rgb(190 242 100 / 0.9),
+    0 0 16px rgb(190 242 100 / 0.6),
+    0 14px 28px rgb(0 0 0 / 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-deal {
+    animation: none;
+  }
+
+  .card-press:active {
+    rotate: none;
+  }
+
+  /* Sin inclinación 3D en la carta elegida: vuelve a la elevación plana de siempre. */
+  .card-picked {
+    transform: translateY(-0.75rem);
+  }
+}
+/* Fin Cartas 3D */
 
 /* Pantalla de menú o sala: ocupa todo el viewport respetando los márgenes seguros. */
 .safe-screen {

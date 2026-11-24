@@ -1,5 +1,6 @@
 import { useEffect, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { WoodFrame } from '../cagao/CardAssets';
+import AmbientParticles from '../AmbientParticles';
 
 /** Medidas de la mesa: todo sale de la altura de pantalla (dvh), así escala en cualquier resolución. */
 const BASE_VARS = {
@@ -33,7 +34,8 @@ interface TableLayoutProps {
   /** Celda de tu mano: ancla de los vuelos que llegan a ti o salen de ti. */
   bottomCenterRef?: Ref<HTMLDivElement>;
   bottomRight: ReactNode;
-  /** Pista de la partida: su propio carril entre el tablero y la mano; si no hay pista, se colapsa. */
+  /** Pista de la partida o aviso de la última jugada: flota sobre la franja inferior del tablero,
+      sin carril propio; si no hay pista, no se dibuja nada. */
   hint?: ReactNode;
   /** Ventanas, avisos y capas que van encima de la mesa. */
   overlays?: ReactNode;
@@ -51,14 +53,15 @@ interface TableLayoutProps {
  * se ven y se sienten igual. El marco llega a los bordes de la pantalla; el contenido respeta el notch.
  *
  * La rejilla tiene un carril por cosa y nada se monta sobre nada: la barra de controles (acciones |
- * estado | opciones) y la fila de rivales de arriba ocupan todo el ancho, cada una en su fila; la pista
- * tiene su propio carril entre el tablero y la mano (antes iba pegada al borde inferior del tablero y
- * lo tapaba); el tablero y tu mano quedan en sus filas de siempre. Antes la fila superior era una sola
- * fila de tres celdas estrechas (16-17% los lados) donde Salir, la ficha de mazo, los paneles de puntos,
- * los abanicos, las placas y la píldora de turno se peleaban el mismo hueco: la ficha de mazo quedaba
- * bajo el panel "Nosotros", la píldora "Tu turno" tapaba el panel "Ellos" y las placas de arriba se
- * encogían hasta perder el nombre. Con cada carril a todo lo ancho, cada elemento tiene su hueco
- * reservado y nada se superpone en ningún tamaño.
+ * estado | opciones) y la fila de rivales de arriba ocupan todo el ancho, cada una en su fila; el
+ * tablero y tu mano quedan en sus filas de siempre. La pista ya no tiene carril propio: flota sobre
+ * la franja inferior del tablero (ver abajo), que está vacía en los 4 modos, así el tablero gana
+ * esos 24 px. Antes la fila superior era una sola fila de tres celdas estrechas (16-17% los lados)
+ * donde Salir, la ficha de mazo, los paneles de puntos, los abanicos, las placas y la píldora de
+ * turno se peleaban el mismo hueco: la ficha de mazo quedaba bajo el panel "Nosotros", la píldora
+ * "Tu turno" tapaba el panel "Ellos" y las placas de arriba se encogían hasta perder el nombre.
+ * Con cada carril a todo lo ancho, cada elemento tiene su hueco reservado y nada se superpone en
+ * ningún tamaño.
  */
 export default function TableLayout({
   controlsLeft,
@@ -107,24 +110,36 @@ export default function TableLayout({
         />
       )}
 
+      {/* Partículas ambientales del modo: capa decorativa, sin interacción,
+          por debajo de la rejilla de la mesa. */}
+      {accent && <AmbientParticles accent={accent} />}
+
       {/* Rejilla de la mesa: el contenido se sangra hacia dentro lo justo para esquivar el notch y las esquinas.
-          Filas: controles | rivales de arriba | tablero | pista | tu zona. Las dos primeras y la pista van a
-          todo lo ancho; el tablero y tu zona usan las tres columnas de siempre. */}
+          Filas: controles | rivales de arriba | tablero | tu zona. Las dos primeras van a todo lo ancho;
+          el tablero y tu zona usan las tres columnas de siempre. La pista no tiene fila: flota sobre la
+          franja inferior del tablero (ver el centro), que está vacía en los 4 modos. */}
       <div
         className="table-grid absolute grid"
         style={{
-          top: 'calc(var(--frame) + 4px + var(--sat))',
-          right: 'calc(var(--frame) + 4px + var(--sar))',
-          bottom: 'calc(var(--frame) + 4px + var(--sab))',
-          left: 'calc(var(--frame) + 4px + var(--sal))',
+          // El marco no deja hueco: el fieltro crece 4 px de alto y 4 px de ancho en todas las
+          // pantallas. La madera mide --frame y las esquinas se esquivan con el relleno de las
+          // filas, no con este hueco (antes era +2 px).
+          top: 'calc(var(--frame) + 0px + var(--sat))',
+          right: 'calc(var(--frame) + 0px + var(--sar))',
+          bottom: 'calc(var(--frame) + 0px + var(--sab))',
+          left: 'calc(var(--frame) + 0px + var(--sal))',
           gridTemplateColumns: `${sideCols} minmax(0,1fr) ${sideCols}`,
-          gridTemplateRows: 'auto auto minmax(0,1fr) auto 32%',
+          // La fila de tu zona es el 30%: con cartas más altas necesita su hueco, y lo que
+          // sobra es tablero. En pantallas cortas el CSS la baja al 26% (ver index.css) y en
+          // escritorio al 28%: el abanico cabe porque su celda recortó el relleno superior
+          // e inferior y porque los botones de El Cagao se achican en pantallas cortas.
+          gridTemplateRows: 'auto auto minmax(0,1fr) 30%',
         }}
       >
         {/* Barra de controles: acciones a la izquierda, estado centrado, opciones a la derecha. Los grupos
             laterales son flex-1 para que el del centro quede de verdad centrado y el engranaje no se mueva
             nunca con los cambios de turno. En pantallas muy estrechas el relleno de las esquinas se achica. */}
-        <div className="col-span-3 z-30 flex items-center gap-2 px-1 pl-[calc(var(--corner)*0.8)] pr-[calc(var(--corner)*0.8)] max-[480px]:px-1">
+        <div className="table-controls-row col-span-3 z-30 flex items-center gap-2 px-1 pl-[calc(var(--corner)*0.8)] pr-[calc(var(--corner)*0.8)] max-[480px]:px-1">
           <div className="flex min-w-0 flex-1 items-center gap-1.5">{controlsLeft}</div>
           <div className="flex shrink-0 items-center justify-center gap-1.5">{controlsCenter}</div>
           <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">{controlsRight}</div>
@@ -143,26 +158,30 @@ export default function TableLayout({
         <div className="min-h-0 min-w-0">{left}</div>
         <div ref={centerRef} className="relative min-h-0 min-w-0">
           {center}
+          {/* La pista flota sobre la franja inferior del tablero, sin carril propio: el tablero
+              gana los 24 px de la fila que ocupaba. La franja está vacía en los 4 modos: en Casino
+              y El Robaíto las cartas no bajan del 24% inferior (ver bottom-[24%] en sus mesas), en
+              Tres y Dos el contenido va centrado con el 22% libre abajo y en El Cagao la pila va
+              centrada con más de 10 px de margen. La píldora mide ~20 px (py-0.5) y va a 16 px del
+              borde (bottom-4): el hueco entre la pila de El Cagao (que termina ~39 px arriba del
+              borde) y una carta elegida de la mano (que se eleva 18 px y queda ~13 px arriba del
+              borde) es de solo ~26 px, así que la píldora cabe con ~3 px de margen por cada lado.
+              Solo se dibuja UN elemento de pista: en El Cagao y El Robaíto el aviso de la última
+              jugada tiene precedencia sobre la pista inicial (ver sus mesas); con los dos a la vez
+              la píldora se partía en dos líneas (40 px) y no cabía en el hueco. Es
+              pointer-events-none: no tapa toques ni arrastres del tablero. Antes la pista tenía su
+              propio carril entre el tablero y la mano para que no tapara nada; ese carril ya no
+              existe y la igualdad entre modos ya no depende de que la pista se esconda o no. */}
+          {hint && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-2">{hint}</div>
+          )}
         </div>
         <div className="min-h-0 min-w-0">{right}</div>
-
-        {/* Carril de la pista: entre el tablero y la mano, nunca sobre el tablero. También vive aquí el
-            aviso de la última jugada: antes iba pegado arriba del tablero y tapaba la parte superior
-            del mazo y su contador. La altura mínima (.table-hint-row en index.css) reserva el hueco
-            de una pista aunque no haya ninguna: en Casino y Tres y Dos la pista se esconde para
-            siempre al terminar tu primer turno, mientras que en El Cagao y El Robaíto queda el aviso de
-            la última jugada; sin la reserva, el tablero de Casino y Tres y Dos crecería 24 px a mitad
-            de partida y dejaría de medir lo mismo que el de los otros modos. */}
-        {hint ? (
-          <div className="table-hint-row col-span-3 z-20 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-2">{hint}</div>
-        ) : (
-          <div className="table-hint-row col-span-3" aria-hidden />
-        )}
 
         <div className="z-30 flex items-end p-1 pl-[calc(var(--corner)*0.75)]">{bottomLeft}</div>
         <div
           ref={bottomCenterRef}
-          className="relative flex min-h-0 min-w-0 items-end justify-center overflow-visible pb-[calc(var(--frame)*1.5)] pt-4"
+          className="relative flex min-h-0 min-w-0 items-end justify-center overflow-visible pb-[calc(var(--frame)*0.5)] pt-1"
         >
           {bottomCenter}
         </div>

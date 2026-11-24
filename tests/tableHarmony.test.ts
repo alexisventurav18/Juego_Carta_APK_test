@@ -49,10 +49,10 @@ function propBlock(src: string, prop: string): string {
 }
 
 describe('un carril por cosa: la fila superior ya no es una sola fila de tres celdas', () => {
-  it('TableLayout tiene cinco filas: controles | arriba | tablero | pista | tu zona', () => {
+  it('TableLayout tiene cuatro filas: controles | arriba | tablero | tu zona', () => {
     assert.ok(
-      layout.includes("gridTemplateRows: 'auto auto minmax(0,1fr) auto 32%'"),
-      'la rejilla tiene cinco filas con la pista en su propio carril',
+      layout.includes("gridTemplateRows: 'auto auto minmax(0,1fr) 30%'"),
+      'la rejilla tiene cuatro filas; la pista flota sobre el tablero y ya no tiene carril',
     );
     assert.ok(!layout.includes('21%'), 'la fila superior ya no es un 21% compartido');
   });
@@ -99,31 +99,46 @@ describe('la píldora de turno no comparte contenedor con los paneles de puntos'
   });
 });
 
-describe('la pista tiene su propio carril fuera del tablero', () => {
-  it('TableLayout reserva el carril de la pista entre el tablero y la mano', () => {
+describe('la pista flota sobre la franja inferior del tablero', () => {
+  it('TableLayout dibuja la pista como overlay dentro de la celda del tablero', () => {
     assert.ok(layout.includes('hint?: ReactNode'), 'TableLayout recibe la pista como prop');
-    assert.ok(layout.includes('{hint ? ('), 'el carril se colapsa cuando no hay pista');
+    assert.ok(!layout.includes('table-hint-row'), 'ya no existe el carril de la pista');
+    assert.ok(
+      layout.includes('pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center'),
+      'la pista flota a 16 px del borde inferior del tablero, sin bloquear toques',
+    );
   });
 
-  it('ninguna mesa dibuja la pista sobre el tablero', () => {
+  it('ninguna mesa dibuja la pista por su cuenta', () => {
     for (const [name, src] of tables) {
       assert.ok(src.includes('hint={'), `${name}: la pista va en la prop hint`);
-      assert.ok(!src.includes('absolute bottom-0'), `${name}: sin pista absoluta sobre el tablero`);
+      assert.ok(!src.includes('absolute bottom-0'), `${name}: sin pista absoluta dibujada por la mesa`);
     }
   });
 
-  it('el aviso de la última jugada tampoco va sobre el tablero (vive en el carril de la pista)', () => {
+  it('el aviso de la última jugada tampoco lo dibuja la mesa (vive en la prop hint)', () => {
     for (const [name, src] of [
       ['El Cagao', cagao],
       ['El Robaíto', robaito],
     ] as const) {
       assert.ok(!src.includes('absolute inset-x-0 top-1'), `${name}: sin aviso absoluto sobre el tablero`);
       const hint = propBlock(src, 'hint');
-      assert.ok(hint.includes('role="status"'), `${name}: el aviso va en el carril de la pista`);
+      assert.ok(hint.includes('role="status"'), `${name}: el aviso va en la prop hint`);
       assert.ok(hint.includes('animate-combo-label'), `${name}: el aviso conserva su animación`);
     }
     assert.ok(propBlock(robaito, 'hint').includes('describeEvent(event, seat, names)'), 'El Robaíto: el aviso describe la jugada');
     assert.ok(propBlock(cagao, 'hint').includes('event.pair'), 'El Cagao: el aviso describe el par robado');
+    assert.ok(propBlock(cagao, 'hint').includes('!event && showStartHint'), 'El Cagao: la pista inicial se esconde si hay aviso');
+    assert.ok(propBlock(robaito, 'hint').includes('!event && showStartHint'), 'El Robaíto: la pista inicial se esconde si hay aviso');
+  });
+
+  it('las cartas no entran en la franja de la pista (Casino y El Robaíto)', () => {
+    // La franja inferior del tablero mide ~36 px (píldora de 20 px a 16 px del borde): las
+    // cartas de Casino y los paquetes de El Robaíto no bajan del 24% inferior, así que
+    // nunca se montan sobre la pista. En Tres y Dos el contenido va centrado con el 22%
+    // libre abajo y en El Cagao la pila va centrada.
+    assert.ok(casino.includes('bottom-[24%]'), 'Casino: las cartas no bajan del 24% inferior');
+    assert.ok(robaito.includes('bottom-[24%]'), 'El Robaíto: los paquetes no bajan del 24% inferior');
   });
 });
 

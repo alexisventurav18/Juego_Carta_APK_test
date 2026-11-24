@@ -1,0 +1,198 @@
+/* ------------------------------------------------------------------ */
+/* Efectos de movimiento (vía 3): ambiente por modo, brillo de captura */
+/* y lluvia de monedas.                                                */
+/*                                                                      */
+/* Reglas duras (condición de Alexis: el movimiento no debe romper     */
+/* nada):                                                               */
+/* - Solo se animan `transform` y `opacity` (propiedades del           */
+/*   compositor). Nada de width/height/top/left/margin/padding.        */
+/* - Todas las capas decorativas son `pointer-events: none` y van por  */
+/*   debajo de cartas y botones: nada intercepta toques ni tapa nada.  */
+/* - Sin `will-change`, sin `filter` animado ni `box-shadow` animado.  */
+/* - `prefers-reduced-motion` apaga TODAS estas animaciones (ver el    */
+/*   bloque al final, mismo patrón que index.css).                      */
+/* ------------------------------------------------------------------ */
+
+/* ------------------------- Ambiente por modo ---------------------- */
+
+/* Capa decorativa de la mesa: cubre el escenario sin interceptar nada. */
+.ambient-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ambient-particle {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+/* Casino: destellos dorados que suben con un vaivén suave. */
+@keyframes ambient-sparkle-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.6);
+  }
+  15% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.7;
+    transform: translate3d(6px, -18px, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-4px, -36px, 0) scale(0.7);
+  }
+}
+
+/* Tres y Dos: burbujas larimar que flotan despacio hacia arriba. */
+@keyframes ambient-bubble-float {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(0.8);
+  }
+  20% {
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(-5px, -17px, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(4px, -34px, 0) scale(1.05);
+  }
+}
+
+/* El Cagao: brasas rojas que ascienden y parpadean. */
+@keyframes ambient-ember-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  12% {
+    opacity: 0.85;
+  }
+  45% {
+    opacity: 0.5;
+    transform: translate3d(8px, -26px, 0) scale(0.7);
+  }
+  70% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(12px, -52px, 0) scale(0.4);
+  }
+}
+
+/* El Robaíto: gotas turquesa que caen suaves. */
+@keyframes ambient-drop-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(0.9);
+  }
+  20% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-3px, 26px, 0) scale(1);
+  }
+}
+
+.ambient-sparkles {
+  animation: ambient-sparkle-rise linear infinite;
+}
+
+.ambient-bubbles {
+  animation: ambient-bubble-float ease-in-out infinite;
+}
+
+.ambient-embers {
+  animation: ambient-ember-rise linear infinite;
+}
+
+.ambient-drops {
+  animation: ambient-drop-fall ease-in infinite;
+}
+
+/* ------------------------- Lluvia de monedas ---------------------- */
+
+/* Capa de la lluvia (dentro del aviso de victoria, sobre el fondo). */
+.coin-rain-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Moneda dorada: círculo con degradado y borde ámbar, símbolo "$". */
+.coin-rain-piece {
+  position: absolute;
+  top: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  pointer-events: none;
+  color: #78350f;
+  font-weight: 900;
+  background: radial-gradient(circle at 35% 30%, #fde68a 0%, #fbbf24 45%, #d97706 100%);
+  border: 2px solid #f59e0b;
+  animation: coin-fall linear infinite;
+}
+
+@keyframes coin-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -56px, 0) rotate(0deg);
+  }
+  8% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 105vh, 0) rotate(540deg);
+  }
+}
+
+/* ------------------------- Brillo al capturar --------------------- */
+
+/* Destello detrás del aviso de captura (CaptureFlight): un pulso único
+   que se expande y se desvanece mientras dura el aviso. */
+.capture-glow {
+  position: absolute;
+  inset: -14px;
+  border-radius: 9999px;
+  pointer-events: none;
+  animation: capture-glow-pulse 900ms ease-out both;
+}
+
+@keyframes capture-glow-pulse {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+/* ----------------- Movimiento reducido: todo apagado --------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-sparkles,
+  .ambient-bubbles,
+  .ambient-embers,
+  .ambient-drops,
+  .coin-rain-piece,
+  .capture-glow {
+    animation: none;
+  }
+}

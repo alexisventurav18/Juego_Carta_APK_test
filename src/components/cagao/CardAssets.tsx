@@ -195,6 +195,8 @@ export const CARD_BACK_IMAGES: Record<CardBackTheme, string> = {
   'dominicano-bandera': `url("${publicAsset('images/temas/cartas/dorso-dominicano-bandera.webp')}")`,
   larimar: `url("data:image/svg+xml;utf8,${encodeURIComponent(recolorBack({ leaf: '#7fb5d5', pod: '#2e6da4', flower: '#ffffff' }))}")`,
   ambar: `url("data:image/svg+xml;utf8,${encodeURIComponent(recolorBack({ leaf: '#e8a020', pod: '#8a5f12', flower: '#fff6d6' }))}")`,
+  'palma-real': `url("${publicAsset('images/temas/cartas/dorso-palma-real.webp')}")`,
+  'larimar-mar': `url("${publicAsset('images/temas/cartas/dorso-larimar-mar.webp')}")`,
 };
 
 /* ------------------------------------------------------------------ */

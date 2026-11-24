@@ -251,13 +251,14 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
     />
   );
 
-  const pileOf = (s: number) => (
+  const pileOf = (s: number, showLabel = true) => (
     <PilePad
       pile={state.piles[s]}
       name={state.players[s].name}
       mine={s === seat}
       targeted={isTargeted(s)}
       registerRef={registerPile(s)}
+      showLabel={showLabel}
     />
   );
 
@@ -301,7 +302,9 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
       topSeats={game.layout.top.map((s) => (
         <div key={s} className="flex min-w-0 items-center justify-center gap-[clamp(6px,1.6dvw,16px)]">
           {renderSeat(s, 'top')}
-          {pileOf(s)}
+          {/* Sin etiqueta bajo la pila: el nombre ya va en la placa de al lado y la etiqueta
+              hacía que la fila superior creciera con el grosor del paquete. */}
+          {pileOf(s, false)}
         </div>
       ))}
       controlsCenter={
@@ -316,12 +319,13 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
       controlsRight={<OptionsButton />}
       hint={
         <>
-          {/* Aviso de la última jugada: en este carril, junto a la pista, no sobre el tablero. */}
+          {/* Aviso de la última jugada: flota con la pista sobre la franja inferior del tablero;
+              tiene precedencia sobre la pista inicial (que se esconde mientras hay aviso). */}
           {event && game.playing && (
             <div
               key={event.seq}
               role="status"
-              className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-1 text-center text-[11px] ring-1 sm:text-xs ${
+              className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-0.5 text-center text-[11px] ring-1 sm:text-xs ${
                 event.kind === 'steal'
                   ? 'bg-amber-500/85 font-bold text-stone-900 ring-amber-200'
                   : event.kind === 'capture'
@@ -332,8 +336,10 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
               {describeEvent(event, seat, names)}
             </div>
           )}
-          {game.playing && showStartHint && hint && (
-            <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
+          {/* La pista inicial solo se ve si no hay aviso de última jugada: la pista flota sobre
+              la franja inferior del tablero y los dos elementos juntos se partían en dos líneas. */}
+          {game.playing && !event && showStartHint && hint && (
+            <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-0.5 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
               {hint}
             </p>
           )}
@@ -361,7 +367,7 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
           )}
 
           {/* Mazo y cartas de la mesa */}
-          <div className="absolute inset-x-[15%] bottom-[20%] top-[8%] z-10 flex items-center justify-center gap-[clamp(10px,3dvw,28px)]">
+          <div className="absolute inset-x-[15%] bottom-[24%] top-[8%] z-10 flex items-center justify-center gap-[clamp(10px,3dvw,28px)]">
             <div className="flex shrink-0 flex-col items-center">
               <div ref={deckRef} className="relative" role="img" aria-label={`Mazo: ${deckDisplayCount} cartas`}>
                 {deckDisplayCount > 0 ? (

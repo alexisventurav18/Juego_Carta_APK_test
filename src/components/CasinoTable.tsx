@@ -582,7 +582,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
       controlsRight={<OptionsButton />}
       hint={
         playing && showStartHint && hint ? (
-          <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
+          <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-0.5 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
             {hint}
           </p>
         ) : undefined
@@ -619,7 +619,7 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
           {/* Cartas y combinaciones de la mesa: se reacomodan solas sin desbordarse */}
           <div
             style={mesaVars}
-            className="absolute inset-x-[15%] bottom-[16%] top-[14%] z-10 flex flex-wrap content-center items-center justify-center gap-x-2 gap-y-3 overflow-visible"
+            className="absolute inset-x-[15%] bottom-[24%] top-[14%] z-10 flex flex-wrap content-center items-center justify-center gap-x-2 gap-y-3 overflow-visible"
           >
             {state.table.length === 0 && state.builds.length === 0 && !deal.dealing && (
               <p className="rounded-full bg-black/45 px-3 py-1 text-center text-sm text-amber-100/90">La mesa está vacía.</p>

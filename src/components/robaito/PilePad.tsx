@@ -11,6 +11,10 @@ interface PilePadProps {
   mine?: boolean;
   /** Ancla para los vuelos de cartas que llegan o salen del paquete. */
   registerRef?: (el: HTMLDivElement | null) => void;
+  /** Sin etiqueta bajo la carta: en la fila superior el nombre ya va en la placa de al lado,
+      y la etiqueta (carta + capas + etiqueta) hacía que la fila creciera con el grosor del
+      paquete y el tablero de El Robaíto quedara más bajo que el de los demás modos. */
+  showLabel?: boolean;
 }
 
 const MAX_LAYERS = 3;
@@ -19,7 +23,7 @@ const MAX_LAYERS = 3;
  * El paquete de un jugador, boca arriba junto a él: se ve la última carta que entró (la cima) y un
  * contador con todas las que tiene. Las capas de atrás solo dan sensación de grosor.
  */
-export default function PilePad({ pile, name, targeted = false, mine = false, registerRef }: PilePadProps) {
+export default function PilePad({ pile, name, targeted = false, mine = false, registerRef, showLabel = true }: PilePadProps) {
   const top = pile[pile.length - 1] ?? null;
   const layers = Math.min(Math.max(pile.length - 1, 0), MAX_LAYERS);
 
@@ -64,10 +68,13 @@ export default function PilePad({ pile, name, targeted = false, mine = false, re
       </div>
       {/* La etiqueta tiene su propia línea reservada bajo la carta (nunca pegada a ella ni recortada
           por ella). Sin límite de ancho: "Tu paquete" tiene 10 caracteres y antes se veía "Tu pa...".
-          El tope es para nombres largos: la etiqueta no empuja el asiento de al lado. */}
-      <span className="max-w-24 truncate whitespace-nowrap rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-bold leading-none text-amber-100 sm:text-[11px]">
-        {mine ? 'Tu paquete' : name}
-      </span>
+          El tope es para nombres largos: la etiqueta no empuja el asiento de al lado. En la fila
+          superior no se dibuja (showLabel={false}): el nombre ya va en la placa de al lado. */}
+      {showLabel && (
+        <span className="max-w-24 truncate whitespace-nowrap rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-bold leading-none text-amber-100 sm:text-[11px]">
+          {mine ? 'Tu paquete' : name}
+        </span>
+      )}
     </div>
   );
 }

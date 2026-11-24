@@ -3,6 +3,7 @@ import { Coins, RotateCcw, Trophy } from 'lucide-react';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import type { XpGain } from '@/lib/experience';
 import { CONFETTI_COLORS } from '../lib/dominicanPalette';
+import CoinRain from './CoinRain';
 import XpGainBar from './XpGainBar';
 
 interface VictoryCelebrationProps {
@@ -69,6 +70,8 @@ export default function VictoryCelebration({
           }}
         />
       ))}
+      {/* Lluvia de monedas, además del confeti: capa decorativa. */}
+      <CoinRain />
       <div className="relative m-auto w-full max-w-md space-y-8 text-center">
         <span
           aria-hidden

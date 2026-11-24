@@ -222,18 +222,22 @@ export default function PlayerSeat({
       // Tres rivales arriba: la placa compacta va encima del abanico. En fila, tres placas con su
       // abanico no caben en la fila de arriba sin recortar los nombres hasta perderlos; apilados,
       // cada asiento ocupa lo que mide su placa y los tres caben en cualquier ancho.
-      // El abanico apilado usa cartas más pequeñas (--oh al 70%, en la variable propia --oh-s):
+      // El abanico apilado usa cartas más pequeñas (--oh al 65%, en la variable propia --oh-s):
       // a tamaño completo la unidad apilada (placa + abanico) mide ~88 px y la fila superior se
-      // come ~30 px del tablero, que quedaba más bajo que en los otros modos. Con el 70% la unidad
-      // mide ~75 px en el teléfono y ~128 px en escritorio, dentro del mínimo de la fila superior
+      // come ~30 px del tablero, que quedaba más bajo que en los otros modos. Con el 65% la unidad
+      // mide ~66 px en el teléfono y ~120 px en escritorio, dentro del mínimo de la fila superior
       // (ver .table-top-row en index.css) y del alto de la fila sin apilar, y el tablero de
-      // El Cagao con 6 jugadores mide lo mismo que el de los demás juegos (a 2-3 px). El hueco
-      // del abanico es .stacked-fan-wrap en index.css: 10 px de holgura en pantallas cortas y
-      // 14 px en escritorio, lo que pide la rotación de la carta a cada tamaño.
+      // El Cagao con 6 jugadores mide lo mismo que el de los demás juegos (a 2 px). Con el 70%
+      // la unidad se pasaba ~4 px y el tablero quedaba 4 px más bajo tras la ampliación de mesas.
+      // En pantallas cortas el CSS baja la unidad al 56% con hueco de 2 px y holgura de 8 px
+      // (ver .stacked-seat en index.css): mide ~58 px y cabe en el mínimo nuevo de la fila
+      // superior (~62 px); en escritorio sigue al 65% para no romper la igualdad allí.
+      // El hueco del abanico es .stacked-fan-wrap en index.css: 8 px de holgura en pantallas
+      // cortas y 14 px en escritorio, lo que pide la rotación de la carta a cada tamaño.
       return (
         <div
-          className="flex min-w-0 flex-col items-center justify-center gap-1"
-          style={{ '--oh-s': 'calc(var(--oh) * 0.7)' } as CSSProperties}
+          className="stacked-seat flex min-w-0 flex-col items-center justify-center gap-1"
+          style={{ '--oh-s': 'calc(var(--oh) * 0.65)' } as CSSProperties}
         >
           <SeatPlaque name={name} avatar={avatar} isTurn={isTurn} isVictim={isVictim} out={out} tag={tag} team={team} packetCount={packetCount} level={level} compact />
           <div className="stacked-fan-wrap flex w-[min(var(--top-avail,14dvw),110px)] min-w-0 shrink-0 items-center justify-center px-2">{fan}</div>

@@ -74,6 +74,8 @@ const CARD_BACK_PRICES: Record<CardBackTheme, number> = {
   'dominicano-bandera': 400,
   larimar: 150,
   ambar: 250,
+  'palma-real': 250,
+  'larimar-mar': 300,
 };
 
 const TABLE_PRICES: Record<TableTheme, number> = {
@@ -85,6 +87,9 @@ const TABLE_PRICES: Record<TableTheme, number> = {
   tropical: 350,
   'mar-caribe': 150,
   cana: 250,
+  'arena-playa': 300,
+  selva: 350,
+  'atardecer-mesa': 300,
 };
 
 const MENU_PRICES: Record<MenuTheme, number> = {
@@ -95,6 +100,9 @@ const MENU_PRICES: Record<MenuTheme, number> = {
   'atardecer-tropical': 350,
   'fiesta-tropical': 0,
   palmeras: 250,
+  'amanecer-caribe': 350,
+  carnaval: 350,
+  cafetal: 350,
 };
 
 export const SHOP_ITEMS: ShopItem[] = [

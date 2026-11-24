@@ -5,6 +5,7 @@ import { installNativeShell } from './lib/nativeShell';
 import { installBackgroundMusic } from './lib/music';
 import { installImmersiveBoot } from './lib/platform';
 import './index.css';
+import './motion.css';
 
 installNativeShell();
 installImmersiveBoot();

@@ -1,4 +1,5 @@
 import { type Card } from '@/games/cards';
+import { CARD_3D_CLASS, CARD_PRESS_CLASS, cardStateClass } from '@/lib/card3d';
 import { CARD_BACK_URL } from './cagao/CardAssets';
 import CagaoCard from './cagao/PlayingCard';
 
@@ -42,10 +43,11 @@ export default function PlayingCard({
 }: PlayingCardProps) {
   const face = <CagaoCard card={card} heightVar="--pc-h" plain />;
   const radius = 'rounded-[calc(var(--pc-h)*0.07)]';
-  const stateClass = selected ? 'card-picked' : highlighted ? 'card-playable sm:hover:-translate-y-1' : '';
+  const playableHover = highlighted && !selected ? ' sm:hover:-translate-y-1' : '';
+  const stateClass = `${cardStateClass(selected, highlighted)}${playableHover}`;
 
   if (!onClick) {
-    return <div className={`${HEIGHT_VAR[size]} ${radius} shrink-0 transition ${stateClass}`}>{face}</div>;
+    return <div className={`${HEIGHT_VAR[size]} ${radius} shrink-0 transition ${CARD_PRESS_CLASS} ${stateClass}`}>{face}</div>;
   }
 
   return (
@@ -55,7 +57,7 @@ export default function PlayingCard({
       disabled={disabled}
       className={`${HEIGHT_VAR[size]} ${radius} min-h-11 shrink-0 touch-manipulation transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-60 ${
         disabled ? '' : 'active:scale-95 sm:hover:-translate-y-1'
-      } ${stateClass}`}
+      } ${CARD_PRESS_CLASS} ${stateClass}`}
     >
       {face}
     </button>
@@ -65,7 +67,7 @@ export default function PlayingCard({
 export function CardBack({ size = 'sm' }: { size?: CardSize }) {
   return (
     <div
-      className={`${SIZE_CLASS[size]} shrink-0 bg-[#2a160a] bg-cover bg-center bg-no-repeat shadow-[0_2px_5px_rgba(0,0,0,0.45)] ring-1 ring-black/40`}
+      className={`${SIZE_CLASS[size]} shrink-0 bg-[#2a160a] bg-cover bg-center bg-no-repeat ${CARD_3D_CLASS} ring-1 ring-black/40`}
       style={{ backgroundImage: `var(--card-back-image, ${CARD_BACK_URL})` }}
     />
   );

@@ -254,12 +254,13 @@ export default function GameTable({
       controlsRight={<OptionsButton />}
       hint={
         <>
-          {/* Aviso de la última jugada: en este carril, junto a la pista, no sobre el tablero. */}
+          {/* Aviso de la última jugada: flota con la pista sobre la franja inferior del tablero;
+              tiene precedencia sobre la pista inicial (que se esconde mientras hay aviso). */}
           {event && game.playing && (
             <div
               key={event.seq}
               role="status"
-              className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-1 text-center text-[11px] ring-1 sm:text-xs ${
+              className={`animate-combo-label flex max-w-full items-center gap-1.5 rounded-xl px-3 py-0.5 text-center text-[11px] ring-1 sm:text-xs ${
                 event.pair
                   ? 'bg-amber-500/80 font-semibold text-stone-900 ring-amber-200'
                   : 'bg-black/55 text-amber-50 ring-white/15'
@@ -281,8 +282,10 @@ export default function GameTable({
               </span>
             </div>
           )}
-          {showStartHint && hint && (
-            <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-1 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
+          {/* La pista inicial solo se ve si no hay aviso de última jugada: la pista flota sobre
+              la franja inferior del tablero y los dos elementos juntos se partían en dos líneas. */}
+          {!event && showStartHint && hint && (
+            <p className="pointer-events-none max-w-full rounded-full bg-black/55 px-3 py-0.5 text-center text-[11px] font-medium leading-tight text-amber-50 ring-1 ring-white/10 sm:text-xs">
               {hint}
             </p>
           )}
@@ -402,7 +405,7 @@ export default function GameTable({
               type="button"
               onClick={game.pairAll}
               disabled={deal.dealing || game.pairableIds.size === 0}
-              className="min-h-[44px] w-full touch-manipulation rounded-lg bg-gradient-to-b from-amber-300 to-amber-500 px-2 py-2 text-[11px] font-extrabold leading-tight text-stone-900 shadow ring-1 ring-amber-100/60 transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 sm:text-xs"
+              className="cagao-side-btn min-h-[44px] w-full touch-manipulation rounded-lg bg-gradient-to-b from-amber-300 to-amber-500 px-2 py-2 text-[11px] font-extrabold leading-tight text-stone-900 shadow ring-1 ring-amber-100/60 transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 sm:text-xs"
             >
               Bajar todos los pares
             </button>
@@ -411,7 +414,7 @@ export default function GameTable({
             type="button"
             onClick={game.shuffleHand}
             disabled={deal.dealing || game.hand.length < 2}
-            className="flex min-h-[44px] w-full touch-manipulation items-center justify-center gap-1.5 rounded-lg bg-black/45 px-2 py-2 text-[11px] font-bold text-amber-50 ring-1 ring-amber-200/40 transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 sm:text-xs"
+            className="cagao-side-btn flex min-h-[44px] w-full touch-manipulation items-center justify-center gap-1.5 rounded-lg bg-black/45 px-2 py-2 text-[11px] font-bold text-amber-50 ring-1 ring-amber-200/40 transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 sm:text-xs"
           >
             <Shuffle className="h-3.5 w-3.5" aria-hidden />
             Mezclar mano

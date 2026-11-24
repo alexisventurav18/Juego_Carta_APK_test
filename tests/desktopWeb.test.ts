@@ -40,13 +40,15 @@ describe('escritorio grande: la mesa crece', () => {
   it('en escritorio los topes suben y el tablero se ensancha', () => {
     const block = css.slice(css.indexOf(DESKTOP));
     assert.ok(block.includes('--ch-max: 208px'), 'la mano sube a 208px en escritorio');
-    assert.ok(block.includes('--oh-max: 112px'), 'los rivales suben a 112px en escritorio');
+    assert.ok(block.includes('--oh-max: 96px'), 'los rivales suben a 96px en escritorio (antes 104px: la fila superior deja hueco al tablero)');
     assert.ok(block.includes('--ph-max: 148px'), 'la pila sube a 148px en escritorio');
+    assert.ok(block.includes('grid-template-rows: auto auto minmax(0, 1fr) 28% !important'), 'la fila de tu zona baja al 28% en escritorio');
+    assert.ok(block.includes('height: 36px'), 'la barra de controles baja a 36px en escritorio');
     assert.ok(block.includes('.cu-mano'), 'CartaUI (mano de Casino) tiene regla de escritorio');
     assert.ok(block.includes('13.5rem'), 'la mano de Casino sube a 13.5rem en escritorio');
     assert.ok(block.includes('.cu-mesa'), 'CartaUI (mesa de Casino) tiene regla de escritorio');
     assert.ok(block.includes('12rem'), 'la mesa de Casino sube a 12rem en escritorio');
-    assert.ok(block.includes('grid-template-columns: 12% minmax(0, 1fr) 12% !important'), 'las columnas laterales bajan a 12% en escritorio');
+    assert.ok(block.includes('grid-template-columns: 11% minmax(0, 1fr) 11% !important'), 'las columnas laterales bajan a 11% en escritorio');
   });
 
   it('la raíz de la mesa y la rejilla tienen su clase de enganche', () => {

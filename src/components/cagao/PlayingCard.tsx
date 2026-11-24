@@ -1,6 +1,7 @@
 import { type CSSProperties } from 'react';
 import { isAmericanSuit, isRedSuit, rankLabel } from '@/games/cards';
 import { CAGAO_CARD_ID } from '@/games/cagao';
+import { cardBackClass, cardFaceClass } from '@/lib/card3d';
 import { CagaoFaceArt, CARD_BACK_URL, FaceCrest, SuitIcon } from './CardAssets';
 import type { Card } from './types';
 
@@ -12,6 +13,8 @@ interface PlayingCardProps {
   heightVar: string;
   /** Casino y Tres y Dos: el A♠ es un As normal, sin la ilustración de El Cagao. */
   plain?: boolean;
+  /** Giro 3D de reparto al montar la carta (por defecto sí). Los dorsos no giran nunca. */
+  deal?: boolean;
   className?: string;
   style?: CSSProperties;
 }
@@ -20,7 +23,7 @@ interface PlayingCardProps {
  * Carta con la proporción de póker (2.5 : 3.5). Todo su tamaño sale de una sola variable CSS de alto,
  * así el texto, los palos y los adornos escalan con la pantalla sin tamaños fijos en px.
  */
-export default function PlayingCard({ card, faceDown, heightVar, plain = false, className = '', style }: PlayingCardProps) {
+export default function PlayingCard({ card, faceDown, heightVar, plain = false, deal = true, className = '', style }: PlayingCardProps) {
   const base: CSSProperties = {
     '--card-h': `var(${heightVar})`,
     height: 'var(--card-h)',
@@ -30,7 +33,7 @@ export default function PlayingCard({ card, faceDown, heightVar, plain = false, 
   if (!card || faceDown) {
     return (
       <div
-        className={`aspect-[2.5/3.5] shrink-0 rounded-[calc(var(--card-h)*0.07)] bg-[#2a160a] bg-cover bg-center bg-no-repeat shadow-[0_2px_5px_rgba(0,0,0,0.45)] ring-1 ring-black/40 ${className}`}
+        className={`aspect-[2.5/3.5] shrink-0 rounded-[calc(var(--card-h)*0.07)] bg-[#2a160a] bg-cover bg-center bg-no-repeat ${cardBackClass()} ring-1 ring-black/40 ${className}`}
         style={{ ...base, backgroundImage: `var(--card-back-image, ${CARD_BACK_URL})` }}
       />
     );
@@ -44,7 +47,7 @@ export default function PlayingCard({ card, faceDown, heightVar, plain = false, 
 
   return (
     <div
-      className={`relative aspect-[2.5/3.5] shrink-0 overflow-hidden rounded-[calc(var(--card-h)*0.07)] bg-[#f7ecce] shadow-[0_2px_5px_rgba(0,0,0,0.45)] ring-1 ring-black/35 ${ink} ${className}`}
+      className={`relative aspect-[2.5/3.5] shrink-0 overflow-hidden rounded-[calc(var(--card-h)*0.07)] bg-[#f7ecce] ${cardFaceClass(deal)} ring-1 ring-black/35 ${ink} ${className}`}
       style={base}
       role="img"
       aria-label={isCagao ? 'As de picas, El Cagao' : `${label} de ${card.suit}`}
