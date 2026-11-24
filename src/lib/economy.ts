@@ -76,6 +76,15 @@ const CARD_BACK_PRICES: Record<CardBackTheme, number> = {
   ambar: 250,
   'palma-real': 250,
   'larimar-mar': 300,
+  carnaval: 150,
+  cafetal: 250,
+  'amanecer-caribe': 150,
+  'arena-playa': 250,
+  selva: 150,
+  atardecer: 250,
+  'concho-clasico': 250,
+  'velocidad-nocturna': 250,
+  'aventura-4x4': 150,
 };
 
 const TABLE_PRICES: Record<TableTheme, number> = {

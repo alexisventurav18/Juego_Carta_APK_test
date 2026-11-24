@@ -19,7 +19,9 @@ describe('la Tienda baja con scroll bajo una cabecera fija', () => {
   });
 
   it('la vista previa tiene la forma real de lo que se vende', () => {
-    assert.ok(store.includes('aspect-[2.5/3.5] w-24'), 'el dorso se ve como una carta, grande');
+    // El dorso va con su cara al lado: el tema cambia también la carta boca arriba.
+    assert.ok(store.includes('aspect-[2.5/3.5] w-16'), 'el dorso se ve como una carta');
+    assert.ok(store.includes('SAMPLE_FACE_CARD'), 'el dorso muestra también su cara');
     assert.ok(store.includes("aspect-[16/10]"), 'la mesa se ve como un tapete ancho');
     assert.ok(store.includes("aspect-[16/9]"), 'el fondo se ve como una imagen ancha');
     assert.ok(!store.includes('h-20 w-full shrink-0 bg-cover'), 'la banda de 80 px que recortaba el diseño ya no existe');

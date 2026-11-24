@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Coins, Flame, Lock, ShoppingBag, Trophy, X } from 'lucide-react';
 import { CARD_BACK_IMAGES } from './cagao/CardAssets';
 import BuyConfirmDialog from './BuyConfirmDialog';
+import PlayingCard from './PlayingCard';
+import type { Card } from '@/games/cards';
+import { cardFaceTheme } from '@/lib/cardThemes';
 import {
   buyCosmetic,
   isOwned,
@@ -14,6 +17,7 @@ import {
   MENU_THEMES,
   TABLE_THEMES,
   useVisualPrefs,
+  type CardBackTheme,
 } from '@/lib/visualPrefs';
 
 const TABS: { id: CosmeticCategory; label: string }[] = [
@@ -23,10 +27,13 @@ const TABS: { id: CosmeticCategory; label: string }[] = [
 ];
 
 const TAB_HINT: Record<CosmeticCategory, string> = {
-  cardBack: 'El diseño del reverso de tus cartas.',
+  cardBack: 'El diseño del reverso y de la cara de tus cartas.',
   table: 'El tapete donde se juega la partida.',
   menu: 'El fondo de la pantalla principal.',
 };
+
+/** Muestra de cara en la Tienda: Q♥, figura roja con cresta, a los colores de cada tema. */
+const SAMPLE_FACE_CARD: Card = { id: 'corazones-12', suit: 'corazones', rank: 12 };
 
 function previewStyle(category: CosmeticCategory, id: string): { backgroundImage?: string; backgroundColor?: string } {
   if (category === 'cardBack') {
@@ -183,6 +190,19 @@ export default function Store({ onClose }: { onClose: () => void }) {
               const equipped = equippedId === item.id;
               const canAfford = economy.coins >= item.price;
               const preview = previewStyle(item.category, item.id);
+              // La cara de muestra usa los colores de ESTE dorso, no del equipado.
+              const face = tab === 'cardBack' ? cardFaceTheme(item.id as CardBackTheme) : null;
+              const faceVars = (face
+                ? {
+                    '--card-face-bg': face.bg,
+                    '--card-face-frame': face.frame,
+                    '--card-face-red': face.red,
+                    '--card-face-ink': face.ink,
+                    '--card-face-accent': face.accent,
+                    '--card-face-crest-a': face.crestA,
+                    '--card-face-crest-b': face.crestB,
+                  }
+                : {}) as CSSProperties;
               return (
                 <div
                   key={item.id}
@@ -204,11 +224,17 @@ export default function Store({ onClose }: { onClose: () => void }) {
                     className="relative flex items-center justify-center bg-black/40 p-3"
                   >
                     {tab === 'cardBack' ? (
-                      <span
-                        className="aspect-[2.5/3.5] w-24 shrink-0 rounded-md bg-cover bg-center shadow-lg ring-1 ring-white/25"
-                        style={{ backgroundImage: preview.backgroundImage, backgroundColor: preview.backgroundColor }}
-                        aria-hidden
-                      />
+                      // Reverso y cara del tema, lado a lado: el dorso cambia
+                      // también cómo se ve la carta boca arriba.
+                      <span className="flex items-end justify-center gap-2" aria-hidden>
+                        <span
+                          className="aspect-[2.5/3.5] w-16 shrink-0 rounded-md bg-cover bg-center shadow-lg ring-1 ring-white/25"
+                          style={{ backgroundImage: preview.backgroundImage, backgroundColor: preview.backgroundColor }}
+                        />
+                        <span style={faceVars}>
+                          <PlayingCard card={SAMPLE_FACE_CARD} size="sm" />
+                        </span>
+                      </span>
                     ) : (
                       <span
                         className={`w-full shrink-0 rounded-lg bg-cover bg-center shadow-lg ring-1 ring-white/25 ${

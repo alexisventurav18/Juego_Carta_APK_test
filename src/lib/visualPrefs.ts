@@ -5,7 +5,7 @@ import { publicAsset } from './publicAsset';
 
 const STORAGE_KEY = 'cartas-dominicanas:visual-prefs';
 
-export type CardBackTheme = 'cacao' | 'azul' | 'rojo' | 'madera-turquesa' | 'dominicano-azul' | 'dominicano-bandera' | 'larimar' | 'ambar' | 'palma-real' | 'larimar-mar';
+export type CardBackTheme = 'cacao' | 'azul' | 'rojo' | 'madera-turquesa' | 'dominicano-azul' | 'dominicano-bandera' | 'larimar' | 'ambar' | 'palma-real' | 'larimar-mar' | 'carnaval' | 'cafetal' | 'amanecer-caribe' | 'arena-playa' | 'selva' | 'atardecer' | 'concho-clasico' | 'velocidad-nocturna' | 'aventura-4x4';
 export type TableTheme = 'madera' | 'verde' | 'azul' | 'rojo' | 'bandera' | 'tropical' | 'mar-caribe' | 'cana' | 'arena-playa' | 'selva' | 'atardecer-mesa';
 export type MenuTheme = 'madera' | 'verde' | 'azul' | 'playa-ilustrada' | 'atardecer-tropical' | 'fiesta-tropical' | 'palmeras' | 'amanecer-caribe' | 'carnaval' | 'cafetal';
 
@@ -32,6 +32,16 @@ export const CARD_BACK_THEMES: { id: CardBackTheme; label: string; color: string
   { id: 'ambar', label: 'Ámbar', color: DOMINICAN_PALETTE.ambar },
   { id: 'palma-real', label: 'Palma real', color: DOMINICAN_PALETTE.azulBandera },
   { id: 'larimar-mar', label: 'Larimar y mar', color: DOMINICAN_PALETTE.turquesaCaribe },
+  { id: 'carnaval', label: 'Carnaval', color: DOMINICAN_PALETTE.rojoBandera },
+  { id: 'cafetal', label: 'Cafetal', color: DOMINICAN_PALETTE.verdePalma },
+  { id: 'amanecer-caribe', label: 'Amanecer caribe', color: DOMINICAN_PALETTE.turquesaCaribe },
+  { id: 'arena-playa', label: 'Arena de playa', color: DOMINICAN_PALETTE.ambar },
+  { id: 'selva', label: 'Selva', color: '#2e7a4c' },
+  { id: 'atardecer', label: 'Atardecer', color: DOMINICAN_PALETTE.rosaBayahibe },
+  // Carros: diseños genéricos dibujados en SVG, sin marcas ni modelos reales.
+  { id: 'concho-clasico', label: 'Concho clásico', color: '#a8323e' },
+  { id: 'velocidad-nocturna', label: 'Velocidad nocturna', color: '#1d2f6e' },
+  { id: 'aventura-4x4', label: '4x4 Aventura', color: '#2e7a4c' },
 ];
 
 export const TABLE_THEMES: { id: TableTheme; label: string; color: string; image: string }[] = [

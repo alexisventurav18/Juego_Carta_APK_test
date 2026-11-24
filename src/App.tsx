@@ -7,6 +7,7 @@ import SplashScreen from '@/components/SplashScreen';
 import OfflineBotGame, { type OfflineSetup } from '@/components/OfflineBotGame';
 import { OptionsProvider } from '@/components/options/OptionsProvider';
 import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
+import { cardFaceTheme } from '@/lib/cardThemes';
 import { getResumableRoomId, storeRoomId } from '@/lib/identity';
 import { setMusicTheme } from '@/lib/music';
 import { themeForGame } from '@/lib/musicThemes';
@@ -25,6 +26,8 @@ export default function App() {
   // Pantalla de bienvenida: se muestra al abrir la app y se retira sola.
   const [booted, setBooted] = useState(false);
   const { prefs: visualPrefs } = useVisualPrefs();
+  // Cara de la carta (boca arriba) del dorso equipado: mismo tema delante y detrás.
+  const faceTheme = cardFaceTheme(visualPrefs.cardBack);
 
   const enterRoom = (id: string) => {
     setOfflineGame(null);
@@ -109,6 +112,15 @@ export default function App() {
         className="contents"
         style={{
           '--card-back-image': CARD_BACK_IMAGES[visualPrefs.cardBack],
+          // La cara de la carta (boca arriba) toma los colores del dorso
+          // equipado: mismo tema en el reverso y en el frente.
+          '--card-face-bg': faceTheme.bg,
+          '--card-face-frame': faceTheme.frame,
+          '--card-face-red': faceTheme.red,
+          '--card-face-ink': faceTheme.ink,
+          '--card-face-accent': faceTheme.accent,
+          '--card-face-crest-a': faceTheme.crestA,
+          '--card-face-crest-b': faceTheme.crestB,
           '--table-bg-color': TABLE_THEMES.find(({ id }) => id === visualPrefs.table)?.color,
           '--table-bg-image': TABLE_THEMES.find(({ id }) => id === visualPrefs.table)?.image,
           '--menu-bg-color': MENU_THEMES.find(({ id }) => id === visualPrefs.menu)?.color,
