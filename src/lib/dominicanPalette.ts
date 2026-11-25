@@ -41,12 +41,27 @@ export const CONFETTI_COLORS: readonly string[] = [
   DOMINICAN_PALETTE.ambar,
 ];
 
-/** Colores de los segmentos de la rueda diaria: bandera + ámbar, en ciclo. */
+/** Colores de los segmentos de la rueda diaria: uno distinto por premio, de
+    la paleta dominicana. El orden es el de DAILY_WHEEL_PRIZES (+25, +50,
+    +100, +150, +250): el premio mayor queda en ámbar. Antes eran 4 colores
+    en ciclo y el +250 repetía el azul del +25. */
 export const WHEEL_COLORS: readonly string[] = [
   DOMINICAN_PALETTE.azulBandera,
   DOMINICAN_PALETTE.rojoBandera,
-  DOMINICAN_PALETTE.blanco,
+  DOMINICAN_PALETTE.verdePalma,
+  DOMINICAN_PALETTE.turquesaCaribe,
   DOMINICAN_PALETTE.ambar,
+];
+
+/** Color del texto de cada segmento de la rueda, en el mismo orden: blanco
+    sobre los colores oscuros y azul bandera sobre el turquesa y el ámbar
+    (contraste ≥ 4,5:1 en los cinco, ver tests/dailyWheel.test.ts). */
+export const WHEEL_LABEL_COLORS: readonly string[] = [
+  '#FFFFFF',
+  '#FFFFFF',
+  '#FFFFFF',
+  DOMINICAN_PALETTE.azulBandera,
+  DOMINICAN_PALETTE.azulBandera,
 ];
 
 /** Un color hexadecimal válido (#RRGGBB). */

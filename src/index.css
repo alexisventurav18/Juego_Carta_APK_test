@@ -990,6 +990,21 @@ button,
   padding: var(--sat) var(--sar) var(--sab) var(--sal);
 }
 
+/* Sala de espera online: el contenido se centra verticalmente con margen
+   auto. A diferencia de justify-content:center, si el contenido es más alto
+   que la pantalla el margen se anula y el scroll empieza arriba sin recortar
+   (el viejo centrado flex cortaba el título "Jugadores" y el botón
+   "Empezar partida"). */
+.room-waiting-screen {
+  display: flex;
+  flex-direction: column;
+}
+
+.room-waiting-content {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
 @media (orientation: landscape) and (max-height: 500px) {
   /* La sala puede hacer scroll: si el contenido no cabe, se baja con el dedo
      en vez de quedar cortado. Antes era overflow:hidden y el centrado flex
@@ -1002,9 +1017,10 @@ button,
   .room-waiting-content {
     box-sizing: border-box;
     display: flex;
-    /* Crece con el contenido: con height:100% el contenido que sobraba no
-       empujaba el scroll de la pantalla y quedaba cortado. */
-    min-height: 100%;
+    /* Altura natural, no 100%: con min-height:100% el bloque llenaba la
+       pantalla y el margen auto no tenía espacio libre para centrar. Si el
+       contenido no cabe, el margen se anula y baja con el scroll. */
+    min-height: 0;
     flex-direction: column;
     padding: clamp(4px, 1.2dvh, 8px) clamp(10px, 2.4vw, 24px);
   }
@@ -1045,13 +1061,12 @@ button,
     width: 100%;
     max-width: none;
     min-height: 0;
-    flex: 1;
+    /* Sin estirar: los paneles abrazan su contenido y el bloque entero se
+       centra con el margen auto. Con flex:1 y la fila en 1fr los paneles se
+       estiraban hasta llenar la pantalla y quedaba hueco muerto dentro. */
+    flex: none;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-    /* La banda del modo es solo una línea fina: su fila es `auto` y la de
-       los paneles se queda con el resto (`1fr`). Sin esto, el `stretch` del
-       grid repartía la altura libre entre las dos filas y la banda crecía
-       hasta ~120 px en horizontal corto, desplazando los paneles hacia abajo. */
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
     gap: clamp(6px, 1.4vw, 14px);
   }
 
@@ -1205,7 +1220,7 @@ button,
   }
 
   .round-result-panel-compact h2 {
-    font-size: clamp(17px, 4.4dvh, 24px);
+    font-size: clamp(19px, 5dvh, 26px);
     line-height: 1.15;
   }
 
@@ -1221,7 +1236,7 @@ button,
 
   .round-result-panel-compact ul {
     margin-top: clamp(6px, 1.4dvh, 10px);
-    font-size: clamp(12px, 3dvh, 16px);
+    font-size: clamp(14px, 3.8dvh, 17px);
     line-height: 1.25;
   }
 
@@ -1240,9 +1255,9 @@ button,
   }
 
   .round-result-panel-compact button {
-    min-height: clamp(34px, 9dvh, 44px);
-    padding: 6px 14px;
-    font-size: clamp(12px, 2.8dvh, 15px);
+    min-height: clamp(40px, 11dvh, 48px);
+    padding: 8px 16px;
+    font-size: clamp(13px, 3.6dvh, 16px);
   }
 
   .round-result-panel-compact > p {
@@ -1348,11 +1363,14 @@ button,
   }
 
   /* Paneles de fin de partida (clasificación de El Cagao, resultados de Tres
-     y Dos y de El Robaíto): título, filas y botones más compactos, la misma
-     regla en los tres modos. El de Casino usa el panel de resultado de ronda,
-     que ya tiene su propia compactación. */
+     y Dos y de El Robaíto): más grandes y centrados en horizontal corto, sin
+     scroll. El panel aprovecha el ancho en paisaje (max-w-2xl/3xl en el
+     componente); título, filas y botones crecen, y el relleno y los huecos se
+     mantienen contenidos para que el total quepa en la altura del viewport.
+     El de Casino usa el panel de resultado de ronda, que ya tiene su propia
+     regla más arriba. */
   .game-end-panel {
-    padding: 8px !important;
+    padding: 10px 16px !important;
   }
 
   .game-end-panel > * + * {
@@ -1360,23 +1378,23 @@ button,
   }
 
   .game-end-panel h2 {
-    font-size: 14px !important;
+    font-size: clamp(18px, 5dvh, 26px) !important;
   }
 
   .game-end-panel .game-end-rows > * + * {
-    margin-top: 2px !important;
+    margin-top: 4px !important;
   }
 
   .game-end-panel .game-end-rows > div {
-    padding-top: 2px !important;
-    padding-bottom: 2px !important;
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
   }
 
   .game-end-panel button {
-    min-height: 34px !important;
-    padding-top: 4px !important;
-    padding-bottom: 4px !important;
-    font-size: 12px !important;
+    min-height: clamp(40px, 11dvh, 48px) !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    font-size: clamp(13px, 3.6dvh, 16px) !important;
   }
 }
 

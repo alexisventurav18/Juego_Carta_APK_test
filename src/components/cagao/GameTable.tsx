@@ -449,12 +449,12 @@ export default function GameTable({
         ))}
 
       {game.gameOver && endNoticeDismissed && (
-        <div className="absolute inset-0 z-40 flex overflow-y-auto bg-black/55 p-2 sm:p-3">
-          <div className="game-end-panel my-auto max-h-full w-full max-w-md space-y-1.5 overflow-y-auto rounded-2xl bg-[#3a2010] p-2.5 text-center ring-2 ring-amber-300/50 sm:space-y-2 sm:p-4">
-            <h2 className="text-base font-extrabold sm:text-lg">
+        <div className="fixed inset-0 z-40 flex justify-center overflow-y-auto bg-black/55 p-2 sm:p-3">
+          <div className="game-end-panel my-auto max-h-full w-full max-w-2xl space-y-1.5 overflow-y-auto rounded-2xl bg-[#3a2010] p-2.5 text-center ring-2 ring-amber-300/50 sm:space-y-2 sm:p-4">
+            <h2 className="text-base font-extrabold sm:text-xl">
               {game.iLost ? '¡Te quedaste con El Cagao!' : `${loserName} se quedó con El Cagao`}
             </h2>
-            <div className="game-end-rows space-y-1 text-left text-xs sm:text-sm">
+            <div className="game-end-rows space-y-1 text-left text-xs sm:text-base">
               {state.finishOrder.map((s, i) => (
                 <div key={s} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-2 py-1 sm:gap-2 sm:px-3">
                   <span className="w-5 shrink-0 font-bold tabular-nums text-amber-200">{i + 1}º</span>
@@ -467,7 +467,7 @@ export default function GameTable({
               ))}
               {state.loserSeat !== null && (
                 <div
-                  style={{ '--rh': 'clamp(40px, 12dvh, 90px)' } as CSSProperties}
+                  style={{ '--rh': 'clamp(44px, 12dvh, 90px)' } as CSSProperties}
                   className="game-end-loser flex items-center gap-2 rounded-xl bg-rose-600/30 px-3 py-1.5 ring-1 ring-rose-300"
                 >
                   <Skull className="h-4 w-4 shrink-0 text-rose-200" aria-hidden />

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Coins, Gift, Sparkles, X } from 'lucide-react';
 import { claimDailyPrize, DAILY_WHEEL_PRIZES, rollDailyPrize } from '@/lib/economy';
-import { DOMINICAN_PALETTE, WHEEL_COLORS } from '../lib/dominicanPalette';
+import { WHEEL_COLORS, WHEEL_LABEL_COLORS } from '../lib/dominicanPalette';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { vibrate } from '@/lib/haptics';
 
-/** Colores de los segmentos, en el mismo orden que DAILY_WHEEL_PRIZES: bandera + ámbar, en ciclo. */
+/** Colores de los segmentos, en el mismo orden que DAILY_WHEEL_PRIZES: un color distinto por premio. */
 const SEGMENT_COLORS = WHEEL_COLORS;
+/** Color del texto de cada segmento, en el mismo orden. */
+const SEGMENT_LABEL_COLORS = WHEEL_LABEL_COLORS;
 
 /** Vueltas completas antes de frenar en el premio. */
 const FULL_SPINS = 5;
@@ -108,32 +110,53 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
               transition: spinning ? `transform ${SPIN_MS}ms cubic-bezier(0.12, 0.8, 0.08, 1)` : undefined,
             }}
           >
+            {/* Separadores finos entre segmentos: con un color distinto por
+                premio y el puntero arriba, cada premio queda delimitado y se
+                ve sin ambigüedad dónde cae la flecha. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-full"
+              style={{
+                background:
+                  'repeating-conic-gradient(from 0deg, rgba(255,255,255,0.6) 0deg 1.5deg, transparent 1.5deg 72deg)',
+              }}
+            />
             {/* Cada etiqueta va en un envoltorio de tamaño completo que rota
                 hasta el centro de su segmento; la etiqueta se asienta arriba
                 por porcentaje (~10%), así su radio sigue al tamaño de la
-                rueda en vez de depender de píxeles fijos. */}
-            {DAILY_WHEEL_PRIZES.map((prizeItem, i) => (
-              <span
-                key={prizeItem.amount}
-                aria-hidden
-                className="absolute inset-0"
-                style={{ transform: `rotate(${i * step + step / 2}deg)` }}
-              >
-                {/* La etiqueta es blanca, salvo en el segmento blanco de la
-                    bandera, donde va en azul bandera para que se lea. */}
+                rueda en vez de depender de píxeles fijos. El texto interior
+                contra-rota con el giro de la rueda (misma transición que el
+                disco), así se lee derecho siempre: en reposo y al frenar en
+                el premio. Antes el texto giraba con el segmento y el +100
+                quedaba boca abajo ("00L+"). */}
+            {DAILY_WHEEL_PRIZES.map((prizeItem, i) => {
+              const angle = i * step + step / 2;
+              return (
                 <span
-                  className="absolute left-1/2 top-[10%] -translate-x-1/2 whitespace-nowrap text-[clamp(0.65rem,3dvh,0.875rem)] font-extrabold drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
-                  style={{
-                    color:
-                      SEGMENT_COLORS[i % SEGMENT_COLORS.length] === DOMINICAN_PALETTE.blanco
-                        ? DOMINICAN_PALETTE.azulBandera
-                        : '#ffffff',
-                  }}
+                  key={prizeItem.amount}
+                  aria-hidden
+                  className="absolute inset-0"
+                  style={{ transform: `rotate(${angle}deg)` }}
                 >
-                  {prizeItem.label}
+                  <span
+                    className="absolute left-1/2 top-[10%] -translate-x-1/2 whitespace-nowrap text-[clamp(0.65rem,3dvh,0.875rem)] font-extrabold drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
+                    style={{ color: SEGMENT_LABEL_COLORS[i % SEGMENT_LABEL_COLORS.length] }}
+                  >
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        transform: `rotate(${-angle - rotation}deg)`,
+                        transition: spinning
+                          ? `transform ${SPIN_MS}ms cubic-bezier(0.12, 0.8, 0.08, 1)`
+                          : undefined,
+                      }}
+                    >
+                      {prizeItem.label}
+                    </span>
+                  </span>
                 </span>
-              </span>
-            ))}
+              );
+            })}
             <span
               aria-hidden
               className="absolute left-1/2 top-1/2 grid size-[clamp(2.5rem,11dvh,4rem)] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-amber-950 ring-2 ring-amber-300/70"

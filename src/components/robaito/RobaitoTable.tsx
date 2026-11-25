@@ -104,7 +104,12 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
   const tableRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const pileRefs = useRef(new Map<number, HTMLElement>());
-  const deal = useDealIntro(state.roundNo, seats, HAND_SIZE, TABLE_SIZE, !dealerOpen);
+  // El reparto se clavea en dealNo, NO en roundNo: en El Robaíto roundNo es siempre 1 (no hay
+  // rondas) y las manos nuevas suben dealNo. Con roundNo el intro no se reiniciaba nunca: las
+  // cartas nuevas aparecían ya completas en la mano y los vuelos de reparto llegaban después.
+  // En el primer reparto también se ponen 4 cartas en la mesa; en los siguientes la mesa queda
+  // como está (cardsOnTable 0) y sus cartas no se ocultan durante el reparto.
+  const deal = useDealIntro(state.dealNo, seats, HAND_SIZE, state.dealNo === 1 ? TABLE_SIZE : 0, !dealerOpen);
   // El reparto en pantalla también bloquea a los bots: la mesa avisa a quien la monta (sin
   // conexión o en sala) de cuándo se está repartiendo, y esa persona no pide jugadas de bot.
   useEffect(() => {
@@ -133,12 +138,13 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
 
   /* ------------------------- reparto, vuelos y sonidos ------------------------- */
 
-  // El primer reparto: se baraja y cada carta sale del mazo hacia quien la recibe o hacia la mesa.
+  // Cada reparto (el inicial y los de 4 cartas nuevas): se baraja y cada carta sale del mazo
+  // hacia quien la recibe o hacia la mesa. La clave es dealNo: ver el comentario del intro.
   const initialTable = useRef(state.table);
   const tableCardAt = useCallback((i: number) => initialTable.current[i] ?? null, []);
   useDealFlights({
     deal,
-    roundKey: state.roundNo,
+    roundKey: state.dealNo,
     seats,
     cardsPerHand: HAND_SIZE,
     deckRef,
@@ -191,16 +197,8 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
         }
       });
     }
-    // Reparto de 4 cartas nuevas a cada jugador, tras terminarse la jugada.
-    if (event.redeal) {
-      const deck = centerOf(deckRef.current);
-      if (deck) {
-        for (let i = 0; i < HAND_SIZE * seats; i++) {
-          const to = anchorCenter((event.by + 1 + (i % seats)) % seats);
-          if (to) items.push({ from: deck, to, card: null, heightVar: '--oh', delayMs: 900 + i * 70, durationMs: 320 });
-        }
-      }
-    }
+    // Los vuelos del reparto de manos nuevas los pone useDealFlights con el intro (uno por
+    // carta revelada): aquí no se añade nada, antes se duplicaban y llegaban tarde.
     if (items.length > 0) spawn(items);
   }, [event, seats, spawn, anchorCenter]);
 
@@ -486,10 +484,10 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
             ))}
 
           {game.gameOver && endNoticeDismissed && (
-            <div className="fixed inset-0 z-[60] flex overflow-y-auto bg-black/65 p-2 sm:p-3">
+            <div className="fixed inset-0 z-[60] flex justify-center overflow-y-auto bg-black/65 p-2 sm:p-3">
               <div
-                style={{ '--rh': 'clamp(34px, 10.6dvh, 67px)' } as CSSProperties}
-                className="game-end-panel wood-panel my-auto max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-md space-y-1.5 overflow-y-auto p-2 text-center sm:space-y-2 sm:p-4"
+                style={{ '--rh': 'clamp(40px, 12.5dvh, 67px)' } as CSSProperties}
+                className="game-end-panel wood-panel my-auto max-h-[calc(100dvh_-_var(--sat)_-_var(--sab)_-_1rem)] w-full max-w-2xl space-y-1.5 overflow-y-auto p-2 text-center sm:space-y-2 sm:p-4"
               >
                 <h2 className="text-sm font-extrabold sm:text-xl">
                   {game.tie ? `¡Empate entre ${winnerNames}!` : game.iWon ? '¡Ganaste la partida!' : `${winnerNames} ganó la partida`}
@@ -503,11 +501,11 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
                         key={player.id}
                         className={`flex items-center gap-1.5 rounded-xl px-1.5 py-1 sm:gap-2 sm:px-2 ${won ? 'bg-amber-400/25 ring-1 ring-amber-300' : 'bg-black/25'}`}
                       >
-                        <span className="flex min-w-0 flex-1 items-center gap-1 text-left text-xs font-semibold sm:text-sm">
+                        <span className="flex min-w-0 flex-1 items-center gap-1 text-left text-xs font-semibold sm:text-base">
                           {won && <Trophy className="h-3 w-3 shrink-0 text-amber-300" aria-hidden />}
                           <span className="truncate">{names[s]}</span>
                         </span>
-                        <span className="shrink-0 text-xs font-extrabold tabular-nums text-amber-300 sm:text-sm">{cardsWord(count)}</span>
+                        <span className="shrink-0 text-xs font-extrabold tabular-nums text-amber-300 sm:text-base">{cardsWord(count)}</span>
                         {top && <PlayingCard card={top} heightVar="--rh" plain />}
                       </div>
                     );

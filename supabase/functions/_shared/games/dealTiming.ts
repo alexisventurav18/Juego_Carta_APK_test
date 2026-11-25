@@ -25,9 +25,29 @@ export function dealIntroMs(seats: number, cardsPerHand: number, cardsOnTable: n
 }
 
 /**
- * Duración del reparto visible de El Cagao: barajar + una oleada por asiento (la mano de cada
- * jugador aparece de golpe al llegar su oleada; repartir las 49 cartas una a una tardaría ~15 s).
+ * ¿Ya se reveló esta carta de la mano? El reparto es por rondas de asientos: la carta `index`
+ * del asiento `seat` es la número `index * seats + seat` de las repartidas (`revealed` van
+ * reveladas hasta ahora). Es la lógica que la mesa lee para esconder las cartas hasta que les
+ * toque ser repartidas.
  */
+export function isHandCardDealt(revealed: number, seats: number, seat: number, index: number): boolean {
+  return index * seats + seat < revealed;
+}
+
+/**
+ * ¿Ya se reveló esta carta de la mesa? Las cartas de la mesa se reparten después de las manos.
+ * Si en este reparto no se pone nada en la mesa (`cardsOnTable === 0`, como el reparto de
+ * manos nuevas de El Robaíto), las que ya hay nunca se ocultan.
+ */
+export function isTableCardDealt(
+  revealed: number,
+  seats: number,
+  cardsPerHand: number,
+  cardsOnTable: number,
+  index: number,
+): boolean {
+  return cardsOnTable === 0 || seats * cardsPerHand + index < revealed;
+}
 export function cagaoDealIntroMs(seats: number): number {
   return SHUFFLE_TICKS * SHUFFLE_TICK_MS + (seats + 1) * DEAL_STEP_MS;
 }

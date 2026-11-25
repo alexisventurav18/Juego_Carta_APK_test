@@ -5,7 +5,6 @@ import {
   CONFETTI_COLORS,
   DOMINICAN_PALETTE,
   isValidHex,
-  WHEEL_COLORS,
 } from '../src/lib/dominicanPalette';
 import {
   CARD_BACK_THEMES,
@@ -67,7 +66,7 @@ describe('paleta dominicana', () => {
     assert.equal(GAME_ENVIRONMENTS.robaito.accent, DOMINICAN_PALETTE.turquesaCaribe);
   });
 
-  it('el confeti y la rueda usan solo azul, rojo, blanco y ámbar de la bandera', () => {
+  it('el confeti usa solo azul, rojo, blanco y ámbar de la bandera', () => {
     const expected = new Set([
       DOMINICAN_PALETTE.azulBandera,
       DOMINICAN_PALETTE.rojoBandera,
@@ -75,8 +74,7 @@ describe('paleta dominicana', () => {
       DOMINICAN_PALETTE.ambar,
     ]);
     assert.deepEqual(new Set(CONFETTI_COLORS), expected);
-    assert.deepEqual(new Set(WHEEL_COLORS), expected);
-    for (const color of [...CONFETTI_COLORS, ...WHEEL_COLORS]) assert.match(color, HEX);
+    for (const color of CONFETTI_COLORS) assert.match(color, HEX);
   });
 });
 

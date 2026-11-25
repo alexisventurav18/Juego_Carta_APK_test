@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { cagaoDealIntroMs, DEAL_STEP_MS, dealIntroMs, SHUFFLE_TICK_MS, SHUFFLE_TICKS } from '../games/dealTiming';
+import { cagaoDealIntroMs, DEAL_STEP_MS, dealIntroMs, isHandCardDealt, isTableCardDealt, SHUFFLE_TICK_MS, SHUFFLE_TICKS } from '../games/dealTiming';
 
 const CARDS_PER_HAND = 4;
 const CARDS_ON_TABLE = 4;
@@ -21,9 +21,16 @@ export function useDealIntro(
   const totalTicks = SHUFFLE_TICKS + dealSteps;
   const [tick, setTick] = useState(0);
 
-  useEffect(() => {
+  // El reparto se reinicia en cuanto cambia la clave de ronda, ANTES de pintar: si se hiciera
+  // en un efecto, el primer pintado tras el cambio mostraría las cartas nuevas ya completas
+  // durante un fotograma (eso es justo lo que pasaba en El Robaíto: su roundNo nunca cambia y
+  // el reparto de manos nuevas llegaba con el intro ya terminado). Patrón documentado de React:
+  // ajustar el estado durante el render cuando cambia una prop.
+  const [prevRoundKey, setPrevRoundKey] = useState(roundKey);
+  if (prevRoundKey !== roundKey) {
+    setPrevRoundKey(roundKey);
     setTick(0);
-  }, [roundKey]);
+  }
 
   useEffect(() => {
     if (!enabled || tick > totalTicks) return;
@@ -49,8 +56,8 @@ export function useDealIntro(
     revealed,
     dealSteps,
     dealingTo,
-    isHandDealt: (seat: number, index: number) => !dealing || index * seats + seat < revealed,
-    isTableDealt: (index: number) => !dealing || handSteps + index < revealed,
+    isHandDealt: (seat: number, index: number) => !dealing || isHandCardDealt(revealed, seats, seat, index),
+    isTableDealt: (index: number) => !dealing || isTableCardDealt(revealed, seats, cardsPerHand, cardsOnTable, index),
   };
 }
 

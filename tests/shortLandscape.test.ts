@@ -114,19 +114,49 @@ describe('paneles de fin de partida en horizontal corto', () => {
       ['Tres y Dos', tresydos],
       ['El Robaíto', robaito],
     ] as const) {
-      assert.ok(src.includes('flex overflow-y-auto'), `${name}: el overlay tiene overflow-y-auto`);
+      assert.ok(src.includes('overflow-y-auto'), `${name}: el overlay tiene overflow-y-auto`);
     }
   });
 
-  it('la carta del perdedor de El Cagao es más baja en horizontal corto', () => {
-    assert.ok(cagao.includes("'--rh': 'clamp(40px, 12dvh, 90px)'"), 'El Cagao: la carta usa 12dvh');
+  it('la carta del perdedor de El Cagao es más grande en horizontal corto', () => {
+    assert.ok(cagao.includes("'--rh': 'clamp(44px, 12dvh, 90px)'"), 'El Cagao: la carta usa 12dvh');
     assert.ok(!cagao.includes('15.7dvh'), 'El Cagao: ya no usa 15.7dvh');
   });
 
-  it('el CSS compacta los paneles de fin de partida igual en los tres modos', () => {
-    assert.ok(shortLandscape.includes('.game-end-panel {'), 'el CSS compacta los paneles');
-    assert.ok(shortLandscape.includes('padding: 8px !important;'), 'los paneles bajan a 8 px de relleno');
-    assert.ok(shortLandscape.includes('.game-end-panel button {'), 'el CSS compacta los botones del panel');
-    assert.ok(shortLandscape.includes('min-height: 34px !important;'), 'los botones bajan a 34 px');
+  it('los overlays centran el panel en horizontal', () => {
+    for (const [name, src] of [
+      ['El Cagao', cagao],
+      ['Tres y Dos', tresydos],
+      ['El Robaíto', robaito],
+    ] as const) {
+      assert.ok(src.includes('flex justify-center overflow-y-auto'), `${name}: el overlay centra en horizontal`);
+    }
+  });
+
+  it('los paneles son más anchos que antes', () => {
+    assert.ok(cagao.includes('game-end-panel') && cagao.includes('max-w-2xl'), 'El Cagao: el panel es max-w-2xl');
+    assert.ok(robaito.includes('game-end-panel') && robaito.includes('max-w-2xl'), 'El Robaíto: el panel es max-w-2xl');
+    assert.ok(tresydos.includes('game-end-panel') && tresydos.includes('max-w-3xl'), 'Tres y Dos: el panel es max-w-3xl');
+  });
+
+  it('las cartas de muestra de Tres y Dos y El Robaíto crecen en horizontal corto', () => {
+    assert.ok(tresydos.includes("'--rh': 'clamp(40px, 12.5dvh, 67px)'"), 'Tres y Dos: la carta usa 12.5dvh');
+    assert.ok(robaito.includes("'--rh': 'clamp(40px, 12.5dvh, 67px)'"), 'El Robaíto: la carta usa 12.5dvh');
+  });
+
+  it('el CSS agranda los paneles de fin de partida igual en los tres modos', () => {
+    assert.ok(shortLandscape.includes('.game-end-panel {'), 'el CSS regula los paneles');
+    assert.ok(shortLandscape.includes('padding: 10px 16px !important;'), 'los paneles suben a 10 px de relleno');
+    assert.ok(shortLandscape.includes('.game-end-panel h2 {'), 'el CSS regula el título del panel');
+    assert.ok(shortLandscape.includes('font-size: clamp(18px, 5dvh, 26px) !important;'), 'el título sube a 18 px en horizontal corto');
+    assert.ok(shortLandscape.includes('.game-end-panel button {'), 'el CSS regula los botones del panel');
+    assert.ok(shortLandscape.includes('min-height: clamp(40px, 11dvh, 48px) !important;'), 'los botones suben a 40 px');
+  });
+
+  it('el CSS agranda el panel de resultado de ronda de Casino', () => {
+    assert.ok(shortLandscape.includes('.round-result-panel-compact h2 {'), 'el CSS regula el título de Casino');
+    assert.ok(shortLandscape.includes('font-size: clamp(19px, 5dvh, 26px);'), 'el título de Casino sube a 19 px');
+    assert.ok(shortLandscape.includes('.round-result-panel-compact button {'), 'el CSS regula los botones de Casino');
+    assert.ok(shortLandscape.includes('min-height: clamp(40px, 11dvh, 48px);'), 'los botones de Casino suben a 40 px');
   });
 });

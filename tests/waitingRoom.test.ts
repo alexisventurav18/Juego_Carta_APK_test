@@ -18,6 +18,10 @@ const waitingGridCss = shortLandscape.slice(
   shortLandscape.indexOf('.room-waiting-grid {'),
   shortLandscape.indexOf('.room-waiting-player-panel {'),
 );
+const waitingContentCss = shortLandscape.slice(
+  shortLandscape.indexOf('.room-waiting-content {'),
+  shortLandscape.indexOf('.room-waiting-mode-banner {'),
+);
 
 describe('banda del modo en la sala de espera', () => {
   it('el nombre es pequeño: text-xs, sm:text-sm como mucho, sin text-base', () => {
@@ -41,12 +45,28 @@ describe('banda del modo en la sala de espera', () => {
     assert.ok(shortLandscape.includes('.room-waiting-mode-tagline {\n    display: none;'), 'la descripción se oculta en horizontal corto');
   });
 
-  it('la fila de la banda no se estira: auto para la banda, 1fr para los paneles', () => {
+  it('el grid no estira los paneles: filas auto auto y sin flex:1', () => {
     assert.ok(waitingGridCss.length > 0, 'se encontró la regla del grid en la media query');
     assert.ok(
-      waitingGridCss.includes('grid-template-rows: auto minmax(0, 1fr);'),
-      'el grid fija la fila de la banda a auto y da el resto a los paneles',
+      waitingGridCss.includes('grid-template-rows: auto auto;'),
+      'las dos filas son auto: los paneles abrazan su contenido en vez de estirarse',
     );
+    assert.ok(waitingGridCss.includes('flex: none;'), 'el grid ya no se estira con flex:1');
+    assert.ok(!waitingGridCss.includes('minmax(0, 1fr)'), 'la fila de los paneles ya no se queda con el resto');
+  });
+
+  it('la sala se centra con margen auto y el contenido no fuerza el 100% de alto', () => {
+    // Reglas base (fuera de la media query): la pantalla es columna flex y
+    // el contenido se centra con margen auto — si es más alto que la
+    // pantalla, el margen se anula y el scroll empieza arriba sin recortar.
+    assert.ok(css.includes('.room-waiting-screen {\n  display: flex;\n  flex-direction: column;'), 'la pantalla es columna flex');
+    assert.ok(
+      css.includes('.room-waiting-content {\n  margin-top: auto;\n  margin-bottom: auto;'),
+      'el contenido se centra con margen auto',
+    );
+    assert.ok(waitingContentCss.length > 0, 'se encontró la regla del contenido en la media query');
+    assert.ok(waitingContentCss.includes('min-height: 0;'), 'en horizontal corto el contenido no fuerza min-height:100%');
+    assert.ok(!waitingContentCss.includes('min-height: 100%;'), 'el contenido ya no llena la pantalla a la fuerza');
   });
 
   it('el color del modo sigue siendo la identidad de la banda (gradiente + brillo del acento)', () => {
