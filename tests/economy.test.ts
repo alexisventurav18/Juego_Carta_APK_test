@@ -247,20 +247,20 @@ describe('economía: rueda diaria', () => {
     assert.ok(mean > 58 && mean < 71, `media ${mean}`);
   });
 
-  it('el premio girado se cobra una sola vez al día', () => {
+  it('el premio girado se cobra una sola vez al día, con el extra de la racha', () => {
     const monday = new Date(2026, 10, 16, 9, 0, 0);
     const eco = defaultEconomy();
     assert.equal(isDailyAvailable(eco, monday), true);
     const first = claimDailyAmount(eco, 100, monday);
-    assert.equal(first.granted, 100);
-    assert.equal(first.state.coins, 100);
+    assert.equal(first.granted, 150, '100 de la rueda + 50 de racha (día 1)');
+    assert.equal(first.state.coins, 150);
     assert.equal(isDailyAvailable(first.state, monday), false);
     const second = claimDailyAmount(first.state, 250, new Date(2026, 10, 16, 20, 0, 0));
     assert.equal(second.granted, 0);
-    assert.equal(second.state.coins, 100);
+    assert.equal(second.state.coins, 150);
     const tuesday = claimDailyAmount(second.state, 25, new Date(2026, 10, 17, 9, 0, 0));
-    assert.equal(tuesday.granted, 25);
-    assert.equal(tuesday.state.coins, 125);
+    assert.equal(tuesday.granted, 85, '25 de la rueda + 60 de racha (día 2)');
+    assert.equal(tuesday.state.coins, 235);
   });
 });
 

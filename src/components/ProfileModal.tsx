@@ -1,11 +1,9 @@
-import { useState } from 'react';
-import { BarChart3, Check, Coins, Copy, Flame, KeyRound, Pencil, Star, Trophy, X } from 'lucide-react';
+import { BarChart3, Coins, Flame, KeyRound, Pencil, Star, Trophy, X } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId } from '@/games/shared';
 import type { EconomyState } from '@/lib/economy';
 import { levelFromXp, MAX_LEVEL } from '@/lib/experience';
-import { getIdentityForRecovery, getSyncStatus } from '@/lib/progress';
-import { encodeRecoveryCode } from '@/lib/recoveryCode';
+import { getSyncStatus } from '@/lib/progress';
 import Avatar from './avatar/Avatar';
 
 const GAME_ORDER: GameId[] = ['casino', 'tresydos', 'cagao', 'robaito'];
@@ -16,39 +14,16 @@ interface ProfileModalProps {
   name: string;
   onClose: () => void;
   onEditAvatar: () => void;
+  /** Abre Opciones (donde vive el código de respaldo): cierra el Perfil. */
+  onOpenOptions: () => void;
 }
 
-export default function ProfileModal({ economy, avatar, name, onClose, onEditAvatar }: ProfileModalProps) {
+export default function ProfileModal({ economy, avatar, name, onClose, onEditAvatar, onOpenOptions }: ProfileModalProps) {
   const winRate = economy.gamesPlayed > 0 ? Math.round((economy.wins / economy.gamesPlayed) * 100) : null;
   const maxWins = Math.max(1, ...GAME_ORDER.map((game) => economy.winsByGame[game]));
   const level = levelFromXp(economy.xp);
   const isMaxLevel = level.level >= MAX_LEVEL;
-  const [copied, setCopied] = useState(false);
-  // El código de respaldo codifica la identidad (id + clave secreta): se
-  // genera al abrir el perfil y siempre se puede volver a mostrar.
-  const identity = getIdentityForRecovery();
-  const recoveryCode = encodeRecoveryCode(identity.playerId, identity.key);
   const sync = getSyncStatus();
-
-  async function copyCode(): Promise<void> {
-    if (!recoveryCode) return;
-    try {
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(recoveryCode);
-      } else {
-        throw new Error('sin portapapeles');
-      }
-    } catch {
-      const area = document.createElement('textarea');
-      area.value = recoveryCode;
-      document.body.appendChild(area);
-      area.select();
-      document.execCommand('copy');
-      document.body.removeChild(area);
-    }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
-  }
 
   return (
     <div
@@ -160,7 +135,9 @@ export default function ProfileModal({ economy, avatar, name, onClose, onEditAva
           )}
         </div>
 
-        {/* Código de respaldo (B): recupera monedas, XP y cosméticos en otro teléfono. */}
+        {/* El código de respaldo vive en Opciones → Progreso en la nube:
+            aquí queda solo el enlace, para no mostrar el secreto en dos
+            sitios. El estado del último respaldo sí se ve aquí. */}
         <div className="profile-backup space-y-2 rounded-xl bg-black/25 px-3 py-3 ring-1 ring-amber-200/15">
           <p className="flex items-center gap-1.5 text-sm font-extrabold text-amber-300">
             <KeyRound className="h-4 w-4" aria-hidden />
@@ -170,23 +147,13 @@ export default function ProfileModal({ economy, avatar, name, onClose, onEditAva
             Con este código recuperas tus monedas, XP y cosméticos en otro teléfono. Guárdalo como una
             contraseña: quien lo tenga puede entrar como tú. No lo compartas.
           </p>
-          {recoveryCode ? (
-            <>
-              <p className="break-all rounded-lg bg-black/40 px-2.5 py-2 font-mono text-[12px] leading-relaxed tracking-wide text-amber-50 ring-1 ring-amber-200/15">
-                {recoveryCode}
-              </p>
-              <button
-                type="button"
-                onClick={copyCode}
-                className="btn-wood flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-bold transition-transform active:scale-95"
-              >
-                {copied ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
-                {copied ? 'Copiado' : 'Copiar código'}
-              </button>
-            </>
-          ) : (
-            <p className="text-xs text-amber-100/70">No se pudo generar el código en este momento.</p>
-          )}
+          <button
+            type="button"
+            onClick={onOpenOptions}
+            className="btn-wood flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-bold transition-transform active:scale-95"
+          >
+            Ver en Opciones
+          </button>
           <p className="text-xs font-bold text-amber-100/70">
             {sync.hasConflict
               ? `Hay una copia más reciente en la nube (${formatSyncDate(sync.conflictAt)}). Usa «Recuperar mi progreso» en Opciones para verla.`

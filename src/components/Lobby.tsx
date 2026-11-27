@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BarChart3, BookOpen, Bot, Coins, DoorOpen, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, ShoppingBag, Spade, Star, Target, Trophy, Users, VolumeX, X, Zap } from 'lucide-react';
+import { BookOpen, Bot, Coins, DoorOpen, Flame, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, Spade, Star, Target, Trophy, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
 import { createRoom, friendsList, joinRoom, leaveRoom, quickplayRoom, tournamentInfo, type TournamentData } from '@/lib/rooms';
 import { getMyAvatar, getPlayerId, getStoredName, hasChosenAvatar, resetPlayerIdentity, storeAvatar, storeName } from '@/lib/identity';
 import { isDailyAvailableNow, useEconomy } from '@/lib/economy';
 import { levelFromXp, MAX_LEVEL } from '@/lib/experience';
+import { ACHIEVEMENTS, unclaimedAchievementRewards } from '@/lib/achievements';
 import { unclaimedCompleted } from '@/lib/missions';
 import { useFullscreen } from '@/lib/platform';
 import { useMuted } from '@/lib/soundPrefs';
@@ -16,14 +17,15 @@ import AvatarEditor from './avatar/AvatarEditor';
 import ErrorBoundary from './ErrorBoundary';
 import { useOptions } from './options/OptionsProvider';
 import Tutorial from './tutorial/Tutorial';
-import Store from './Store';
-import MissionsModal from './MissionsModal';
+import Store, { OPEN_STORE_EVENT } from './Store';
+import MissionsAchievementsModal, { type ProgressTab } from './MissionsAchievementsModal';
 import DailyWheel from './DailyWheel';
 import ProfileModal from './ProfileModal';
 import RecoveryModal, { OPEN_RECOVERY_EVENT } from './RecoveryModal';
 import RankingModal from './RankingModal';
 import FriendsModal from './FriendsModal';
 import TournamentModal from './TournamentModal';
+import TournamentTicker from './TournamentTicker';
 import { WoodFrame } from './cagao/CardAssets';
 import GameCards from './GameCards';
 import type { OfflineSetup } from './OfflineBotGame';
@@ -96,7 +98,9 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const [editorOpen, setEditorOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [storeOpen, setStoreOpen] = useState(false);
-  const [missionsOpen, setMissionsOpen] = useState(false);
+  // Misiones y Logros comparten un solo modal con dos pestañas: qué pestaña
+  // abre (null = cerrado). Cada botón del encabezado abre su apartado.
+  const [progressTab, setProgressTab] = useState<ProgressTab | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [rankingOpen, setRankingOpen] = useState(false);
@@ -115,6 +119,10 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
   const level = levelFromXp(economy.xp);
   const dailyAvailable = isDailyAvailableNow() && !dailyWheelOpen;
   const missionsReady = unclaimedCompleted(economy.missions);
+  // Logros: cuántos hay por reclamar y cuántos se desbloquearon (3/12).
+  const achievementsReady = unclaimedAchievementRewards(economy.achievements).count;
+  const achievementsUnlocked = economy.achievements.unlocked.length;
+  const streakDays = economy.dailyStreak.days;
   const [avatar, setAvatar] = useState(getMyAvatar);
   const [avatarChosen, setAvatarChosen] = useState(hasChosenAvatar);
   const [busy, setBusy] = useState<'create' | 'join' | 'quickplay' | null>(null);
@@ -164,6 +172,14 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
     const openRecovery = () => setRecoveryOpen(true);
     window.addEventListener(OPEN_RECOVERY_EVENT, openRecovery);
     return () => window.removeEventListener(OPEN_RECOVERY_EVENT, openRecovery);
+  }, []);
+
+  // La Tienda también se abre desde Opciones (fila "Apariencia"): mismo
+  // patrón que la recuperación, el modal vive aquí.
+  useEffect(() => {
+    const openStore = () => setStoreOpen(true);
+    window.addEventListener(OPEN_STORE_EVENT, openStore);
+    return () => window.removeEventListener(OPEN_STORE_EVENT, openStore);
   }, []);
 
   /** Vuelve a pedir la insignia de Amigos (al cerrar su modal, p. ej.). */
@@ -267,7 +283,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
       sigue entero; sin esto, el error tumbaría todo el menú). */
   const closeAllModals = () => {
     setStoreOpen(false);
-    setMissionsOpen(false);
+    setProgressTab(null);
     setRankingOpen(false);
     setFriendsOpen(false);
     setTournamentOpen(false);
@@ -381,7 +397,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
               </p>
             </div>
 
-            <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 [@media(max-height:500px)]:gap-1">
               {dailyAvailable && (
                 <button
                   type="button"
@@ -394,9 +410,6 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                   <span className="hidden min-[760px]:inline [@media(max-height:500px)]:hidden">Rueda</span>
                 </button>
               )}
-              <button type="button" onClick={() => setProfileOpen(true)} aria-label="Mi perfil y estadísticas" title="Mi perfil" className={ICON_BTN}>
-                <BarChart3 className="h-4 w-4" />
-              </button>
               <button
                 type="button"
                 onClick={() => setStoreOpen(true)}
@@ -424,17 +437,7 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
               </button>
               <button
                 type="button"
-                onClick={() => setStoreOpen(true)}
-                aria-label="Abrir la tienda"
-                title="Tienda"
-                className="btn-wood flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
-              >
-                <ShoppingBag className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-                <span className="max-[760px]:hidden [@media(max-height:500px)]:hidden">Tienda</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMissionsOpen(true)}
+                onClick={() => setProgressTab('missions')}
                 aria-label={
                   missionsReady > 0
                     ? `Misiones, tienes ${missionsReady} ${missionsReady === 1 ? 'misión lista' : 'misiones listas'} para reclamar`
@@ -448,6 +451,42 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                 {missionsReady > 0 && (
                   <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[11px] font-extrabold text-amber-950 ring-2 ring-amber-950/60">
                     {missionsReady}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setProgressTab('achievements')}
+                aria-label={
+                  achievementsReady > 0
+                    ? `Logros, tienes ${achievementsReady} ${achievementsReady === 1 ? 'logro listo' : 'logros listos'} para reclamar${
+                        streakDays > 0 ? `, racha de ${streakDays} ${streakDays === 1 ? 'día' : 'días'}` : ''
+                      }`
+                    : `Logros: ${achievementsUnlocked} de ${ACHIEVEMENTS.length} desbloqueados${
+                        streakDays > 0 ? `, racha de ${streakDays} ${streakDays === 1 ? 'día' : 'días'}` : ''
+                      }`
+                }
+                title="Logros y racha diaria"
+                className="btn-wood relative flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
+              >
+                <Trophy className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+                <span className="max-[760px]:hidden [@media(max-height:500px)]:hidden">Logros</span>
+                {/* En horizontal corto el botón es casi solo-icono (trofeo +
+                    llama): el "4/12" y los días de racha se ocultan para que
+                    el encabezado quepa en una sola fila; ambos se siguen
+                    viendo dentro del modal, en la pestaña Logros. */}
+                <span className="shrink-0 text-xs font-extrabold tabular-nums text-amber-200 [@media(max-height:500px)]:hidden">
+                  {achievementsUnlocked}/{ACHIEVEMENTS.length}
+                </span>
+                {streakDays > 0 && (
+                  <span className="flex shrink-0 items-center gap-0.5 text-xs font-extrabold tabular-nums text-orange-200">
+                    <Flame className="h-4 w-4 shrink-0 text-orange-300" aria-hidden />
+                    <span className="[@media(max-height:500px)]:hidden">{streakDays}</span>
+                  </span>
+                )}
+                {achievementsReady > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[11px] font-extrabold text-amber-950 ring-2 ring-amber-950/60">
+                    {achievementsReady}
                   </span>
                 )}
               </button>
@@ -516,6 +555,13 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
             </div>
           </header>
 
+          {/* Aviso del torneo como marquesina fina entre el encabezado y las
+              tarjetas: se lee, se oculta sola a los ~10 s y las tarjetas
+              ocupan su espacio. Es la única entrada al torneo desde el menú. */}
+          {tournamentBanner && (
+            <TournamentTicker text={tournamentBanner} onOpen={() => setTournamentOpen(true)} />
+          )}
+
           {/* Los modos de juego, lado a lado y todos a la vista */}
           <GameCards games={GAME_ORDER} selected={game} onSelect={selectGame} />
 
@@ -582,21 +628,6 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
               <span className="truncate max-[640px]:text-[12px]">Unirse</span>
             </button>
           </footer>
-
-          {/* Aviso del torneo del fin de semana, cuando lo hay: abre su modal.
-              Vive abajo del todo, aprovechando el espacio que sobra: en el
-              medio competía con las tarjetas y les robaba altura. Es una
-              píldora fina y apagada, centrada, no una banda dorada. */}
-          {tournamentBanner && (
-            <button
-              type="button"
-              onClick={() => setTournamentOpen(true)}
-              className="btn-wood mx-auto flex min-h-[28px] w-auto max-w-full shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-bold text-amber-200 transition-transform active:scale-[0.98]"
-            >
-              <Trophy className="h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
-              <span className="min-w-0 truncate">{tournamentBanner}</span>
-            </button>
-          )}
 
           {/* Mientras se busca partida (crear, unirse u online) se puede cancelar y quedarse en el menú. */}
           {busy !== null && (
@@ -673,7 +704,9 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           el menú sigue entero, en vez de quedar la app en blanco. */}
       <ErrorBoundary compact onReset={closeAllModals}>
       {storeOpen && <Store onClose={() => setStoreOpen(false)} />}
-      {missionsOpen && <MissionsModal onClose={() => setMissionsOpen(false)} />}
+      {progressTab !== null && (
+        <MissionsAchievementsModal initialTab={progressTab} onClose={() => setProgressTab(null)} />
+      )}
       {rankingOpen && <RankingModal onClose={() => setRankingOpen(false)} />}
       {friendsOpen && (
         <FriendsModal
@@ -697,6 +730,10 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
           onEditAvatar={() => {
             setProfileOpen(false);
             setEditorOpen(true);
+          }}
+          onOpenOptions={() => {
+            setProfileOpen(false);
+            options.open();
           }}
         />
       )}

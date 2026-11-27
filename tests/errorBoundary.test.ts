@@ -156,7 +156,8 @@ describe('ErrorBoundary: montaje en la app', () => {
     const body = lobby.slice(at, lobby.indexOf('};', at));
     for (const setter of [
       'setStoreOpen(false)',
-      'setMissionsOpen(false)',
+      // Un solo modal combinado: una llamada cierra Misiones y Logros a la vez.
+      'setProgressTab(null)',
       'setRankingOpen(false)',
       'setFriendsOpen(false)',
       'setTournamentOpen(false)',

@@ -59,6 +59,12 @@ function fullSnapshot(): ProgressSnapshot {
       ownedMenus: ['fiesta-tropical'],
       awarded: ['partida-1', 'rueda-2026-11-22'],
       missions: { daily: [{ id: 'm1', done: true }], weekly: [] },
+      dailyStreak: { days: 3, lastDate: '2026-11-22' },
+      achievements: {
+        unlocked: ['primera-casino'],
+        claimed: [],
+        modesWonToday: { date: '2026-11-22', games: ['casino'] },
+      },
     },
     visualPrefs: { cardBack: 'larimar', table: 'mar-caribe', menu: 'fiesta-tropical' },
   };

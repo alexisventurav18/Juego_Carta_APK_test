@@ -22,6 +22,7 @@ import { useDealFlights } from '../table/useDealFlights';
 import { centerOf, useFlights } from '../table/useFlights';
 import { useStartHint } from '../table/useStartHint';
 import { useDealIntro } from '../useDealIntro';
+import CompletionRow from '../CompletionRow';
 import VictoryCelebration from '../VictoryCelebration';
 import { PANEL_BUTTON_QUIET } from '../wood/styles';
 import PilePad from './PilePad';
@@ -492,6 +493,9 @@ export default function RobaitoTable({ state, seat, onMove, onLeave, roomLabel, 
                 <h2 className="text-sm font-extrabold sm:text-xl">
                   {game.tie ? `¡Empate entre ${winnerNames}!` : game.iWon ? '¡Ganaste la partida!' : `${winnerNames} ganó la partida`}
                 </h2>
+                <CompletionRow
+                  show={(winReward?.completed.length ?? 0) + (winReward?.achievements.length ?? 0) > 0}
+                />
                 <div className="game-end-rows space-y-1">
                   {standings.map(({ player, s, count }) => {
                     const won = state.winnerSeats.includes(s);

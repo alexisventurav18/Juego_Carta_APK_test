@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GameState } from '@/games';
 import { teamOf } from '@/games/shared';
+import type { AchievementDef } from '@/lib/achievements';
 import { awardMatchWithStats, humanOutcome, matchFingerprint } from '@/lib/economy';
 import type { XpGain } from '@/lib/experience';
-import type { MatchStats } from '@/lib/missions';
+import type { MatchStats, MissionDef } from '@/lib/missions';
 
-/** Lo que se ganó con la partida: monedas y experiencia (null si no hay nada que mostrar). */
+/**
+ * Lo que se ganó con la partida: monedas y experiencia (null si no hay nada
+ * que mostrar), más las misiones completadas y los logros desbloqueados con
+ * ella (ambos aún sin reclamar: el aviso de resultados cobra los dos).
+ */
 export interface WinReward {
   coins: number | null;
   xpGain: XpGain | null;
+  completed: MissionDef[];
+  achievements: AchievementDef[];
 }
 
 /**
@@ -21,7 +28,8 @@ export interface WinReward {
  * dos veces la misma victoria aunque la vista se actualice varias veces.
  *
  * La misma llamada registra la partida en las misiones (cartas capturadas y
- * viraos en el Casino), así que el progreso de misiones avanza sin tocar las mesas.
+ * viraos en el Casino) y evalúa los logros, así que el progreso de ambos
+ * avanza sin tocar las mesas: el aviso de resultados solo los muestra y cobra.
  */
 export function useWinReward(state: GameState, seat: number): WinReward | null {
   const [reward, setReward] = useState<WinReward | null>(null);
@@ -39,14 +47,29 @@ export function useWinReward(state: GameState, seat: number): WinReward | null {
     if (lastKeyRef.current === key) return;
     lastKeyRef.current = key;
     const result = awardMatchWithStats(key, state.game, outcome, matchStats(state, seat, outcome));
-    setReward({ coins: result.awarded, xpGain: result.xpGain });
+    setReward({
+      coins: result.awarded,
+      xpGain: result.xpGain,
+      completed: result.completed,
+      achievements: result.achievements,
+    });
   }, [state, seat]);
 
   return reward;
 }
 
-/** Estadísticas de la partida para las misiones: capturas y viraos del equipo del jugador en el Casino. */
+/** Estadísticas de la partida para las misiones y los logros: capturas y viraos del equipo del jugador en el Casino, y cartas del paquete propio en El Robaíto. */
 function matchStats(state: GameState, seat: number, outcome: 'win' | 'tie' | 'loss'): MatchStats {
+  if (state.game === 'robaito') {
+    // El Robaíto guarda un paquete por jugador: el tamaño del propio al
+    // terminar es lo que pide el logro "El Robaíto mayor" (30+ cartas).
+    const piles = (state as { piles?: unknown[][] }).piles;
+    return {
+      game: 'robaito',
+      outcome,
+      robaitoCards: Array.isArray(piles) ? (piles[seat]?.length ?? 0) : 0,
+    };
+  }
   if (state.game !== 'casino') return { game: state.game, outcome };
   const team = teamOf(seat);
   const capturedCards = state.captured[team].reduce((total, group) => total + group.cards.length, 0);

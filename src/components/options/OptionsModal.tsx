@@ -1,14 +1,14 @@
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, BellOff, CloudDownload, Lock, Music, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
+import { Bell, BellOff, Check, ChevronRight, CloudDownload, Copy, KeyRound, Music, Settings, ShoppingBag, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { useGameSounds } from '@/hooks/useGameSounds';
-import { buyCosmetic, isOwned, shopPrice, useEconomy, type CosmeticCategory } from '@/lib/economy';
+import { copyText } from '@/lib/clipboard';
 import { requestNotificationPermission } from '@/lib/notify';
+import { getIdentityForRecovery, getSyncStatus } from '@/lib/progress';
+import { encodeRecoveryCode } from '@/lib/recoveryCode';
 import { usePrefs } from '@/lib/soundPrefs';
-import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
-import BuyConfirmDialog from '../BuyConfirmDialog';
 import { OPEN_RECOVERY_EVENT } from '../RecoveryModal';
-import { CARD_BACK_THEMES, MENU_THEMES, TABLE_THEMES, useVisualPrefs } from '@/lib/visualPrefs';
+import { OPEN_STORE_EVENT } from '../Store';
 
 interface OptionsModalProps {
   onClose: () => void;
@@ -86,90 +86,37 @@ function Row({ icon, title, hint, control, children }: { icon: ReactNode; title:
   );
 }
 
-function ThemePicker<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-  cardPreview = false,
-  lockedPrice,
-}: {
-  label: string;
-  value: T;
-  options: { id: T; label: string; color: string; image: string }[];
-  onChange: (value: T) => void;
-  cardPreview?: boolean;
-  /** Precio en monedas si la opción no es del jugador; null si ya es suya. */
-  lockedPrice?: (id: T) => number | null;
-}) {
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      {options.map((option) => {
-        const price = lockedPrice?.(option.id) ?? null;
-        return (
-        <button
-          key={option.id}
-          type="button"
-          aria-label={`${label}: ${option.label}${price !== null ? `, bloqueado, cuesta ${price} monedas` : ''}`}
-          aria-pressed={value === option.id}
-          onClick={() => onChange(option.id)}
-          className={`flex min-w-0 touch-manipulation flex-col items-center gap-1 rounded-lg p-1.5 text-[10px] font-bold text-amber-50 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 ${
-            value === option.id ? 'bg-amber-300/20 ring-2 ring-amber-300' : 'bg-black/20 ring-1 ring-amber-200/15'
-          } ${price !== null ? 'opacity-70' : ''}`}
-        >
-          <span
-            aria-hidden
-            className={`block bg-cover bg-center bg-no-repeat ${cardPreview ? 'h-10 w-7 rounded' : 'h-7 w-full rounded-md'} ring-1 ring-white/30`}
-            style={{ backgroundColor: option.color, backgroundImage: option.image }}
-          />
-          <span className="truncate">{option.label}</span>
-          {price !== null && (
-            <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-300">
-              <Lock className="h-2.5 w-2.5" aria-hidden /> {price} monedas
-            </span>
-          )}
-        </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /** Panel de opciones: audio, avisos y personalización visual. */
 export default function OptionsModal({ onClose }: OptionsModalProps) {
   const { prefs, update } = usePrefs();
-  const { prefs: visualPrefs, update: updateVisual } = useVisualPrefs();
-  const economy = useEconomy();
-  /** Tema bloqueado que se tocó: se abre el mismo diálogo de confirmación
-      de compra que en la Tienda, antes de cobrar nada. */
-  const [pendingPurchase, setPendingPurchase] = useState<{
-    category: CosmeticCategory;
-    id: string;
-    label: string;
-    price: number;
-    patch: Parameters<typeof updateVisual>[0];
-  } | null>(null);
-  const [lockedNotice, setLockedNotice] = useState<string | null>(null);
   const { playSound } = useGameSounds();
   const titleId = useId();
-  const cardBackOptions = CARD_BACK_THEMES.map((theme) => ({
-    ...theme,
-    image: CARD_BACK_IMAGES[theme.id],
-  }));
+  // El código de respaldo codifica la identidad (id + clave secreta): la
+  // misma fuente que usaba el Perfil, ahora aquí (B4).
+  const identity = getIdentityForRecovery();
+  const recoveryCode = encodeRecoveryCode(identity.playerId, identity.key);
+  const sync = getSyncStatus();
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Con el diálogo de compra abierto, Escape solo lo cierra a él.
-      if (e.key === 'Escape' && !pendingPurchase) onClose();
+      if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, pendingPurchase]);
+  }, [onClose]);
 
   const toggleNotifications = (value: boolean) => {
     update({ notifications: value });
     if (value) void requestNotificationPermission();
   };
+
+  async function copyCode(): Promise<void> {
+    if (!recoveryCode) return;
+    await copyText(recoveryCode);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
 
   /**
    * Abre el flujo de recuperación: el modal vive en el menú, así que se
@@ -182,56 +129,14 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
   };
 
   /**
-   * Los temas de pago solo se pueden equipar si ya son del jugador; si no,
-   * se ofrece comprarlos aquí mismo (antes solo se avisaba del precio y
-   * había que ir a la Tienda). Comprar también equipa el tema.
+   * Abre la Tienda desde Opciones (fila "Apariencia"): mismo patrón que la
+   * recuperación — el catálogo vive en la Tienda, aquí no hay selectores
+   * duplicados. Un toque más para llegar, a cambio de una sola tienda.
    */
-  const tryEquip = (
-    category: CosmeticCategory,
-    id: string,
-    label: string,
-    patch: Parameters<typeof updateVisual>[0],
-  ) => {
-    if (isOwned(economy, category, id)) {
-      setPendingPurchase(null);
-      setLockedNotice(null);
-      updateVisual(patch);
-      return;
-    }
-    const price = shopPrice(category, id);
-    if (price === null) {
-      setPendingPurchase(null);
-      setLockedNotice(`«${label}» no está disponible.`);
-      return;
-    }
-    setLockedNotice(null);
-    setPendingPurchase({ category, id, label, price, patch });
+  const openStore = () => {
+    onClose();
+    window.dispatchEvent(new CustomEvent(OPEN_STORE_EVENT));
   };
-
-  /** Compra el tema bloqueado que se tocó y lo equipa al momento. Solo se
-      ejecuta al confirmar en el diálogo de compra. */
-  const buyLocked = () => {
-    if (!pendingPurchase) return;
-    const { category, id, label, price, patch } = pendingPurchase;
-    setPendingPurchase(null);
-    const result = buyCosmetic(category, id);
-    if (!result.ok) {
-      setLockedNotice(
-        result.reason === 'funds'
-          ? `Te faltan ${price - economy.coins} monedas para «${label}». Gana partidas para conseguirlas.`
-          : `«${label}» no está disponible.`,
-      );
-      return;
-    }
-    updateVisual(patch);
-    setLockedNotice(`¡Compraste y equipaste «${label}»!`);
-  };
-
-  /** Precio en monedas si la opción no es del jugador; null si ya es suya. */
-  const lockedPriceFor =
-    (category: CosmeticCategory) =>
-    (id: string): number | null =>
-      isOwned(economy, category, id) ? null : shopPrice(category, id);
 
   return createPortal(
     <div
@@ -312,82 +217,30 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
             />
           </Row>
 
-          <section className="space-y-2 rounded-xl bg-black/25 p-3 ring-1 ring-amber-200/15" aria-label="Personalización visual">
-            <h3 className="text-sm font-bold text-amber-50">Apariencia</h3>
-            {lockedNotice && (
-              <p role="status" className="rounded-lg bg-amber-300/15 px-2 py-1.5 text-[11px] font-semibold text-amber-200 ring-1 ring-amber-300/40">
-                {lockedNotice}
-              </p>
-            )}
-            {pendingPurchase &&
-              createPortal(
-                <BuyConfirmDialog
-                  itemLabel={pendingPurchase.label}
-                  price={pendingPurchase.price}
-                  coins={economy.coins}
-                  onConfirm={buyLocked}
-                  onCancel={() => setPendingPurchase(null)}
-                />,
-                document.body,
-              )}
-            <div className="space-y-3">
-              <div>
-                <p className="mb-1.5 text-xs font-semibold text-amber-100/80">Reverso de las cartas</p>
-                <ThemePicker
-                  label="Reverso de las cartas"
-                  value={visualPrefs.cardBack}
-                  options={cardBackOptions}
-                  onChange={(cardBack) =>
-                    tryEquip(
-                      'cardBack',
-                      cardBack,
-                      CARD_BACK_THEMES.find((t) => t.id === cardBack)?.label ?? cardBack,
-                      { cardBack },
-                    )
-                  }
-                  lockedPrice={lockedPriceFor('cardBack')}
-                  cardPreview
-                />
-              </div>
-              <div>
-                <p className="mb-1.5 text-xs font-semibold text-amber-100/80">Mesa de juego</p>
-                <ThemePicker
-                  label="Mesa de juego"
-                  value={visualPrefs.table}
-                  options={TABLE_THEMES}
-                  onChange={(table) =>
-                    tryEquip(
-                      'table',
-                      table,
-                      TABLE_THEMES.find((t) => t.id === table)?.label ?? table,
-                      { table },
-                    )
-                  }
-                  lockedPrice={lockedPriceFor('table')}
-                />
-              </div>
-              <div>
-                <p className="mb-1.5 text-xs font-semibold text-amber-100/80">Menú principal</p>
-                <ThemePicker
-                  label="Fondo del menú principal"
-                  value={visualPrefs.menu}
-                  options={MENU_THEMES}
-                  onChange={(menu) =>
-                    tryEquip(
-                      'menu',
-                      menu,
-                      MENU_THEMES.find((t) => t.id === menu)?.label ?? menu,
-                      { menu },
-                    )
-                  }
-                  lockedPrice={lockedPriceFor('menu')}
-                />
-              </div>
-            </div>
-          </section>
+          {/* Apariencia: una sola fila que abre la Tienda, donde vive el
+              catálogo completo con vista previa. Antes había aquí 3
+              selectores con compra integrada: el mismo catálogo en dos
+              sitios. Un toque más para llegar, a cambio de una sola tienda. */}
+          <Row
+            icon={<ShoppingBag className="h-4 w-4" />}
+            title="Apariencia"
+            hint="Dorsos, mesas y fondos de la Tienda"
+            control={
+              <button
+                type="button"
+                onClick={openStore}
+                aria-label="Abrir la Tienda para cambiar la apariencia"
+                className="btn-wood flex min-h-[36px] shrink-0 touch-manipulation items-center gap-1 rounded-lg px-3 text-[13px] font-bold transition-transform active:scale-95"
+              >
+                Abrir Tienda
+                <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              </button>
+            }
+          />
 
           {/* Progreso en la nube: restaurar en este teléfono el progreso
-              guardado con el código de respaldo de otro teléfono. */}
+              guardado con el código de respaldo de otro teléfono. El código
+              también vive aquí (antes solo estaba en Perfil). */}
           <section className="space-y-2 rounded-xl bg-black/25 p-3 ring-1 ring-amber-200/15" aria-label="Progreso en la nube">
             <h3 className="flex items-center gap-2 text-sm font-bold text-amber-50">
               <CloudDownload className="h-4 w-4 text-amber-300" aria-hidden />
@@ -396,6 +249,38 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
             <p className="text-xs leading-relaxed text-amber-100/70">
               Restaura tus monedas, nivel y cosméticos en este teléfono con el código de respaldo de tu otro
               teléfono.
+            </p>
+            <p className="flex items-center gap-1.5 text-xs font-extrabold text-amber-300">
+              <KeyRound className="h-3.5 w-3.5" aria-hidden />
+              Mi código de respaldo
+            </p>
+            <p className="text-xs leading-relaxed text-amber-100/70">
+              Con este código recuperas tu progreso en otro teléfono. Guárdalo como una contraseña: quien lo
+              tenga puede entrar como tú. No lo compartas.
+            </p>
+            {recoveryCode ? (
+              <>
+                <p className="break-all rounded-lg bg-black/40 px-2.5 py-2 font-mono text-[12px] leading-relaxed tracking-wide text-amber-50 ring-1 ring-amber-200/15">
+                  {recoveryCode}
+                </p>
+                <button
+                  type="button"
+                  onClick={copyCode}
+                  className="btn-wood flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-bold transition-transform active:scale-95"
+                >
+                  {copied ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
+                  {copied ? 'Copiado' : 'Copiar código'}
+                </button>
+              </>
+            ) : (
+              <p className="text-xs text-amber-100/70">No se pudo generar el código en este momento.</p>
+            )}
+            <p className="text-xs font-bold text-amber-100/70">
+              {sync.hasConflict
+                ? `Hay una copia más reciente en la nube (${formatSyncDate(sync.conflictAt)}). Usa «Recuperar mi progreso» para verla.`
+                : sync.lastSyncedAt
+                  ? `Último respaldo: ${formatSyncDate(sync.lastSyncedAt)}.`
+                  : 'Aún no hay respaldo en la nube: se sube solo cuando ganas o compras algo.'}
             </p>
             <button
               type="button"
@@ -411,4 +296,14 @@ export default function OptionsModal({ onClose }: OptionsModalProps) {
     </div>,
     document.body,
   );
+}
+
+function formatSyncDate(timestamp: number | null): string {
+  if (!timestamp) return '';
+  return new Date(timestamp).toLocaleDateString('es-DO', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }

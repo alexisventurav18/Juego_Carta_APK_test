@@ -156,6 +156,8 @@ export interface MatchStats {
   capturedCards?: number;
   /** Viraos del equipo del jugador (solo Casino). */
   viraos?: number;
+  /** Cartas en el paquete propio al terminar (El Robaíto: logro "El Robaíto mayor"). */
+  robaitoCards?: number;
 }
 
 function applyToMission(progress: MissionProgress, def: MissionDef, stats: MatchStats): MissionProgress {

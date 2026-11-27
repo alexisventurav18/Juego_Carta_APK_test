@@ -188,7 +188,7 @@ export default function RecoveryModal({ onClose, onRestored }: RecoveryModalProp
         {step === 'code' && (
           <>
             <p className="text-sm leading-relaxed text-amber-100/80">
-              Escribe el código de respaldo de tu otro teléfono (lo ves en Perfil → Código de respaldo). Tu
+              Escribe el código de respaldo de tu otro teléfono (lo ves en Opciones → Progreso en la nube). Tu
               progreso se descarga y se queda en este teléfono.
             </p>
             <textarea

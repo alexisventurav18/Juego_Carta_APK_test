@@ -42,3 +42,13 @@ export function formatCountdown(ms: number): string {
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
 }
+
+/**
+ * Duración de una vuelta de la marquesina del aviso del torneo (segundos):
+ * a ~60 px/s (unos 13 px por carácter de media), el texto completo se lee
+ * al menos una vez antes de que el aviso se oculte, sin ir demasiado
+ * despacio con textos cortos ni demasiado deprisa con textos largos.
+ */
+export function tickerLoopSeconds(text: string): number {
+  return Math.min(12, Math.max(8, text.length * 0.16));
+}

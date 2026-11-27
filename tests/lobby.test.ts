@@ -36,7 +36,9 @@ describe('menú principal', () => {
   it('la barra superior colapsa a iconos en horizontal corto y el título no se parte', () => {
     const lobby = read('src/components/Lobby.tsx');
     // Las etiquetas de texto se ocultan con poca altura o poco ancho.
-    for (const label of ['Tienda', 'Misiones', 'Jugar rápido']) {
+    // ("Tienda" ya no es un botón con etiqueta: la ficha de Monedas es la
+    // única entrada a la Tienda, y su saldo es el número, no una etiqueta.)
+    for (const label of ['Misiones', 'Jugar rápido']) {
       assert.ok(
         lobby.includes(`[@media(max-height:500px)]:hidden">${label}</span>`),
         `Lobby: la etiqueta "${label}" debe ocultarse en pantallas bajas`,

@@ -33,6 +33,7 @@ import ClosingZoneBanner, { type ClosingAlert } from './ClosingZoneBanner';
 import DealerReveal from './DealerReveal';
 import DefeatNotice from './DefeatNotice';
 import RoundResultPanel from './RoundResultPanel';
+import CompletionRow from './CompletionRow';
 import TableBuild from './TableBuild';
 import { useDealIntro } from './useDealIntro';
 import VictoryCelebration from './VictoryCelebration';
@@ -810,6 +811,12 @@ export default function CasinoTable({ state, seat, onMove, onLeave, roomLabel, c
                   compact
                   onNextRound={state.phase === 'roundEnd' && seat === nextDealer ? () => onMove({ type: 'nextRound' }) : undefined}
                   waitingFor={state.phase === 'roundEnd' ? state.players[nextDealer].name : undefined}
+                />
+                <CompletionRow
+                  show={
+                    state.phase === 'gameOver' &&
+                    (winReward?.completed.length ?? 0) + (winReward?.achievements.length ?? 0) > 0
+                  }
                 />
                 {resultFooter && <div className="flex justify-center">{resultFooter}</div>}
                 {onLeave && state.phase === 'gameOver' && (

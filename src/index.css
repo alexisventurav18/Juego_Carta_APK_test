@@ -56,6 +56,30 @@ button,
   }
 }
 
+/* Marquesina del aviso del torneo en el menú: el texto se desplaza en
+   horizontal y vuelve a empezar sin salto (el contenido va duplicado y la
+   animación recorre exactamente la mitad de la pista). */
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-track {
+  animation-name: ticker-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
+
 @keyframes confetti-fall {
   0% {
     transform: translateY(-10vh) rotate(0deg);
@@ -723,6 +747,68 @@ button,
   background: rgb(0 0 0 / 0.45);
   color: #fff7e6;
   box-shadow: 0 0 0 1px rgb(253 230 138 / 0.4), 0 2px 5px rgb(0 0 0 / 0.35);
+}
+
+/* Franja de fin de partida (CompletionRow): avisa de las misiones
+   completadas y los logros desbloqueados con ESTA partida y cobra todo
+   en una pulsación. Va dentro del panel de resultados, nunca flotando
+   sobre la mesa, para no tapar cartas ni botones. */
+.completion-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: rgb(251 191 36 / 0.16);
+  color: #fef3c7;
+  font-size: 13px;
+  line-height: 1.25;
+  box-shadow: inset 0 0 0 1px rgb(253 230 138 / 0.5);
+}
+
+.completion-row--claimed {
+  background: rgb(16 185 129 / 0.18);
+  box-shadow: inset 0 0 0 1px rgb(110 231 183 / 0.5);
+  color: #a7f3d0;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.completion-row__claim {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background-image: linear-gradient(180deg, #fcd34d, #f59e0b);
+  color: #1c1208;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 0 0 1px rgb(254 243 199 / 0.6), 0 2px 5px rgb(0 0 0 / 0.45);
+  touch-action: manipulation;
+}
+
+.completion-row__claim:active {
+  transform: scale(0.95);
+}
+
+.completion-row__close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-height: 32px;
+  min-width: 32px;
+  border-radius: 8px;
+  color: #fef3c7;
+  opacity: 0.75;
+  touch-action: manipulation;
+}
+
+.completion-row__close:active {
+  transform: scale(0.95);
 }
 
 /* Altura de las cartas de CartaUI (mano y mesa), con los mismos topes que antes. */
@@ -1395,6 +1481,53 @@ button,
     padding-top: 8px !important;
     padding-bottom: 8px !important;
     font-size: clamp(13px, 3.6dvh, 16px) !important;
+  }
+
+  /* La franja de recompensas dentro del panel: una sola línea, más baja y
+     con el botón de reclamar compacto, para que el panel siga sin scroll.
+     Lleva el ancestro .game-end-panel y !important porque la regla de los
+     botones del panel (min-height 40-48 px, padding 8 px) también la
+     alcanzaría: sin el padding 0 de la X, la franja mediría 40 px y el
+     panel de Tres y Dos haría scroll a 800x360. El marco de Casino usa la
+     misma franja con su propio contenedor. */
+  .game-end-panel .completion-row,
+  .casino-round-result-frame .completion-row {
+    min-height: 28px !important;
+    padding: 2px 8px !important;
+    gap: 6px;
+    font-size: 12px !important;
+  }
+
+  .game-end-panel .completion-row__claim,
+  .casino-round-result-frame .completion-row__claim {
+    min-height: 24px !important;
+    padding: 2px 8px !important;
+    font-size: 12px !important;
+  }
+
+  .game-end-panel .completion-row__close,
+  .casino-round-result-frame .completion-row__close {
+    min-height: 24px !important;
+    min-width: 24px !important;
+    padding: 0 !important;
+  }
+
+  /* Cuando la franja está dentro del panel, el panel se aprieta un poco
+     (relleno, huecos entre bloques y huecos entre filas de la clasificación)
+     para que siga sin scroll incluso en El Cagao con 6 jugadores a 800x360,
+     el caso más justo: sin la franja el panel queda exactamente como estaba.
+     :has() lo soportan los WebView modernos; si no, la regla no se aplica y
+     el panel simplemente hace scroll esos píxeles (su red de seguridad). */
+  .game-end-panel:has(.completion-row) {
+    padding: 6px 16px !important;
+  }
+
+  .game-end-panel:has(.completion-row) > * + * {
+    margin-top: 3px !important;
+  }
+
+  .game-end-panel:has(.completion-row) .game-end-rows > * + * {
+    margin-top: 2px !important;
   }
 }
 

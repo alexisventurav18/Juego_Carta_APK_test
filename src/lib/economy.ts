@@ -11,7 +11,21 @@ import {
   type MissionPeriod,
   type MissionsState,
 } from './missions';
-import { addXp, xpGainForWin, type XpGain } from './experience';
+import { addXp, levelFromXp, xpGainForWin, type XpGain } from './experience';
+import {
+  claimAllAchievements as claimAllAchievementsPure,
+  claimAchievement as claimAchievementPure,
+  defaultAchievements,
+  defaultDailyStreak,
+  evaluateAchievements,
+  recordDailyVisit,
+  sanitizeAchievements,
+  streakBonusForDay,
+  type AchievementDef,
+  type AchievementSnapshot,
+  type AchievementsState,
+  type DailyStreak,
+} from './achievements';
 import {
   CARD_BACK_THEMES,
   DEFAULT_VISUAL_PREFS,
@@ -163,6 +177,10 @@ export interface EconomyState {
   awarded: string[];
   /** Misiones diarias y semanales (progreso y reclamos). */
   missions: MissionsState;
+  /** Racha de días consecutivos entrando al juego (ver achievements.ts). */
+  dailyStreak: DailyStreak;
+  /** Logros desbloqueados y cobrados (viajan con la copia en la nube). */
+  achievements: AchievementsState;
 }
 
 export function defaultEconomy(): EconomyState {
@@ -183,6 +201,8 @@ export function defaultEconomy(): EconomyState {
     ownedMenus: [DEFAULT_VISUAL_PREFS.menu, 'madera'],
     awarded: [],
     missions: defaultMissions(),
+    dailyStreak: defaultDailyStreak(),
+    achievements: defaultAchievements(),
   };
 }
 
@@ -262,6 +282,18 @@ function sanitizeMissions(missions: unknown): MissionsState {
   });
 }
 
+/** Acepta una racha diaria guardada si tiene forma válida; si no, empieza de cero. */
+function sanitizeDailyStreak(value: unknown): DailyStreak {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return defaultDailyStreak();
+  const record = value as Record<string, unknown>;
+  return {
+    days:
+      typeof record.days === 'number' && Number.isFinite(record.days) ? Math.max(0, Math.floor(record.days)) : 0,
+    lastDate:
+      typeof record.lastDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(record.lastDate) ? record.lastDate : null,
+  };
+}
+
 export function isOwned(state: EconomyState, category: CosmeticCategory, id: string): boolean {
   if (category === 'cardBack') return state.ownedCardBacks.includes(id as CardBackTheme);
   if (category === 'table') return state.ownedTables.includes(id as TableTheme);
@@ -339,17 +371,33 @@ export function isDailyAvailable(state: EconomyState, date: Date = new Date()): 
   return state.lastDailyDate !== todayKey(date);
 }
 
-/** Otorga el premio girado (una sola vez al día). Devuelve lo otorgado, o 0. */
+/**
+ * Otorga el premio girado (una sola vez al día). El cobro también
+ * registra la entrada de hoy en la racha diaria: el premio suma el
+ * extra de la racha (+50 el día 1, +10 por día más, hasta +150).
+ * Devuelve lo otorgado en total, o 0 si ya se cobró hoy.
+ */
 export function claimDailyAmount(
   state: EconomyState,
   amount: number,
   date: Date = new Date(),
-): { state: EconomyState; granted: number } {
+): { state: EconomyState; granted: number; streakBonus: number; streakDays: number } {
   const today = todayKey(date);
-  if (state.lastDailyDate === today || amount <= 0) return { state, granted: 0 };
+  if (state.lastDailyDate === today || amount <= 0) {
+    return { state, granted: 0, streakBonus: 0, streakDays: state.dailyStreak.days };
+  }
+  const dailyStreak = recordDailyVisit(state.dailyStreak, date);
+  const streakBonus = streakBonusForDay(dailyStreak.days);
   return {
-    state: { ...state, coins: state.coins + amount, lastDailyDate: today },
-    granted: amount,
+    state: {
+      ...state,
+      coins: state.coins + amount + streakBonus,
+      lastDailyDate: today,
+      dailyStreak,
+    },
+    granted: amount + streakBonus,
+    streakBonus,
+    streakDays: dailyStreak.days,
   };
 }
 
@@ -454,26 +502,59 @@ const STORAGE_KEY = 'cartas-dominicanas:economy-v1';
  * para poder probarla; readStored() solo le pasa el localStorage real.
  */
 export function loadEconomy(raw: string | null, prefs: VisualPrefs): EconomyState {
-  if (!raw) return migrateEconomy(defaultEconomy(), prefs);
-  try {
-    const data = JSON.parse(raw) as Partial<EconomyState>;
-    const base = defaultEconomy();
-    return migrateEconomy(
-      {
-        ...base,
-        ...data,
-        winsByGame: { ...base.winsByGame, ...(data.winsByGame ?? {}) },
-        ownedCardBacks: Array.isArray(data.ownedCardBacks) ? data.ownedCardBacks : base.ownedCardBacks,
-        ownedTables: Array.isArray(data.ownedTables) ? data.ownedTables : base.ownedTables,
-        ownedMenus: Array.isArray(data.ownedMenus) ? data.ownedMenus : base.ownedMenus,
-        awarded: Array.isArray(data.awarded) ? data.awarded : [],
-        missions: data.missions !== undefined ? (data.missions as MissionsState) : base.missions,
-      },
-      prefs,
-    );
-  } catch {
-    return migrateEconomy(defaultEconomy(), prefs);
+  let state: EconomyState;
+  if (!raw) {
+    state = migrateEconomy(defaultEconomy(), prefs);
+  } else {
+    try {
+      const data = JSON.parse(raw) as Partial<EconomyState>;
+      const base = defaultEconomy();
+      state = migrateEconomy(
+        {
+          ...base,
+          ...data,
+          winsByGame: { ...base.winsByGame, ...(data.winsByGame ?? {}) },
+          ownedCardBacks: Array.isArray(data.ownedCardBacks) ? data.ownedCardBacks : base.ownedCardBacks,
+          ownedTables: Array.isArray(data.ownedTables) ? data.ownedTables : base.ownedTables,
+          ownedMenus: Array.isArray(data.ownedMenus) ? data.ownedMenus : base.ownedMenus,
+          awarded: Array.isArray(data.awarded) ? data.awarded : [],
+          missions: data.missions !== undefined ? (data.missions as MissionsState) : base.missions,
+          dailyStreak: sanitizeDailyStreak(data.dailyStreak),
+          achievements:
+            data.achievements !== undefined ? sanitizeAchievements(data.achievements) : base.achievements,
+        },
+        prefs,
+      );
+    } catch {
+      state = migrateEconomy(defaultEconomy(), prefs);
+    }
   }
+  return unlockEarnedAchievements(state);
+}
+
+/**
+ * Desbloquea los logros que las estadísticas acumuladas ya cumplen (p. ej.
+ * victorias de antes de que existieran los logros): al cargar una economía
+ * vieja, sus logros aparecen desbloqueados sin esperar a la próxima partida.
+ * Sin esto, el modal mostraría la barra llena (1/1) en un logro bloqueado.
+ * No cobra nada: la recompensa se reclama en el modal o en el aviso de fin
+ * de partida, como siempre.
+ */
+function unlockEarnedAchievements(state: EconomyState): EconomyState {
+  const snap: AchievementSnapshot = {
+    winsByGame: state.winsByGame,
+    gamesPlayed: state.gamesPlayed,
+    bestStreak: state.bestStreak,
+    level: levelFromXp(state.xp).level,
+    modesWonToday: state.achievements.modesWonToday.games,
+    casinoCapturesThisMatch: 0,
+    robaitoCardsThisMatch: 0,
+    robaitoWon: false,
+    wheelStreakDays: state.dailyStreak.days,
+  };
+  const result = evaluateAchievements(state.achievements, snap);
+  if (result.newlyUnlocked.length === 0) return state;
+  return { ...state, achievements: result.state };
 }
 
 function readStored(): EconomyState {
@@ -528,27 +609,53 @@ export function awardMatch(matchKey: string, game: GameId, outcome: WinOutcome):
 
 /**
  * Como awardMatch, pero además registra las estadísticas de la partida en las misiones
- * (capturas y viraos del Casino). Devuelve las monedas pagadas, la XP ganada y las
- * misiones que se completaron con esta partida.
+ * (capturas y viraos del Casino) y evalúa los logros. Devuelve las monedas pagadas,
+ * la XP ganada, las misiones que se completaron con esta partida y los logros recién
+ * desbloqueados (aún sin reclamar: se cobran con `claimAchievementReward`).
  */
 export function awardMatchWithStats(
   matchKey: string,
   game: GameId,
   outcome: WinOutcome,
   stats: MatchStats,
-): { awarded: number | null; xpGain: XpGain | null; completed: import('./missions').MissionDef[] } {
+): {
+  awarded: number | null;
+  xpGain: XpGain | null;
+  completed: import('./missions').MissionDef[];
+  achievements: AchievementDef[];
+} {
   // La huella evita contar dos veces la misma partida, también en las misiones:
   // una vista que se actualice varias veces en gameOver no suma progreso extra.
-  if (economy.awarded.includes(matchKey)) return { awarded: null, xpGain: null, completed: [] };
+  if (economy.awarded.includes(matchKey)) return { awarded: null, xpGain: null, completed: [], achievements: [] };
   const result = recordWin(economy, game, outcome, matchKey);
   const beforeMissions = JSON.stringify(result.state.missions);
   const missions = applyMatch(result.state.missions, stats);
   const missionsChanged = JSON.stringify(missions.state) !== beforeMissions;
-  if (result.state === economy && !missionsChanged) {
-    return { awarded: result.awarded, xpGain: result.xpGain, completed: [] };
+  const snap: AchievementSnapshot = {
+    winsByGame: result.state.winsByGame,
+    gamesPlayed: result.state.gamesPlayed,
+    bestStreak: result.state.bestStreak,
+    level: levelFromXp(result.state.xp).level,
+    modesWonToday: result.state.achievements.modesWonToday.games,
+    casinoCapturesThisMatch: stats.capturedCards ?? 0,
+    robaitoCardsThisMatch: stats.robaitoCards ?? 0,
+    robaitoWon: game === 'robaito' && outcome !== 'loss',
+    wheelStreakDays: result.state.dailyStreak.days,
+  };
+  const achievements = evaluateAchievements(result.state.achievements, snap, {
+    wonGame: outcome !== 'loss' ? game : undefined,
+  });
+  const achievementsChanged = achievements.state !== result.state.achievements;
+  if (result.state === economy && !missionsChanged && !achievementsChanged) {
+    return { awarded: result.awarded, xpGain: result.xpGain, completed: [], achievements: [] };
   }
-  save({ ...result.state, missions: missions.state });
-  return { awarded: result.awarded, xpGain: result.xpGain, completed: missions.completed };
+  save({ ...result.state, missions: missions.state, achievements: achievements.state });
+  return {
+    awarded: result.awarded,
+    xpGain: result.xpGain,
+    completed: missions.completed,
+    achievements: achievements.newlyUnlocked,
+  };
 }
 
 /** Reclama una misión completa: paga sus monedas. Devuelve las monedas otorgadas, o 0. */
@@ -568,6 +675,44 @@ export function claimAllMissionRewards(): { granted: number; count: number } {
   if (result.granted <= 0) return { granted: 0, count: 0 };
   save({ ...economy, coins: economy.coins + result.granted, missions: result.state });
   return { granted: result.granted, count: result.claimed.length };
+}
+
+/** Reclama un logro desbloqueado: paga sus monedas. Devuelve las monedas otorgadas, o 0. */
+export function claimAchievementReward(id: string): number {
+  const result = claimAchievementPure(economy.achievements, id);
+  if (result.granted <= 0) return 0;
+  save({ ...economy, coins: economy.coins + result.granted, achievements: result.state });
+  return result.granted;
+}
+
+/**
+ * Reclama de una vez todos los logros desbloqueados sin reclamar.
+ * Devuelve las monedas totales y cuántos logros se reclamaron.
+ */
+export function claimAllAchievementRewards(): { granted: number; count: number } {
+  const result = claimAllAchievementsPure(economy.achievements);
+  if (result.granted <= 0) return { granted: 0, count: 0 };
+  save({ ...economy, coins: economy.coins + result.granted, achievements: result.state });
+  return { granted: result.granted, count: result.count };
+}
+
+/**
+ * Reclama de una vez todo lo pendiente (misiones + logros) en una sola
+ * escritura: es lo que cobra el botón "Reclamar todo" del aviso de
+ * resultados al terminar una partida.
+ */
+export function claimAllPendingRewards(): { granted: number; missions: number; achievements: number } {
+  const missions = claimAllMissionsPure(economy.missions);
+  const achievements = claimAllAchievementsPure(economy.achievements);
+  const granted = missions.granted + achievements.granted;
+  if (granted <= 0) return { granted: 0, missions: 0, achievements: 0 };
+  save({
+    ...economy,
+    coins: economy.coins + granted,
+    missions: missions.state,
+    achievements: achievements.state,
+  });
+  return { granted, missions: missions.claimed.length, achievements: achievements.count };
 }
 
 /**
@@ -610,11 +755,50 @@ export function isDailyAvailableNow(): boolean {
   return isDailyAvailable(economy);
 }
 
-/** Otorga el premio que salió en la rueda diaria (una sola vez al día). */
-export function claimDailyPrize(amount: number): number {
+/** Lo que se cobró al girar la rueda: premio + extra de racha + logros que se desbloquearon. */
+export interface DailyPrizeClaim {
+  granted: number;
+  wheelPrize: number;
+  streakBonus: number;
+  streakDays: number;
+  achievements: AchievementDef[];
+}
+
+/**
+ * Otorga el premio que salió en la rueda diaria (una sola vez al día).
+ * El cobro también puede desbloquear el logro de la racha de la rueda.
+ */
+export function claimDailyPrize(amount: number): DailyPrizeClaim {
   const result = claimDailyAmount(economy, amount);
-  if (result.granted > 0) save(result.state);
-  return result.granted;
+  if (result.granted <= 0) {
+    return {
+      granted: 0,
+      wheelPrize: 0,
+      streakBonus: 0,
+      streakDays: economy.dailyStreak.days,
+      achievements: [],
+    };
+  }
+  const snap: AchievementSnapshot = {
+    winsByGame: result.state.winsByGame,
+    gamesPlayed: result.state.gamesPlayed,
+    bestStreak: result.state.bestStreak,
+    level: levelFromXp(result.state.xp).level,
+    modesWonToday: result.state.achievements.modesWonToday.games,
+    casinoCapturesThisMatch: 0,
+    robaitoCardsThisMatch: 0,
+    robaitoWon: false,
+    wheelStreakDays: result.state.dailyStreak.days,
+  };
+  const achievements = evaluateAchievements(result.state.achievements, snap);
+  save({ ...result.state, achievements: achievements.state });
+  return {
+    granted: result.granted,
+    wheelPrize: amount,
+    streakBonus: result.streakBonus,
+    streakDays: result.streakDays,
+    achievements: achievements.newlyUnlocked,
+  };
 }
 
 /** Compra un cosmético. Devuelve si se pudo y por qué no, si no se pudo. */

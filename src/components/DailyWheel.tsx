@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Coins, Gift, Sparkles, X } from 'lucide-react';
+import { Coins, Flame, Gift, Sparkles, Trophy, X } from 'lucide-react';
 import { claimDailyPrize, DAILY_WHEEL_PRIZES, rollDailyPrize } from '@/lib/economy';
 import { WHEEL_COLORS, WHEEL_LABEL_COLORS } from '../lib/dominicanPalette';
 import { useGameSounds } from '@/hooks/useGameSounds';
@@ -29,6 +29,10 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
   const [spinning, setSpinning] = useState(false);
   const [prize, setPrize] = useState<number | null>(null);
   const [granted, setGranted] = useState<number | null>(null);
+  // Extra de la racha diaria y logros que se desbloquearon al girar.
+  const [streakBonus, setStreakBonus] = useState(0);
+  const [streakDays, setStreakDays] = useState(0);
+  const [unlockedTitles, setUnlockedTitles] = useState<string[]>([]);
   const grantedRef = useRef(false);
   const timersRef = useRef<number[]>([]);
 
@@ -56,8 +60,11 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
         setSpinning(false);
         if (!grantedRef.current) {
           grantedRef.current = true;
-          const coins = claimDailyPrize(amount);
-          setGranted(coins);
+          const claim = claimDailyPrize(amount);
+          setGranted(claim.granted);
+          setStreakBonus(claim.streakBonus);
+          setStreakDays(claim.streakDays);
+          setUnlockedTitles(claim.achievements.map((a) => a.title));
           playSound('coin');
           vibrate([20, 40, 30]);
         }
@@ -169,6 +176,18 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
         {granted !== null ? (
           <div className="space-y-2">
             <p className="text-[clamp(1.05rem,4dvh,1.25rem)] font-extrabold text-amber-300">¡Te ganaste +{granted} monedas!</p>
+            {streakBonus > 0 && (
+              <p className="flex items-center justify-center gap-1.5 text-xs font-extrabold text-orange-300 sm:text-sm" role="status">
+                <Flame className="h-4 w-4 shrink-0" aria-hidden />
+                Racha de {streakDays} {streakDays === 1 ? 'día' : 'días'}: +{streakBonus} extra por tu racha
+              </p>
+            )}
+            {unlockedTitles.length > 0 && (
+              <p className="flex items-center justify-center gap-1.5 text-xs font-extrabold text-amber-200 sm:text-sm" role="status">
+                <Trophy className="h-4 w-4 shrink-0" aria-hidden />
+                ¡Logro desbloqueado: {unlockedTitles.join(', ')}! Reclámalo en Logros.
+              </p>
+            )}
             <button
               type="button"
               onClick={onClose}

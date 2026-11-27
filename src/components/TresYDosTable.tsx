@@ -10,6 +10,7 @@ import DealerReveal from './DealerReveal';
 import DefeatNotice from './DefeatNotice';
 import { DorsoUI } from './CartaUI';
 import { useDealIntro } from './useDealIntro';
+import CompletionRow from './CompletionRow';
 import VictoryCelebration from './VictoryCelebration';
 import FlightLayer from './cagao/FlightLayer';
 import { HandFan } from './cagao/Fans';
@@ -490,6 +491,12 @@ export default function TresYDosTable({
                       ? '¡Cantaste 3 y 2!'
                       : `¡${winnerName} cantó 3 y 2!`}
                 </h2>
+                <CompletionRow
+                  show={
+                    state.phase === 'gameOver' &&
+                    (winReward?.completed.length ?? 0) + (winReward?.achievements.length ?? 0) > 0
+                  }
+                />
                 <div className="game-end-rows space-y-1">
                   {state.players.map((player, s) => (
                     <div

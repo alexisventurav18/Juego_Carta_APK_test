@@ -10,6 +10,7 @@ import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
 import { useCagaoDealIntro } from '../useDealIntro';
 import DealerReveal from '../DealerReveal';
 import DefeatNotice from '../DefeatNotice';
+import CompletionRow from '../CompletionRow';
 import VictoryCelebration from '../VictoryCelebration';
 import FlightLayer, { type Flight } from './FlightLayer';
 import TableLayout from '../table/TableLayout';
@@ -454,6 +455,9 @@ export default function GameTable({
             <h2 className="text-base font-extrabold sm:text-xl">
               {game.iLost ? '¡Te quedaste con El Cagao!' : `${loserName} se quedó con El Cagao`}
             </h2>
+            <CompletionRow
+              show={(winReward?.completed.length ?? 0) + (winReward?.achievements.length ?? 0) > 0}
+            />
             <div className="game-end-rows space-y-1 text-left text-xs sm:text-base">
               {state.finishOrder.map((s, i) => (
                 <div key={s} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-2 py-1 sm:gap-2 sm:px-3">

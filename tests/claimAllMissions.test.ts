@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
@@ -87,14 +87,14 @@ describe('misiones: reclamar todo', () => {
 });
 
 describe('misiones: botón Reclamar todo en el modal', () => {
-  it('el modal tiene el botón, muestra el total pendiente y se apaga sin nada que reclamar', () => {
-    const modal = read('src/components/MissionsModal.tsx');
-    assert.ok(modal.includes('Reclamar todo'), 'MissionsModal: botón "Reclamar todo"');
-    assert.ok(modal.includes('claimAllMissionRewards()'), 'MissionsModal: reclama con claimAllMissionRewards()');
-    assert.ok(modal.includes('disabled={pending.count === 0}'), 'MissionsModal: el botón se deshabilita sin pendientes');
-    assert.ok(modal.includes('unclaimedRewards(economy.missions)'), 'MissionsModal: el total viene de unclaimedRewards');
-    assert.ok(modal.includes('¡Reclamaste'), 'MissionsModal: confirma el total ganado');
-    assert.ok(modal.includes("playSound('coin')"), 'MissionsModal: al reclamar todo suena la moneda');
+  it('el modal combinado tiene el botón, muestra el total pendiente y se apaga sin nada que reclamar', () => {
+    const modal = read('src/components/MissionsAchievementsModal.tsx');
+    assert.ok(modal.includes('Reclamar todo'), 'modal combinado: botón "Reclamar todo"');
+    assert.ok(modal.includes('claimAllMissionRewards()'), 'modal combinado: reclama con claimAllMissionRewards()');
+    assert.ok(modal.includes('disabled={pending.count === 0}'), 'modal combinado: el botón se deshabilita sin pendientes');
+    assert.ok(modal.includes('unclaimedRewards(economy.missions)'), 'modal combinado: el total viene de unclaimedRewards');
+    assert.ok(modal.includes('¡Reclamaste'), 'modal combinado: confirma el total ganado');
+    assert.ok(modal.includes("playSound('coin')"), 'modal combinado: al reclamar todo suena la moneda');
   });
 
   it('la economía expone claimAllMissionRewards sobre claimAllMissions', () => {
@@ -102,5 +102,36 @@ describe('misiones: botón Reclamar todo en el modal', () => {
     assert.ok(economy.includes('export function claimAllMissionRewards'), 'economy: existe claimAllMissionRewards()');
     assert.ok(economy.includes('claimAllMissionsPure(economy.missions)'), 'economy: reclama sobre el estado guardado');
     assert.ok(economy.includes('coins: economy.coins + result.granted'), 'economy: las monedas se suman una sola vez');
+  });
+});
+
+describe('progreso: un solo modal con dos apartados (Misiones y Logros)', () => {
+  it('el modal combinado tiene las dos pestañas, cada una con su reclamo y su insignia', () => {
+    const modal = read('src/components/MissionsAchievementsModal.tsx');
+    assert.ok(modal.includes('role="tablist"'), 'modal combinado: barra de pestañas');
+    assert.ok(modal.includes("role=\"tab\""), 'modal combinado: botones con rol tab');
+    assert.ok(modal.includes("aria-selected={tab === 'missions'}"), 'modal combinado: pestaña Misiones marca selección');
+    assert.ok(modal.includes("aria-selected={tab === 'achievements'}"), 'modal combinado: pestaña Logros marca selección');
+    assert.ok(modal.includes('initialTab'), 'modal combinado: se abre en la pestaña pedida (initialTab)');
+    assert.ok(modal.includes('claimAllMissionRewards()'), 'modal combinado: pestaña Misiones reclama misiones');
+    assert.ok(modal.includes('claimAllAchievementRewards()'), 'modal combinado: pestaña Logros reclama logros');
+    assert.ok(modal.includes('unclaimedRewards(economy.missions).count'), 'modal combinado: insignia de misiones pendientes');
+    assert.ok(modal.includes('unclaimedAchievementRewards(economy.achievements)'), 'modal combinado: insignia de logros pendientes');
+    assert.ok(modal.includes('Racha diaria'), 'modal combinado: la racha sigue en el apartado Logros');
+    assert.ok(modal.includes('streakBonusForDay'), 'modal combinado: el extra de racha sigue calculado');
+  });
+
+  it('los dos modales viejos ya no existen', () => {
+    assert.ok(!existsSync(join(root, 'src/components/MissionsModal.tsx')), 'no queda MissionsModal.tsx');
+    assert.ok(!existsSync(join(root, 'src/components/AchievementsModal.tsx')), 'no queda AchievementsModal.tsx');
+  });
+
+  it('el menú abre el modal combinado en la pestaña que toca cada botón', () => {
+    const lobby = read('src/components/Lobby.tsx');
+    assert.ok(lobby.includes("import MissionsAchievementsModal"), 'Lobby: usa el modal combinado');
+    assert.ok(lobby.includes("setProgressTab('missions')"), 'Lobby: el botón Misiones abre la pestaña Misiones');
+    assert.ok(lobby.includes("setProgressTab('achievements')"), 'Lobby: el botón Logros abre la pestaña Logros');
+    assert.ok(!lobby.includes('<MissionsModal'), 'Lobby: ya no monta el modal viejo de misiones');
+    assert.ok(!lobby.includes('<AchievementsModal'), 'Lobby: ya no monta el modal viejo de logros');
   });
 });

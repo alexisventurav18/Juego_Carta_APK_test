@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Coins, Flame, Lock, ShoppingBag, Trophy, X } from 'lucide-react';
+import { Check, Coins, Lock, ShoppingBag, X } from 'lucide-react';
 import { CARD_BACK_IMAGES } from './cagao/CardAssets';
 import BuyConfirmDialog from './BuyConfirmDialog';
 import PlayingCard from './PlayingCard';
@@ -25,6 +25,13 @@ const TABS: { id: CosmeticCategory; label: string }[] = [
   { id: 'table', label: 'Mesas' },
   { id: 'menu', label: 'Fondo de inicio' },
 ];
+
+/**
+ * Evento que abre la Tienda desde otro sitio de la app (hoy, la fila
+ * "Apariencia" de Opciones): la Tienda vive en el menú, que es quien
+ * escucha este evento y la abre.
+ */
+export const OPEN_STORE_EVENT = 'cartas:open-store';
 
 const TAB_HINT: Record<CosmeticCategory, string> = {
   cardBack: 'El diseño del reverso y de la cara de tus cartas.',
@@ -139,17 +146,6 @@ export default function Store({ onClose }: { onClose: () => void }) {
             Gana monedas jugando: Casino 100, Tres y Dos 80, Robaíto 70 y Cagao 60. +50 cada día y bonus por racha.
             Solo cambia cómo se ve el juego, nunca te da ventaja.
           </p>
-
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-[13px] font-bold text-amber-100/85">
-            <span className="flex items-center gap-1.5 rounded-full bg-black/30 px-3 py-1 ring-1 ring-amber-200/20">
-              <Trophy className="h-4 w-4 text-amber-300" aria-hidden />
-              {economy.wins} {economy.wins === 1 ? 'victoria' : 'victorias'}
-            </span>
-            <span className="flex items-center gap-1.5 rounded-full bg-black/30 px-3 py-1 ring-1 ring-amber-200/20">
-              <Flame className="h-4 w-4 text-orange-400" aria-hidden />
-              Racha de {economy.streak}
-            </span>
-          </div>
 
           <div className="mb-3 flex gap-2" role="tablist" aria-label="Categorías de la tienda">
             {TABS.map(({ id, label }) => (

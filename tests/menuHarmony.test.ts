@@ -35,31 +35,46 @@ describe('armonía del menú: arte completo y tarjetas alineadas', () => {
   });
 });
 
-describe('armonía del menú: aviso de torneo discreto', () => {
-  // Solo el botón del aviso: desde su condición hasta su cierre.
-  const start = lobby.indexOf('tournamentBanner && (');
-  const bannerBlock = lobby.slice(start, lobby.indexOf('</button>', start));
+describe('armonía del menú: aviso de torneo como marquesina arriba', () => {
+  // La píldora de abajo se eliminó (Alexis, 2026-11-27): el aviso vive
+  // ahora entre el encabezado y las tarjetas, se desplaza como marquesina
+  // y se oculta solo a los ~10 s, devolviendo su espacio a las tarjetas.
+  const ticker = readFileSync('src/components/TournamentTicker.tsx', 'utf8');
 
-  it('el aviso es una píldora fina centrada, no una banda dorada de ancho completo', () => {
-    assert.ok(bannerBlock.includes('mx-auto'), 'la píldora va centrada');
-    assert.ok(bannerBlock.includes('rounded-full'), 'la píldora es redondeada');
-    assert.ok(bannerBlock.includes('min-h-[28px]'), 'la píldora es fina (28 px)');
-    assert.ok(bannerBlock.includes('btn-wood'), 'la píldora usa el estilo apagado de madera');
-    assert.ok(!bannerBlock.includes('btn-gold'), 'la píldora ya no es dorada brillante');
-    assert.ok(!bannerBlock.includes(' w-full '), 'la píldora ya no ocupa todo el ancho (max-w-full es solo el tope)');
+  it('ya no hay píldora del torneo abajo del menú', () => {
+    assert.ok(!lobby.includes('min-h-[28px]'), 'la píldora fina ya no existe');
+    assert.ok(!lobby.includes('Vive abajo del todo'), 'el comentario de la píldora desapareció');
   });
 
-  it('el aviso sigue abriendo el modal del torneo y conserva su texto', () => {
-    assert.ok(bannerBlock.includes('setTournamentOpen(true)'), 'tocar el aviso abre el modal');
-    assert.ok(bannerBlock.includes('{tournamentBanner}'), 'el aviso muestra modo, cuenta atrás y puntos');
+  it('el aviso vive entre el encabezado y las tarjetas', () => {
+    const headerClose = lobby.indexOf('</header>');
+    const tickerUse = lobby.indexOf('<TournamentTicker');
+    const cards = lobby.indexOf('<GameCards');
+    assert.ok(tickerUse > headerClose, 'el aviso va después del encabezado');
+    assert.ok(tickerUse < cards, 'el aviso va antes de las tarjetas');
   });
 
-  it('el aviso vive abajo del todo, debajo de los botones de acción', () => {
-    // En el medio competía con las tarjetas y les robaba altura; abajo
-    // aprovecha el espacio que sobra y las tarjetas crecen.
-    const footerClose = lobby.indexOf('</footer>');
-    assert.ok(footerClose > 0, 'el menú tiene pie de acciones');
-    assert.ok(start > footerClose, 'la píldora del torneo va después del pie de acciones');
+  it('la marquesina se desplaza y se oculta sola, liberando el espacio', () => {
+    assert.ok(css.includes('@keyframes ticker-scroll'), 'hay animación de marquesina');
+    assert.ok(ticker.includes('ticker-track'), 'la pista usa la animación');
+    assert.ok(ticker.includes('setVisible(false)'), 'el aviso se oculta solo');
+    assert.ok(ticker.includes('setGone(true)'), 'al ocultarse deja de ocupar espacio');
+  });
+
+  it('tocar el aviso abre el modal del torneo y conserva su texto', () => {
+    assert.ok(
+      lobby.includes('<TournamentTicker text={tournamentBanner} onOpen={() => setTournamentOpen(true)}'),
+      'el aviso abre el modal',
+    );
+    assert.ok(ticker.includes('{text}'), 'el aviso muestra modo, cuenta atrás y puntos');
+  });
+
+  it('sin movimiento, el texto se queda quieto', () => {
+    assert.ok(css.includes('.ticker-track'), 'la pista tiene regla propia');
+    assert.ok(
+      css.includes('@media (prefers-reduced-motion: reduce)') && css.includes('.ticker-track {\n    animation: none;'),
+      'la marquesina se apaga con movimiento reducido',
+    );
   });
 });
 
@@ -85,5 +100,23 @@ describe('armonía del menú: la cabecera cabe en una fila en horizontal corto',
 
   it('la columna aprieta un poco sus huecos en horizontal corto', () => {
     assert.ok(lobby.includes('[@media(max-height:500px)]:gap-[1.1dvh]'), 'el hueco de la columna se reduce');
+  });
+
+  it('el botón Logros se adelgaza en horizontal corto para que quepa la fila', () => {
+    // El "4/12" y los días de racha se ocultan: el botón queda en trofeo +
+    // llama y el encabezado cabe en una sola fila en el peor caso. Ambos
+    // datos se siguen viendo dentro del modal, en la pestaña Logros.
+    assert.ok(
+      lobby.includes('text-amber-200 [@media(max-height:500px)]:hidden'),
+      'el "4/12" se oculta en horizontal corto',
+    );
+    assert.ok(
+      lobby.includes('className="[@media(max-height:500px)]:hidden">{streakDays}'),
+      'los días de racha se ocultan en horizontal corto',
+    );
+    assert.ok(
+      lobby.includes('[@media(max-height:500px)]:gap-1'),
+      'el cluster aprieta sus huecos en horizontal corto',
+    );
   });
 });

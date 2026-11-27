@@ -7,7 +7,9 @@ import type { GameId } from './shared.ts';
  * tal cual: no es autoridad de monedas ni de XP (eso seguiría premiándose
  * en el teléfono, como siempre). La foto incluye `awarded[]` y
  * `lastDailyDate`: sin ellos, restaurar una copia vieja permitiría cobrar
- * dos veces la misma victoria o la misma rueda diaria.
+ * dos veces la misma victoria o la misma rueda diaria. También incluye la
+ * racha diaria (`dailyStreak`) y los logros (`achievements`): sin ellos, al
+ * restaurar se perderían los logros desbloqueados y la racha.
  *
  * Conflicto: gana la copia más reciente por `updatedAt`. Quien sube manda
  * `baseUpdatedAt` (la fecha de la copia del servidor que conoce); si la
@@ -38,6 +40,10 @@ export interface ProgressEconomy {
   awarded: string[];
   /** Misiones tal cual las guarda el cliente (él las vuelve a validar). */
   missions: unknown;
+  /** Racha de días consecutivos entrando al juego. */
+  dailyStreak: { days: number; lastDate: string | null };
+  /** Logros tal cual los guarda el cliente (él los vuelve a validar). */
+  achievements: unknown;
 }
 
 /** La foto completa: economía + temas equipados. */
@@ -81,6 +87,24 @@ function asMissions(value: unknown): unknown {
   return value;
 }
 
+function asDailyStreak(value: unknown): { days: number; lastDate: string | null } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return { days: 0, lastDate: null };
+  const record = value as Record<string, unknown>;
+  return {
+    days: asNonNegativeInt(record.days),
+    lastDate:
+      typeof record.lastDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(record.lastDate) ? record.lastDate : null,
+  };
+}
+
+/** Los logros pasan tal cual si tienen forma de listas; si no, null (el cliente los reinicia). */
+function asAchievements(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  if (!Array.isArray(record.unlocked) || !Array.isArray(record.claimed)) return null;
+  return value;
+}
+
 function asVisualPrefs(value: unknown): ProgressSnapshot['visualPrefs'] {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
@@ -118,6 +142,8 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
       ownedMenus: asStringList(e.ownedMenus, 64),
       awarded: asStringList(e.awarded, 50),
       missions: asMissions(e.missions),
+      dailyStreak: asDailyStreak(e.dailyStreak),
+      achievements: asAchievements(e.achievements),
     },
     visualPrefs: asVisualPrefs(record.visualPrefs),
   };
