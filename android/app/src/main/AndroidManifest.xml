@@ -19,6 +19,16 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Retorno del login con Google/Facebook: el proveedor vuelve a
+                 com.cartasdominicanas.app://login-callback y la app lo recibe
+                 con @capacitor/app (appUrlOpen). Lo repone scripts/configureAndroid.mjs
+                 si el manifiesto se regenera con `cap add`. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.cartasdominicanas.app" android:host="login-callback" />
+            </intent-filter>
         </activity>
 
         <provider

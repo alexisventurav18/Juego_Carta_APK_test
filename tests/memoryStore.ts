@@ -1,3 +1,4 @@
+import type { AccountLink } from '../src/games/account';
 import type { GameState } from '../src/games';
 import {
   makeRoomCode,
@@ -34,6 +35,8 @@ export class MemoryStore implements RoomStore {
   private tournamentAwards = new Set<string>();
   private claims = new Set<string>();
   private progress = new Map<string, { economy: ProgressSnapshot; updatedAt: number }>();
+  private accountLinks = new Map<string, AccountLink>();
+  private accountLinksByPlayer = new Map<string, AccountLink>();
 
   async findById(id: string) {
     return this.rooms.get(id) ?? null;
@@ -311,6 +314,36 @@ export class MemoryStore implements RoomStore {
   }
   async saveProgress(playerId: string, economy: ProgressSnapshot, updatedAt: number) {
     this.progress.set(playerId, { economy, updatedAt });
+  }
+
+  // Cuentas reales: vínculo en memoria, por id de Auth y por jugador.
+  async getAccountLink(authUserId: string) {
+    return this.accountLinks.get(authUserId) ?? null;
+  }
+  async getAccountLinkByPlayer(playerId: string) {
+    return this.accountLinksByPlayer.get(playerId) ?? null;
+  }
+  async upsertAccountLink(link: AccountLink) {
+    const existing = this.accountLinks.get(link.authUserId);
+    if (existing) this.accountLinksByPlayer.delete(existing.playerId);
+    this.accountLinks.set(link.authUserId, { ...link });
+    this.accountLinksByPlayer.set(link.playerId, { ...link });
+  }
+  async deleteAccountLink(authUserId: string) {
+    const existing = this.accountLinks.get(authUserId);
+    if (existing) this.accountLinksByPlayer.delete(existing.playerId);
+    this.accountLinks.delete(authUserId);
+  }
+  async rotatePlayerKey(playerId: string, newKeyHash: string) {
+    const profile = this.profiles.get(playerId);
+    if (!profile) return false;
+    this.profiles.set(playerId, { ...profile, keyHash: newKeyHash });
+    return true;
+  }
+  async updateRoomKeys(playerId: string, newKeyHash: string) {
+    for (const stored of this.rooms.values()) {
+      if (stored.secret.keys[playerId]) stored.secret.keys[playerId] = newKeyHash;
+    }
   }
 }
 

@@ -10,4 +10,11 @@ const anonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key
 export const SUPABASE_URL = url;
 export const SUPABASE_ANON_KEY = anonKey;
 
-export const supabase = createClient(url, anonKey);
+export const supabase = createClient(url, anonKey, {
+  auth: {
+    // PKCE: el inicio con Google/Facebook devuelve un `code` que se canjea
+    // con un verificador guardado en local; el token nunca viaja en la URL.
+    // Sin esto el cliente usaría el flujo implícito (token en el fragmento).
+    flowType: 'pkce',
+  },
+});

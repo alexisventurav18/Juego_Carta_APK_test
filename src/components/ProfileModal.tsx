@@ -4,6 +4,7 @@ import type { GameId } from '@/games/shared';
 import type { EconomyState } from '@/lib/economy';
 import { levelFromXp, MAX_LEVEL } from '@/lib/experience';
 import { getSyncStatus } from '@/lib/progress';
+import AccountSection from './AccountSection';
 import Avatar from './avatar/Avatar';
 
 const GAME_ORDER: GameId[] = ['casino', 'tresydos', 'cagao', 'robaito'];
@@ -162,6 +163,10 @@ export default function ProfileModal({ economy, avatar, name, onClose, onEditAva
                 : 'Aún no hay respaldo en la nube: se sube solo cuando ganas o compras algo.'}
           </p>
         </div>
+
+        {/* Cuenta real (Google/Facebook/correo): opcional, nunca obligatoria.
+            El código de respaldo de arriba sigue existiendo como alternativa. */}
+        <AccountSection />
       </div>
     </div>
   );

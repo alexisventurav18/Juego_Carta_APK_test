@@ -1,4 +1,12 @@
 import { isAvatarCode } from './avatar';
+import {
+  accountStatus,
+  linkAccount,
+  restoreAccount,
+  unlinkAccount,
+  type AccountLink,
+  type TokenValidator,
+} from './account';
 import { botStep } from './bots';
 import { randomInt } from './cards';
 import { applyGameMove } from './engine';
@@ -121,6 +129,15 @@ export interface RoomStore {
   // XP, cosméticos, misiones) con su fecha. El servidor solo la guarda.
   getProgress(playerId: string): Promise<{ economy: ProgressSnapshot; updatedAt: number } | null>;
   saveProgress(playerId: string, economy: ProgressSnapshot, updatedAt: number): Promise<void>;
+  // Cuentas reales: vínculo entre la cuenta de Supabase Auth y el jugador.
+  getAccountLink(authUserId: string): Promise<AccountLink | null>;
+  getAccountLinkByPlayer(playerId: string): Promise<AccountLink | null>;
+  upsertAccountLink(link: AccountLink): Promise<void>;
+  deleteAccountLink(authUserId: string): Promise<void>;
+  /** Cambia el hash de la clave del perfil. Devuelve false si no existe el perfil. */
+  rotatePlayerKey(playerId: string, newKeyHash: string): Promise<boolean>;
+  /** Actualiza el hash de la clave en las salas donde ya estaba el jugador. */
+  updateRoomKeys(playerId: string, newKeyHash: string): Promise<void>;
 }
 
 /** Perfil público de un jugador: su identidad es su id + su clave (sin cuentas). */
@@ -226,7 +243,11 @@ export type RoomRequest =
   | ({ action: 'tournament_claim' } & Auth)
   | ({ action: 'season_claim' } & Auth)
   | ({ action: 'save_progress'; economy: unknown; baseUpdatedAt?: number } & Auth)
-  | ({ action: 'load_progress' } & Auth);
+  | ({ action: 'load_progress' } & Auth)
+  | ({ action: 'link_account'; accessToken: string; provider?: string } & Auth)
+  | ({ action: 'restore_account'; accessToken: string })
+  | ({ action: 'unlink_account'; accessToken: string } & Auth)
+  | ({ action: 'account_status'; accessToken: string });
 
 export interface RoomView {
   id: string;
@@ -276,6 +297,10 @@ export type SocialPayload =
       profile: { name: string; avatar?: string; level?: number } | null;
     }
   | { kind: 'progress_conflict'; economy: ProgressSnapshot; updatedAt: number }
+  | { kind: 'account_linked'; provider: string; email: string | null }
+  | { kind: 'account_restored'; playerId: string; key: string; provider: string; email: string | null }
+  | { kind: 'account_unlinked' }
+  | { kind: 'account_status'; linked: boolean; playerId: string | null; provider: string | null; email: string | null }
   | { kind: 'ok' };
 
 export type RoomResponse =
@@ -310,7 +335,7 @@ export function makeRoomCode(): string {
   return code;
 }
 
-async function hashKey(key: string): Promise<string> {
+export async function hashKey(key: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
@@ -1110,7 +1135,11 @@ async function claimSeasonPrize(store: RoomStore, req: Record<string, unknown>):
   return { ok: true, data: { kind: 'claim', scope: 'season', ref: season, coins, place } };
 }
 
-export async function handleRequest(store: RoomStore, raw: unknown): Promise<RoomResponse> {
+export async function handleRequest(
+  store: RoomStore,
+  raw: unknown,
+  validateToken?: TokenValidator,
+): Promise<RoomResponse> {
   try {
     const req = asRecord(raw);
     switch (req.action) {
@@ -1160,6 +1189,14 @@ export async function handleRequest(store: RoomStore, raw: unknown): Promise<Roo
         return await saveProgress(store, req);
       case 'load_progress':
         return await loadProgress(store, req);
+      case 'link_account':
+        return await linkAccount(store, req, validateToken);
+      case 'restore_account':
+        return await restoreAccount(store, req, validateToken);
+      case 'unlink_account':
+        return await unlinkAccount(store, req, validateToken);
+      case 'account_status':
+        return await accountStatus(store, req, validateToken);
       default:
         throw new RoomError('Acción no válida.');
     }

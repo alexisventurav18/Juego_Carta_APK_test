@@ -1,5 +1,6 @@
 // Servidor de salas. Guarda las partidas completas (manos incluidas) y a cada jugador solo le entrega su vista.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import type { AccountLink } from '../_shared/games/account.ts';
 import {
   handleRequest,
   makeRoomCode,
@@ -76,6 +77,27 @@ function toProfile(row: ProfileRow): PlayerProfile {
     ...(row.level !== null ? { level: row.level } : {}),
     keyHash: row.key_hash,
     friendCode: row.friend_code,
+    updatedAt: new Date(row.updated_at).getTime(),
+  };
+}
+
+/** Fila de `account_links` tal como la guarda la base de datos. */
+interface AccountLinkRow {
+  auth_user_id: string;
+  player_id: string;
+  provider: string;
+  provider_email: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function toAccountLink(row: AccountLinkRow): AccountLink {
+  return {
+    authUserId: row.auth_user_id,
+    playerId: row.player_id,
+    provider: row.provider as AccountLink['provider'],
+    providerEmail: row.provider_email,
+    createdAt: new Date(row.created_at).getTime(),
     updatedAt: new Date(row.updated_at).getTime(),
   };
 }
@@ -566,10 +588,77 @@ const store: RoomStore = {
       .upsert({ player_id: playerId, economy, updated_at: new Date(updatedAt).toISOString() }, { onConflict: 'player_id' });
     if (error) throw new Error(error.message);
   },
+
+  // Cuentas reales: vínculo entre la cuenta de Supabase Auth y el jugador.
+  // Sin acceso público: solo esta función (service role) toca account_links.
+  async getAccountLink(authUserId: string): Promise<AccountLink | null> {
+    const { data, error } = await db
+      .from('account_links')
+      .select('*')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? toAccountLink(data as AccountLinkRow) : null;
+  },
+  async getAccountLinkByPlayer(playerId: string): Promise<AccountLink | null> {
+    const { data, error } = await db
+      .from('account_links')
+      .select('*')
+      .eq('player_id', playerId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? toAccountLink(data as AccountLinkRow) : null;
+  },
+  async upsertAccountLink(link: AccountLink): Promise<void> {
+    const { error } = await db.from('account_links').upsert(
+      {
+        auth_user_id: link.authUserId,
+        player_id: link.playerId,
+        provider: link.provider,
+        provider_email: link.providerEmail,
+        created_at: new Date(link.createdAt).toISOString(),
+        updated_at: new Date(link.updatedAt).toISOString(),
+      },
+      { onConflict: 'auth_user_id' },
+    );
+    if (error) throw new Error(error.message);
+  },
+  async deleteAccountLink(authUserId: string): Promise<void> {
+    const { error } = await db.from('account_links').delete().eq('auth_user_id', authUserId);
+    if (error) throw new Error(error.message);
+  },
+  async rotatePlayerKey(playerId: string, newKeyHash: string): Promise<boolean> {
+    const { data, error } = await db
+      .from('player_profiles')
+      .update({ key_hash: newKeyHash, updated_at: new Date().toISOString() })
+      .eq('player_id', playerId)
+      .select('player_id');
+    if (error) throw new Error(error.message);
+    return (data ?? []).length > 0;
+  },
+  async updateRoomKeys(playerId: string, newKeyHash: string): Promise<void> {
+    const { error } = await db.rpc('rotate_room_keys', { p_player_id: playerId, p_new_hash: newKeyHash });
+    if (error) throw new Error(error.message);
+  },
 };
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+}
+
+/**
+ * Valida un JWT de Supabase Auth con el service role (`auth.getUser`): el
+ * `sub` del token es la identidad de la cuenta, y sin esta validación no
+ * se puede confiar en ningún id que mande el cliente.
+ */
+async function validateAccessToken(accessToken: string) {
+  const { data, error } = await db.auth.getUser(accessToken);
+  if (error || !data.user) return null;
+  return {
+    userId: data.user.id,
+    email: data.user.email ?? null,
+    provider: typeof data.user.app_metadata?.provider === 'string' ? data.user.app_metadata.provider : null,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -584,5 +673,5 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: 'Solicitud no válida.' }, 400);
   }
   // Los errores de juego van con código 200 y { ok: false }; así el navegador siempre puede leer el mensaje.
-  return json(await handleRequest(store, body));
+  return json(await handleRequest(store, body, validateAccessToken));
 });

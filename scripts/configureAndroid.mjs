@@ -37,8 +37,21 @@ if (fs.existsSync(manifestPath)) {
     const clean = tag.replace(/\s+android:screenOrientation="[^"]*"/, '');
     return clean.replace(/>$/, '\n            android:screenOrientation="sensorLandscape">');
   });
+  // Retorno del login OAuth (Google/Facebook) por esquema de la app:
+  // com.cartasdominicanas.app://login-callback. Idempotente: si ya está,
+  // no se duplica. `cap sync` no regenera el manifiesto, pero un `cap add`
+  // nuevo sí: este script lo repone en cada `npm run android:sync`.
+  if (!manifest.includes('login-callback')) {
+    const loginFilter = `            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.cartasdominicanas.app" android:host="login-callback" />
+            </intent-filter>`;
+    manifest = manifest.replace(/(\s*)<\/activity>/, `$1${loginFilter}\n$1</activity>`);
+  }
   fs.writeFileSync(manifestPath, manifest);
-  console.log('[configureAndroid] AndroidManifest.xml: sensorLandscape');
+  console.log('[configureAndroid] AndroidManifest.xml: sensorLandscape + intent-filter login-callback');
 }
 
 /* 2. styles.xml: ventana a pantalla completa desde el arranque, incluido el tema del splash (el que usa la
@@ -129,6 +142,9 @@ console.log('[configureAndroid] MainActivity.java: modo inmersivo');
 const problems = [];
 if (fs.existsSync(manifestPath) && !fs.readFileSync(manifestPath, 'utf8').includes('android:screenOrientation="sensorLandscape"')) {
   problems.push('AndroidManifest.xml sin screenOrientation="sensorLandscape"');
+}
+if (fs.existsSync(manifestPath) && !fs.readFileSync(manifestPath, 'utf8').includes('login-callback')) {
+  problems.push('AndroidManifest.xml sin intent-filter de login-callback');
 }
 if (!fs.readFileSync(path.join(javaDir, 'MainActivity.java'), 'utf8').includes('SCREEN_ORIENTATION_SENSOR_LANDSCAPE')) {
   problems.push('MainActivity.java sin bloqueo horizontal');

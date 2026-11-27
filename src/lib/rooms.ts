@@ -39,8 +39,66 @@ interface ServerResponse {
  * Llamada genérica a la Edge Function: añade `playerId` y `key`, preserva el
  * mensaje del servidor cuando rechaza y solo usa el genérico de "sin conexión"
  * si no hay ninguno (p. ej. fallo de red). Devuelve la respuesta tal cual.
+ *
+ * Si la clave local ya no vale (se rotó al restaurar la cuenta en otro
+ * teléfono) y hay sesión de cuenta, se restaura en silencio UNA vez y se
+ * reintenta la llamada. Así el teléfono viejo no queda bloqueado.
  */
 export async function callRaw<T>(body: Record<string, unknown>): Promise<T> {
+  return callWithRepair(() => callRawDirect<T>(body), tryAccountRepair);
+}
+
+/**
+ * Orquesta un intento con UNA auto-reparación: si el intento falla con un
+ * error de identidad y la reparación tiene éxito, se reintenta una sola
+ * vez. Si la reparación falla o el reintento vuelve a fallar, sale el
+ * error del último intento. Pura e inyectable para poder probarla sin red.
+ */
+export async function callWithRepair<T>(attempt: () => Promise<T>, repair: () => Promise<boolean>): Promise<T> {
+  try {
+    return await attempt();
+  } catch (err) {
+    if (err instanceof Error && isIdentityError(err.message) && (await repair())) {
+      return attempt();
+    }
+    throw err;
+  }
+}
+
+/**
+ * Errores que significan "esta clave ya no es la del jugador": la clave se
+ * rotó al restaurar la cuenta en otro teléfono (o el perfil cambió).
+ * `readAuth` rechaza el formato; `authenticateProfile` y `checkProfileKey`
+ * rechazan el hash; `authenticate` (salas) rechaza la clave de la sala.
+ */
+const IDENTITY_ERRORS = new Set([
+  'Clave de jugador no válida.',
+  'No pudimos verificar tu identidad.',
+  'Ese jugador ya existe con otra clave.',
+  'No estás en esta sala.',
+]);
+
+export function isIdentityError(message: string): boolean {
+  return IDENTITY_ERRORS.has(message);
+}
+
+/** Restaura la identidad desde la cuenta (si hay sesión); false si no se pudo, sin lanzar. */
+async function tryAccountRepair(): Promise<boolean> {
+  try {
+    // Import dinámico: `account.ts` importa este módulo; así no hay ciclo estático.
+    const { restoreFromAccount } = await import('./account');
+    return await restoreFromAccount();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * La misma llamada que `callRaw` pero SIN auto-reparación: para las acciones
+ * de cuenta (`link_account`, `restore_account`...), que no deben reintentarse
+ * con otra identidad si la clave falla.
+ */
+export async function callRawDirect<T>(body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(FUNCTION_NAME, {
     body: { ...body, playerId: getPlayerId(), key: getPlayerKey() },
   });
