@@ -1,0 +1,3 @@
+# Secretos de firma Android — nunca se suben a GitHub.
+*.keystore
+keystore.properties
