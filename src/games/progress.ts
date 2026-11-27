@@ -44,6 +44,8 @@ export interface ProgressEconomy {
   dailyStreak: { days: number; lastDate: string | null };
   /** Logros tal cual los guarda el cliente (él los vuelve a validar). */
   achievements: unknown;
+  /** "Quitar anuncios" comprado: sin interstitials. */
+  adsRemoved: boolean;
 }
 
 /** La foto completa: economía + temas equipados. */
@@ -144,6 +146,7 @@ export function sanitizeProgressSnapshot(raw: unknown): ProgressSnapshot | null 
       missions: asMissions(e.missions),
       dailyStreak: asDailyStreak(e.dailyStreak),
       achievements: asAchievements(e.achievements),
+      adsRemoved: e.adsRemoved === true,
     },
     visualPrefs: asVisualPrefs(record.visualPrefs),
   };

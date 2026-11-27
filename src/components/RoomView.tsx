@@ -8,6 +8,7 @@ import type { RobaitoMove } from '@/games/robaito';
 import { botTickDelay } from '@/games/bots';
 import { hostSeat, isBotPlayer, type Player } from '@/games/shared';
 import { getPlayerId, storeRoomId } from '@/lib/identity';
+import { maybeShowInterstitialOnMatchExit } from '@/lib/ads';
 import { abandonNoticeText, detectAbandonedPlayers } from '@/lib/abandonedPlayers';
 import { setMusicTheme } from '@/lib/music';
 import { themeForGame } from '@/lib/musicThemes';
@@ -136,6 +137,10 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       return;
     }
     if (!room.state || isGameFinished(room.state)) {
+      // Partida terminada: salir del panel de resultados puede tocar un
+      // interstitial (entre partidas, nunca durante el juego). Se sale
+      // igual, haya anuncio o no.
+      if (room.state && isGameFinished(room.state)) maybeShowInterstitialOnMatchExit(true);
       onLeave();
       return;
     }
@@ -551,7 +556,12 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         isGameFinished(state) && seat === hostSeat(room.players) ? (
           <button
             type="button"
-            onClick={startGame}
+            onClick={() => {
+              // Salir del panel de resultados para otra partida: puede tocar
+              // un interstitial (entre partidas, nunca durante el juego).
+              maybeShowInterstitialOnMatchExit(true);
+              startGame();
+            }}
             className="btn-gold inline-flex min-h-[44px] items-center gap-2 rounded-lg px-5 py-2 text-sm font-extrabold active:scale-95"
           >
             <RotateCcw className="h-4 w-4" />

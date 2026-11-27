@@ -8,6 +8,7 @@ import OfflineBotGame, { type OfflineSetup } from '@/components/OfflineBotGame';
 import { OptionsProvider } from '@/components/options/OptionsProvider';
 import { CARD_BACK_IMAGES } from '@/components/cagao/CardAssets';
 import { cardFaceTheme } from '@/lib/cardThemes';
+import { initAds } from '@/lib/ads';
 import { getResumableRoomId, storeRoomId } from '@/lib/identity';
 import { setMusicTheme } from '@/lib/music';
 import { themeForGame } from '@/lib/musicThemes';
@@ -74,6 +75,10 @@ export default function App() {
   // normal con una economía nueva.
   useEffect(() => {
     void restoreCloudProgressIfFresh().catch(() => undefined);
+    // Anuncios (AdMob): inicializa el SDK y precarga el primer
+    // interstitial. En web no hace nada; si falla, no hay anuncios pero
+    // el juego sigue igual.
+    initAds();
   }, []);
 
   // Al cerrar la aplicación (pagehide) se avisa al servidor para liberar el

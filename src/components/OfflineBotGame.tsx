@@ -10,6 +10,7 @@ import type { GameId, Player } from '@/games/shared';
 import { botLevelFor } from '@/games/shared';
 import type { TresYDosMove } from '@/games/tresYDos';
 import { projectState } from '@/games/view';
+import { maybeShowInterstitialOnMatchExit } from '@/lib/ads';
 import { getEconomy } from '@/lib/economy';
 import { levelFromXp } from '@/lib/experience';
 import { getMyAvatar } from '@/lib/identity';
@@ -125,17 +126,34 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
     setNotice(null);
   };
 
+  /**
+   * Salir del panel de resultados de una partida terminada: si la partida
+   * terminó, se intenta un interstitial (entre partidas, nunca durante el
+   * juego) y se sale igual, haya anuncio o no. En mitad de la partida el
+   * botón "Salir" de la mesa usa este mismo `onLeave` y no hay anuncio.
+   */
+  const leaveWithAd = () => {
+    if (isGameFinished(state)) maybeShowInterstitialOnMatchExit(true);
+    onLeave();
+  };
+
+  /** "Jugar otra partida" sale del panel de resultados: puede tocar anuncio. */
+  const rematchWithAd = () => {
+    maybeShowInterstitialOnMatchExit(true);
+    rematch();
+  };
+
   // Solo tu mano es visible: las de los bots llegan a la mesa como cartas boca abajo, igual que en línea.
   const view = projectState(state, HUMAN_SEAT);
   const tableProps = {
     seat: HUMAN_SEAT,
-    onLeave,
+    onLeave: leaveWithAd,
     notice,
     roomLabel: `${GAMES[game].name} · contra bots · sin conexión`,
     onDealingChange: handleDealingChange,
     onRematch: rematch,
     resultFooter: isGameFinished(state) ? (
-      <button type="button" onClick={rematch} className={PANEL_BUTTON}>
+      <button type="button" onClick={rematchWithAd} className={PANEL_BUTTON}>
         <RotateCcw className="h-4 w-4" />
         Jugar otra partida
       </button>

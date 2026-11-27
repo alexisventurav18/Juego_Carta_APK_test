@@ -181,6 +181,11 @@ export interface EconomyState {
   dailyStreak: DailyStreak;
   /** Logros desbloqueados y cobrados (viajan con la copia en la nube). */
   achievements: AchievementsState;
+  /**
+   * "Quitar anuncios" comprado: sin interstitials. Todavía no hay compra
+   * que lo ponga en true; el flag existe para que sea trivial añadirla.
+   */
+  adsRemoved: boolean;
 }
 
 export function defaultEconomy(): EconomyState {
@@ -203,6 +208,7 @@ export function defaultEconomy(): EconomyState {
     missions: defaultMissions(),
     dailyStreak: defaultDailyStreak(),
     achievements: defaultAchievements(),
+    adsRemoved: false,
   };
 }
 
@@ -226,6 +232,7 @@ export function migrateEconomy(state: EconomyState, prefs: VisualPrefs): Economy
     losses: Math.max(0, Math.floor(state.losses) || 0),
     bestStreak: Math.max(0, Math.floor(state.bestStreak) || 0),
     xp: Math.max(0, Math.floor(state.xp) || 0),
+    adsRemoved: state.adsRemoved === true,
     ownedCardBacks: unique([
       ...state.ownedCardBacks.filter((id) => knownCardBacks.includes(id)),
       DEFAULT_VISUAL_PREFS.cardBack,

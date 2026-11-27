@@ -65,6 +65,7 @@ function fullSnapshot(): ProgressSnapshot {
         claimed: [],
         modesWonToday: { date: '2026-11-22', games: ['casino'] },
       },
+      adsRemoved: false,
     },
     visualPrefs: { cardBack: 'larimar', table: 'mar-caribe', menu: 'fiesta-tropical' },
   };
