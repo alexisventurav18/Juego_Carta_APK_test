@@ -12,6 +12,8 @@ import type { TresYDosMove } from '@/games/tresYDos';
 import { projectState } from '@/games/view';
 import { maybeShowInterstitialOnMatchExit } from '@/lib/ads';
 import { getEconomy } from '@/lib/economy';
+import { leaveConfirmContent } from '@/lib/leaveConfirm';
+import ConfirmDialog from './ConfirmDialog';
 import { levelFromXp } from '@/lib/experience';
 import { getMyAvatar } from '@/lib/identity';
 import CagaoTable from './CagaoTable';
@@ -54,6 +56,10 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
   );
   const [state, setState] = useState<GameState>(() => createGameState(game, players));
   const [matchKey, setMatchKey] = useState(0);
+  // Confirmación al salir: el botón "Salir" de la mesa abre el diálogo tanto
+  // en mitad de la partida como desde el panel de resultados; solo al
+  // confirmar se sale (y se dispara el anuncio, si toca).
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   // Si el paso del bot falla, se reintenta con espera en lugar de dejar la partida
   // atascada: el error no cambia el estado, así que sin este contador el efecto
@@ -127,10 +133,11 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
   };
 
   /**
-   * Salir del panel de resultados de una partida terminada: si la partida
-   * terminó, se intenta un interstitial (entre partidas, nunca durante el
-   * juego) y se sale igual, haya anuncio o no. En mitad de la partida el
-   * botón "Salir" de la mesa usa este mismo `onLeave` y no hay anuncio.
+   * Salir tras confirmar en el diálogo: si la partida terminó, se intenta un
+   * interstitial (entre partidas, nunca durante el juego) y se sale igual,
+   * haya anuncio o no. En mitad de la partida no hay anuncio. Solo se llega
+   * aquí desde el diálogo de confirmación, nunca con el primer toque en
+   * "Salir".
    */
   const leaveWithAd = () => {
     if (isGameFinished(state)) maybeShowInterstitialOnMatchExit(true);
@@ -147,7 +154,7 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
   const view = projectState(state, HUMAN_SEAT);
   const tableProps = {
     seat: HUMAN_SEAT,
-    onLeave: leaveWithAd,
+    onLeave: () => setConfirmLeave(true),
     notice,
     roomLabel: `${GAMES[game].name} · contra bots · sin conexión`,
     onDealingChange: handleDealingChange,
@@ -160,14 +167,27 @@ export default function OfflineBotGame({ game, playerName, playerCount, onLeave 
     ) : undefined,
   };
 
-  if (view.game === 'casino') {
-    return <CasinoTable key={matchKey} state={view} {...tableProps} onMove={move} />;
-  }
-  if (view.game === 'tresydos') {
-    return <TresYDosTable key={matchKey} state={view} {...tableProps} onMove={move} />;
-  }
-  if (view.game === 'robaito') {
-    return <RobaitoTable key={matchKey} state={view} {...tableProps} onMove={move} />;
-  }
-  return <CagaoTable key={matchKey} state={view} {...tableProps} onMove={move} />;
+  const table =
+    view.game === 'casino' ? (
+      <CasinoTable key={matchKey} state={view} {...tableProps} onMove={move} />
+    ) : view.game === 'tresydos' ? (
+      <TresYDosTable key={matchKey} state={view} {...tableProps} onMove={move} />
+    ) : view.game === 'robaito' ? (
+      <RobaitoTable key={matchKey} state={view} {...tableProps} onMove={move} />
+    ) : (
+      <CagaoTable key={matchKey} state={view} {...tableProps} onMove={move} />
+    );
+
+  return (
+    <>
+      {table}
+      {confirmLeave && (
+        <ConfirmDialog
+          {...leaveConfirmContent('offline', isGameFinished(state))}
+          onConfirm={leaveWithAd}
+          onCancel={() => setConfirmLeave(false)}
+        />
+      )}
+    </>
+  );
 }

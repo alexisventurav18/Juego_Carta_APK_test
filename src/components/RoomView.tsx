@@ -8,6 +8,8 @@ import type { RobaitoMove } from '@/games/robaito';
 import { botTickDelay } from '@/games/bots';
 import { hostSeat, isBotPlayer, type Player } from '@/games/shared';
 import { getPlayerId, storeRoomId } from '@/lib/identity';
+import { leaveConfirmContent } from '@/lib/leaveConfirm';
+import ConfirmDialog from './ConfirmDialog';
 import { maybeShowInterstitialOnMatchExit } from '@/lib/ads';
 import { abandonNoticeText, detectAbandonedPlayers } from '@/lib/abandonedPlayers';
 import { setMusicTheme } from '@/lib/music';
@@ -57,6 +59,10 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   // Doble toque en Revancha: el botón no tiene estado de carga y la acción es lenta.
   const rematchBusyRef = useRef(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  // Confirmación al salir de una sala en espera (botón del encabezado y
+  // "Cancelar búsqueda"): es otro diálogo que el de la mesa, porque la
+  // mesa y la sala en espera se renderizan en ramas distintas.
+  const [confirmLeaveWaiting, setConfirmLeaveWaiting] = useState(false);
   const [leavingGame, setLeavingGame] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -215,6 +221,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       setLoadError(null);
       setLoadTimedOut(false);
       setConfirmLeave(false);
+      setConfirmLeaveWaiting(false);
       setLeavingGame(false);
       setBotRetries(0);
       acceptRow(row);
@@ -656,33 +663,17 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
           </div>
         )}
 
+        {/* Confirmación al salir: el texto depende del caso (en curso un bot
+            toma tu lugar; terminada solo se vuelve al menú). El anuncio, si
+            toca, se dispara dentro de `leaveGame`, solo tras confirmar. */}
         {confirmLeave && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4" role="dialog" aria-label="Salir de la partida">
-            <div className="wood-panel w-full max-w-sm space-y-3 p-5 text-center">
-              <h2 className="text-base font-extrabold text-amber-50">¿Salir de la partida?</h2>
-              <p className="text-sm leading-relaxed text-amber-100/85">
-                Un bot tomará tu lugar y la partida seguirá sin ti. No podrás volver a esta partida.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmLeave(false)}
-                  disabled={leavingGame}
-                  className="btn-wood min-h-[44px] flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-transform active:scale-95 disabled:opacity-60"
-                >
-                  Seguir jugando
-                </button>
-                <button
-                  type="button"
-                  onClick={leaveGame}
-                  disabled={leavingGame}
-                  className="btn-gold min-h-[44px] flex-1 rounded-lg px-3 py-2 text-sm font-extrabold transition-transform active:scale-95 disabled:opacity-60"
-                >
-                  {leavingGame ? 'Saliendo…' : 'Salir de la partida'}
-                </button>
-              </div>
-            </div>
-          </div>
+          <ConfirmDialog
+            {...leaveConfirmContent('online', isGameFinished(state))}
+            onConfirm={leaveGame}
+            onCancel={() => setConfirmLeave(false)}
+            busy={leavingGame}
+            busyLabel="Saliendo…"
+          />
         )}
       </div>
     );
@@ -709,7 +700,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       <header className="room-waiting-header mb-2 flex items-center justify-between gap-2 sm:mb-6 sm:gap-4">
         <button
           type="button"
-          onClick={leaveWaitingRoom}
+          onClick={() => setConfirmLeaveWaiting(true)}
           className="wood-chip inline-flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-transform active:scale-95 sm:gap-2 sm:text-sm"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -759,8 +750,16 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
 
       {coinOpen && <CoinToss onDone={startSoloGame} />}
 
-      <WaitingRoom room={room} myId={playerId} busy={saving} onStart={startGame} matchmaking={room.isPublic} onLeave={leaveWaitingRoom} />
+      <WaitingRoom room={room} myId={playerId} busy={saving} onStart={startGame} matchmaking={room.isPublic} onLeave={() => setConfirmLeaveWaiting(true)} />
     </div>
+      {/* Confirmación al salir de la sala en espera: se liberará el asiento. */}
+      {confirmLeaveWaiting && (
+        <ConfirmDialog
+          {...leaveConfirmContent('waiting', false)}
+          onConfirm={leaveWaitingRoom}
+          onCancel={() => setConfirmLeaveWaiting(false)}
+        />
+      )}
     </div>
   );
 }
