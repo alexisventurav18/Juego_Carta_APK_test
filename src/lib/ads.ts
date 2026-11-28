@@ -12,20 +12,19 @@
  *    cargar/mostrar falla, todo es un no-op silencioso. El juego nunca se
  *    bloquea, nunca espera un anuncio y nunca muestra un error por anuncios.
  *
- * Para los anuncios reales solo hay que cambiar las dos constantes de abajo
- * por las de la cuenta AdMob de Alexis (ID de la app y ID del bloque
- * interstitial). Mientras tanto se usan las IDs oficiales de prueba de
- * Google: los anuncios que se ven son de prueba, no generan ingresos.
+ * IDs reales de la cuenta AdMob de Alexis (creada 2026-11-28): los anuncios
+ * que se ven son reales y generan ingresos. La cuenta está en USD y sin
+ * datos de pago/tarjeta todavía (eso es para cobrar, no para servir anuncios).
  */
 
 import { Capacitor } from '@capacitor/core';
 import type { AdMobPlugin, InterstitialAdPluginEvents } from '@capacitor-community/admob';
 import { getEconomy } from './economy';
 
-/** ID de la app en AdMob (Android). ID oficial de prueba de Google. */
-export const ADMOB_APP_ID = 'ca-app-pub-3940256099942544~3347511713';
-/** Bloque interstitial. ID oficial de prueba de Google. */
-export const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-3940256099942544/1033173712';
+/** ID de la app en AdMob (Android). Cuenta real de Alexis. */
+export const ADMOB_APP_ID = 'ca-app-pub-3081002488082091~4460413663';
+/** Bloque interstitial "Intersticial entre partidas". Cuenta real de Alexis. */
+export const INTERSTITIAL_AD_UNIT_ID = 'ca-app-pub-3081002488082091/2502840875';
 
 /** Como mucho un interstitial cada 3 minutos. */
 export const AD_COOLDOWN_MS = 3 * 60 * 1000;

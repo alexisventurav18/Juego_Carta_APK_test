@@ -50,16 +50,14 @@ if (fs.existsSync(manifestPath)) {
             </intent-filter>`;
     manifest = manifest.replace(/(\s*)<\/activity>/, `$1${loginFilter}\n$1</activity>`);
   }
-  // AdMob: ID de la app para el SDK (de prueba por ahora; al pasar a anuncios
-  // reales se cambia aquí y en src/lib/ads.ts por el de la cuenta AdMob).
-  // Idempotente: si ya está, no se duplica.
+  // AdMob: ID de la app para el SDK (cuenta real de Alexis; el mismo que en
+  // src/lib/ads.ts). Idempotente: si ya está, no se duplica.
   if (!manifest.includes('com.google.android.gms.ads.APPLICATION_ID')) {
-    const admobMeta = `        <!-- AdMob: ID de la app (de prueba por ahora; al pasar a anuncios reales
-             se cambia por el de la cuenta AdMob, igual que en src/lib/ads.ts).
+    const admobMeta = `        <!-- AdMob: ID de la app (cuenta real de Alexis, igual que en src/lib/ads.ts).
              Lo repone scripts/configureAndroid.mjs si el manifiesto se regenera. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />`;
+            android:value="ca-app-pub-3081002488082091~4460413663" />`;
     manifest = manifest.replace(/(\s*)<\/application>/, `\n${admobMeta}$1</application>`);
   }
   fs.writeFileSync(manifestPath, manifest);

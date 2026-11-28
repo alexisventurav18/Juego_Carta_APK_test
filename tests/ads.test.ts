@@ -75,9 +75,9 @@ function asPlugin(fake: FakePlugin): AdMobPlugin {
 }
 
 describe('configuración de AdMob', () => {
-  it('usa las IDs oficiales de prueba de Google (nada real todavía)', () => {
-    assert.equal(ADMOB_APP_ID, 'ca-app-pub-3940256099942544~3347511713');
-    assert.equal(INTERSTITIAL_AD_UNIT_ID, 'ca-app-pub-3940256099942544/1033173712');
+  it('usa las IDs reales de la cuenta AdMob de Alexis', () => {
+    assert.equal(ADMOB_APP_ID, 'ca-app-pub-3081002488082091~4460413663');
+    assert.equal(INTERSTITIAL_AD_UNIT_ID, 'ca-app-pub-3081002488082091/2502840875');
   });
 
   it('el cooldown es de 3 minutos', () => {
