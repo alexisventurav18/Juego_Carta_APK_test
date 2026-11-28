@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
-import { BookOpen, Bot, Coins, DoorOpen, Flame, Gift, Globe, GraduationCap, Maximize2, Minimize2, Pencil, RefreshCw, Settings, Spade, Star, Target, Trophy, Users, VolumeX, X, Zap } from 'lucide-react';
+import { BookOpen, Bot, Coins, DoorOpen, Flame, Gift, Globe, GraduationCap, Maximize2, Medal, Minimize2, Pencil, RefreshCw, Settings, Spade, Star, Target, Trophy, Users, VolumeX, X, Zap } from 'lucide-react';
 import { GAMES } from '@/games';
 import type { GameId, Player } from '@/games/shared';
 import { createRoom, friendsList, joinRoom, leaveRoom, quickplayRoom, tournamentInfo, type TournamentData } from '@/lib/rooms';
@@ -51,7 +51,10 @@ function botOptions(game: GameId): number[] {
 }
 
 function botCaption(game: GameId, bots: number): string {
-  if (game === 'casino') return bots === 3 ? 'Dos equipos de dos: tú y un bot contra dos bots.' : 'Uno contra uno.';
+  // Corto y en una línea: la leyenda larga de Casino (dos líneas) hacía
+  // crecer la fila de configuración y encogía las tarjetas de modo, que son
+  // flex-1 y toman lo que sobra en vertical.
+  if (game === 'casino') return bots === 3 ? '2 contra 2 por equipos' : 'Uno contra uno';
   return `${bots + 1} jugadores en la mesa, contándote a ti.`;
 }
 
@@ -497,7 +500,9 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                 title="Ranking: los mejores de la temporada"
                 className="btn-wood flex min-h-[clamp(32px,9dvh,40px)] shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 text-[clamp(13px,2.8dvh,14px)] font-bold transition-transform active:scale-95"
               >
-                <Trophy className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
+                {/* Medalla, no trofeo: Logros ya usa Trophy y los dos botones
+                    se confundían a simple vista. */}
+                <Medal className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
                 <span className="max-[760px]:hidden [@media(max-height:500px)]:hidden">Ranking</span>
               </button>
               <button
@@ -590,8 +595,9 @@ export default function Lobby({ initialJoinCode, onEnter, onStartOffline }: Lobb
                   );
                 })}
               </div>
-              {/* La leyenda cabe entera en dos líneas: sin truncar, la tarjeta
-                  del modo ya dice los jugadores pero aquí explica los equipos. */}
+              {/* La leyenda es corta (una línea en Casino): si creciera a dos
+                  líneas, la fila de configuración robaría alto a las tarjetas
+                  de modo, que son flex-1. */}
               <span className="hidden max-w-[19rem] text-left text-[13px] leading-snug text-amber-100/70 line-clamp-2 min-[760px]:inline [@media(max-height:340px)]:hidden">
                 {botCaption(game, bots)}
               </span>

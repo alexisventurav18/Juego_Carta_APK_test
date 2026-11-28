@@ -37,8 +37,9 @@ describe('sala de espera: las filas no cambian de tamaño', () => {
 });
 
 describe('sala: los avisos no empujan el contenido', () => {
-  it('la barra de conexión reserva el hueco de Reintentar', () => {
-    assert.ok(roomView.includes('invisible ml-2'), 'sin conexión el botón es invisible pero ocupa su hueco');
+  it('la barra de conexión es una píldora fina sin hueco reservado', () => {
+    assert.ok(!roomView.includes('invisible ml-2'), 'la píldora ya no reserva el hueco de Reintentar');
+    assert.ok(roomView.includes('w-fit') && roomView.includes('rounded-full'), 'la píldora es fina y de su propio ancho');
   });
 
   it('el aviso de error flota encima en vez de empujar la sala', () => {

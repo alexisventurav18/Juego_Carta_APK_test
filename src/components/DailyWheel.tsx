@@ -82,8 +82,11 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
     >
       {/* El panel nunca desborda la pantalla: la rueda se dimensiona con la
           medida menor entre ancho y alto, y el scroll interno solo queda como
-          red de seguridad para pantallas muy bajas. */}
-      <div className="wood-panel relative max-h-[94dvh] w-full max-w-sm space-y-3 overflow-y-auto p-4 text-center [@media(max-height:500px)]:space-y-2 [@media(max-height:500px)]:p-3">
+          red de seguridad para pantallas muy bajas. En horizontal corto la
+          rueda se ata a 34dvh y todo se compacta (título, espacios, botón),
+          así título + rueda + botón —y también el estado con premio y racha—
+          caben en 360 px de alto sin scroll: ~297 px en el peor caso. */}
+      <div className="wood-panel relative max-h-[94dvh] w-full max-w-sm space-y-3 overflow-y-auto p-4 text-center [@media(max-height:500px)]:space-y-1.5 [@media(max-height:500px)]:p-2.5">
         <button
           type="button"
           onClick={onClose}
@@ -94,16 +97,18 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
           <X className="h-4 w-4" />
         </button>
         <div>
-          <p className="flex items-center justify-center gap-2 text-[clamp(1rem,3.6dvh,1.125rem)] font-extrabold text-amber-50">
+          <p className="flex items-center justify-center gap-2 text-[clamp(1rem,3.6dvh,1.125rem)] font-extrabold text-amber-50 [@media(max-height:500px)]:text-sm [@media(max-height:500px)]:leading-tight">
             <Gift className="h-[clamp(1rem,3.6dvh,1.25rem)] w-[clamp(1rem,3.6dvh,1.25rem)] text-amber-300" aria-hidden />
             Rueda diaria
           </p>
-          <p className="mt-0.5 text-[clamp(0.75rem,2.8dvh,0.875rem)] text-amber-100/80">Gira y llévate monedas. Vuelve mañana por otra.</p>
+          <p className="mt-0.5 text-[clamp(0.75rem,2.8dvh,0.875rem)] text-amber-100/80 [@media(max-height:500px)]:text-[11px]">Gira y llévate monedas. Vuelve mañana por otra.</p>
         </div>
 
         {/* La rueda mide lo que quepa: el menor entre el ancho y el alto
-            disponible, para que se integre igual en vertical y en horizontal. */}
-        <div className="relative mx-auto size-[min(62vw,44dvh)]">
+            disponible, para que se integre igual en vertical y en horizontal.
+            En horizontal corto se ata a 34dvh para que el conjunto entero
+            quepa sin scroll (ver comentario del panel). */}
+        <div className="relative mx-auto size-[min(62vw,44dvh,100%)] [@media(max-height:500px)]:size-[min(62vw,34dvh,100%)]">
           {/* Puntero fijo arriba */}
           <div
             aria-hidden
@@ -174,16 +179,16 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
         </div>
 
         {granted !== null ? (
-          <div className="space-y-2">
-            <p className="text-[clamp(1.05rem,4dvh,1.25rem)] font-extrabold text-amber-300">¡Te ganaste +{granted} monedas!</p>
+          <div className="space-y-2 [@media(max-height:500px)]:space-y-1">
+            <p className="text-[clamp(1.05rem,4dvh,1.25rem)] font-extrabold text-amber-300 [@media(max-height:500px)]:text-base">¡Te ganaste +{granted} monedas!</p>
             {streakBonus > 0 && (
-              <p className="flex items-center justify-center gap-1.5 text-xs font-extrabold text-orange-300 sm:text-sm" role="status">
+              <p className="flex items-center justify-center gap-1.5 text-xs font-extrabold text-orange-300 sm:text-sm [@media(max-height:500px)]:text-[11px]" role="status">
                 <Flame className="h-4 w-4 shrink-0" aria-hidden />
                 Racha de {streakDays} {streakDays === 1 ? 'día' : 'días'}: +{streakBonus} extra por tu racha
               </p>
             )}
             {unlockedTitles.length > 0 && (
-              <p className="flex items-center justify-center gap-1.5 text-xs font-extrabold text-amber-200 sm:text-sm" role="status">
+              <p className="flex items-center justify-center gap-1.5 text-xs font-extrabold text-amber-200 sm:text-sm [@media(max-height:500px)]:text-[11px]" role="status">
                 <Trophy className="h-4 w-4 shrink-0" aria-hidden />
                 ¡Logro desbloqueado: {unlockedTitles.join(', ')}! Reclámalo en Logros.
               </p>
@@ -191,7 +196,7 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               onClick={onClose}
-              className="btn-gold min-h-[clamp(40px,9dvh,44px)] w-full rounded-lg px-6 py-2.5 text-sm font-extrabold transition-transform active:scale-95"
+              className="btn-gold min-h-[clamp(40px,9dvh,44px)] w-full rounded-lg px-6 py-2.5 text-sm font-extrabold transition-transform active:scale-95 [@media(max-height:500px)]:min-h-[36px]"
             >
               A jugar
             </button>
@@ -201,7 +206,7 @@ export default function DailyWheel({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={spin}
             disabled={spinning}
-            className="btn-gold flex min-h-[clamp(40px,9dvh,48px)] w-full touch-manipulation items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-[clamp(0.875rem,3.2dvh,1rem)] font-extrabold transition-transform active:scale-95 disabled:opacity-60"
+            className="btn-gold flex min-h-[clamp(40px,9dvh,48px)] w-full touch-manipulation items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-[clamp(0.875rem,3.2dvh,1rem)] font-extrabold transition-transform active:scale-95 disabled:opacity-60 [@media(max-height:500px)]:min-h-[36px]"
           >
             <Coins className="h-5 w-5" aria-hidden />
             {spinning ? 'Girando...' : 'Girar la rueda'}

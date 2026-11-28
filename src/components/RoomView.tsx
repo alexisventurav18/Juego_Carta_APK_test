@@ -16,6 +16,7 @@ import { setMusicTheme } from '@/lib/music';
 import { themeForGame } from '@/lib/musicThemes';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { abandonRoom, botTick, fetchRoom, joinRoom, leaveRoom, requestRematch, requestStart, type RoomConnectionStatus, type RoomRow, type RoomSubscription, sendMove, subscribeToRoom } from '@/lib/rooms';
+import { createConnectionAlert, type ConnectionAlert } from '@/lib/connectionAlert';
 import { isAllowedRematchSender, REMATCH_INVITE_MS, type RematchInvite } from '@/lib/roomRematch';
 import { GAME_ENVIRONMENTS } from '@/lib/visualPrefs';
 import { CHAT_TOAST_MS, isAllowedChatSender, type RoomChatMessage } from '@/lib/roomChat';
@@ -68,6 +69,9 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
   const [saving, setSaving] = useState(false);
   const [coinOpen, setCoinOpen] = useState(false);
   const [connection, setConnection] = useState<RoomConnectionStatus>('connecting');
+  // Aviso de conexión con retardo: solo se enseña si el estado sin conexión
+  // dura más de ~3 s seguidos (ver el efecto más abajo).
+  const [connectionAlertVisible, setConnectionAlertVisible] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
   const versionRef = useRef(-1);
   // Reintentos del turno del bot: si el tick falla (p. ej. un error transitorio del
@@ -330,6 +334,24 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
     };
   }, [activeRoomId, acceptRow, retryToken, showChatMessage, handleRematchInvite]);
 
+  /**
+   * Aviso de conexión con retardo (lógica en src/lib/connectionAlert.ts, sin
+   * React, para poder probarla): solo se enseña si el estado sin conexión
+   * dura más de ~3 s seguidos. Al volver a conectar se oculta de inmediato;
+   * al cambiar el estado o al desmontar, el temporizador se limpia, así que
+   * no hay avisos fantasma de una desconexión ya resuelta.
+   */
+  const connectionAlertRef = useRef<ConnectionAlert | null>(null);
+  if (connectionAlertRef.current === null) {
+    connectionAlertRef.current = createConnectionAlert();
+  }
+  useEffect(() => {
+    const alert = connectionAlertRef.current;
+    if (!alert) return;
+    alert.update(connection, setConnectionAlertVisible);
+    return () => alert.dispose();
+  }, [connection]);
+
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), 5000);
@@ -395,6 +417,11 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       }
     };
   }, [room, playerId, acceptRow, botRetries, dealing]);
+
+  // Lo que ven los avisos de conexión (la banda de la sala en espera y las
+  // mesas, vía TableNotices): mientras la desconexión es breve se muestra
+  // como conectado, es decir, sin aviso.
+  const shownConnection: RoomConnectionStatus = connectionAlertVisible ? connection : 'connected';
 
   if (loadError) {
     return (
@@ -551,7 +578,7 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
       // El botón "Salir" de la mesa pide confirmación antes de abandonar.
       onLeave: () => setConfirmLeave(true),
       roomLabel: `${info.name} · Sala ${room.code}`,
-      connection,
+      connection: shownConnection,
       onRetry: retryConnection,
       notice,
       onDealingChange: handleDealingChange,
@@ -715,31 +742,32 @@ export default function RoomView({ roomId, onLeave }: RoomViewProps) {
         </div>
       </header>
 
-      <div
-        role="status"
-        aria-live="polite"
-        className={`room-waiting-connection mb-2 flex items-center justify-center gap-2 rounded-xl px-3 py-1 text-[10px] font-medium sm:mb-4 sm:px-4 sm:py-2 sm:text-xs ${
-          connection === 'connected'
-            ? 'bg-lime-600/25 text-lime-200 ring-1 ring-lime-400/40'
-            : connection === 'offline'
-              ? 'bg-rose-700/40 text-rose-100 ring-1 ring-rose-300/40'
-              : 'bg-amber-500/25 text-amber-100 ring-1 ring-amber-300/40'
-        }`}
-      >
-        {connection === 'connected' && <Wifi className="h-3.5 w-3.5" />}
-        {connection === 'offline' && <WifiOff className="h-3.5 w-3.5" />}
-        {connection === 'connecting' && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
-        {connection === 'connected' ? 'Conectado al servidor' : connection === 'offline' ? 'Sin conexión. Reintentando...' : 'Conectando al servidor...'}
-        {connection === 'offline' ? (
-          <button type="button" onClick={retryConnection} className="ml-2 rounded-md bg-black/25 px-2 py-1 font-bold text-amber-50 underline">
-            Reintentar
-          </button>
-        ) : (
-          <span aria-hidden className="invisible ml-2 rounded-md px-2 py-1 font-bold underline">
-            Reintentar
-          </span>
-        )}
-      </div>
+      {/* Píldora fina y discreta: solo ocupa su ancho y no empuja la sala.
+          Conectado se ve siempre; "Conectando..." / "Sin conexión" solo
+          aparecen si la desconexión dura más de ~3 s (shownConnection). */}
+      {(connection === 'connected' || connectionAlertVisible) && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`room-waiting-connection mx-auto mb-1 flex w-fit items-center justify-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium sm:mb-2 sm:px-3 sm:py-1 sm:text-[11px] ${
+            shownConnection === 'connected'
+              ? 'bg-lime-600/25 text-lime-200 ring-1 ring-lime-400/40'
+              : shownConnection === 'offline'
+                ? 'bg-rose-700/40 text-rose-100 ring-1 ring-rose-300/40'
+                : 'bg-amber-500/25 text-amber-100 ring-1 ring-amber-300/40'
+          }`}
+        >
+          {shownConnection === 'connected' && <Wifi className="h-3 w-3" />}
+          {shownConnection === 'offline' && <WifiOff className="h-3 w-3" />}
+          {shownConnection === 'connecting' && <LoaderCircle className="h-3 w-3 animate-spin" />}
+          {shownConnection === 'connected' ? 'Conectado al servidor' : shownConnection === 'offline' ? 'Sin conexión. Reintentando...' : 'Conectando al servidor...'}
+          {shownConnection === 'offline' && (
+            <button type="button" onClick={retryConnection} className="ml-1 rounded-full bg-black/25 px-2 py-0.5 font-bold text-amber-50 underline">
+              Reintentar
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Aviso flotante, fuera del flujo: si va dentro, al aparecer empuja toda la sala hacia abajo. */}
       {notice && (

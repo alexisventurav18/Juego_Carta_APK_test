@@ -161,20 +161,20 @@ function MissionsTab() {
 
   return (
     <>
-      <p className="mb-3 shrink-0 text-xs leading-snug text-amber-100/70">
-        Completa misiones jugando y reclama monedas para la Tienda. El progreso se guarda en este
-        dispositivo.
+      {/* Resumen corto (el conteo de pendientes ya va en la insignia de la
+          pestaña y en el botón): en horizontal corto se oculta para que la
+          lista gane alto. */}
+      <p className="mb-2 shrink-0 text-xs leading-snug text-amber-100/70 [@media(max-height:500px)]:hidden">
+        Completa misiones jugando y reclama monedas para la Tienda.
       </p>
       <button
         type="button"
         onClick={claimAll}
         disabled={pending.count === 0}
-        className="btn-gold mb-3 flex min-h-[40px] w-full shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-extrabold transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+        className="btn-gold mb-2 flex min-h-[34px] w-full shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-extrabold transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 [@media(max-height:500px)]:mb-1 [@media(max-height:500px)]:min-h-[30px]"
       >
         <Gift className="h-4 w-4 shrink-0" aria-hidden />
-        {pending.count === 0
-          ? 'Reclamar todo'
-          : `Reclamar todo · +${pending.coins} monedas (${pending.count} ${pending.count === 1 ? 'misión' : 'misiones'})`}
+        {pending.count === 0 ? 'Reclamar todo' : `Reclamar todo · +${pending.coins} monedas`}
       </button>
       {claimedAll !== null && (
         <p className="mb-3 shrink-0 rounded-xl bg-amber-400/15 px-3 py-2 text-center text-sm font-extrabold text-amber-300 ring-1 ring-amber-300/50" role="status">
@@ -189,7 +189,7 @@ function MissionsTab() {
               <div className="mb-2 flex items-baseline justify-between gap-2">
                 <h3 className="text-sm font-extrabold uppercase tracking-wide text-amber-50">{title}</h3>
                 <span className="text-xs text-amber-100/60">
-                  {hint} · se renuevan en {timeUntilReset(period)}
+                  {hint} · en {timeUntilReset(period)}
                 </span>
               </div>
               <ul className="space-y-2">
@@ -331,33 +331,33 @@ function AchievementsTab() {
 
   return (
     <>
-      <div className="mb-3 flex shrink-0 items-center gap-3 rounded-xl bg-orange-500/15 p-3 ring-1 ring-orange-300/40">
-        <Flame className="h-6 w-6 shrink-0 text-orange-300" aria-hidden />
+      {/* Racha compacta: una sola línea de descripción (con line-clamp-1 por
+          seguridad en pantallas angostas) para que la lista de logros tenga
+          sitio y desplace. */}
+      <div className="mb-2 flex shrink-0 items-center gap-2 rounded-xl bg-orange-500/15 p-2 ring-1 ring-orange-300/40">
+        <Flame className="h-5 w-5 shrink-0 text-orange-300" aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-extrabold text-orange-100">
+          <p className="text-[13px] font-extrabold text-orange-100">
             Racha diaria: {streakDays} {streakDays === 1 ? 'día' : 'días'}
           </p>
-          <p className="text-xs leading-snug text-orange-100/70">
+          <p className="line-clamp-1 text-xs leading-snug text-orange-100/70">
             {streakDays === 0
-              ? 'Gira la rueda hoy para empezar tu racha: la rueda paga +50 extra el primer día.'
-              : `Si giras la rueda mañana, el premio suma +${streakBonusForDay(streakDays + 1)} extra. Si saltas un día, la racha vuelve a 1.`}
+              ? 'Gira la rueda hoy para empezar tu racha (+50 extra el primer día).'
+              : `Gira mañana y suma +${streakBonusForDay(streakDays + 1)} extra; si saltas un día, vuelve a 1.`}
           </p>
         </div>
       </div>
-      <p className="mb-3 shrink-0 text-xs leading-snug text-amber-100/70">
-        Gana partidas, sube de nivel y gira la rueda cada día para desbloquear logros. Cada logro
-        se cobra una sola vez.
+      <p className="mb-2 shrink-0 text-xs leading-snug text-amber-100/70 [@media(max-height:500px)]:hidden">
+        Desbloquea logros jugando; cada uno se cobra una sola vez.
       </p>
       <button
         type="button"
         onClick={claimAll}
         disabled={pending.count === 0}
-        className="btn-gold mb-3 flex min-h-[40px] w-full shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-extrabold transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+        className="btn-gold mb-2 flex min-h-[34px] w-full shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-extrabold transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 [@media(max-height:500px)]:mb-1 [@media(max-height:500px)]:min-h-[30px]"
       >
         <Gift className="h-4 w-4 shrink-0" aria-hidden />
-        {pending.count === 0
-          ? 'Reclamar todo'
-          : `Reclamar todo · +${pending.coins} monedas (${pending.count} ${pending.count === 1 ? 'logro' : 'logros'})`}
+        {pending.count === 0 ? 'Reclamar todo' : `Reclamar todo · +${pending.coins} monedas`}
       </button>
       {claimedAll !== null && (
         <p
@@ -399,11 +399,15 @@ export default function MissionsAchievementsModal({
       aria-label="Misiones y logros"
       onClick={onClose}
     >
+      {/* Altura fija (h-full del overlay): sin ella el panel solo tenía
+          max-h y la lista flex-1 no tenía una altura definida contra la que
+          desplazarse. Con h-full la lista siempre tiene su hueco y hace
+          scroll dentro del modal. */}
       <div
-        className="wood-panel flex max-h-full w-full max-w-2xl flex-col overflow-hidden p-4"
+        className="wood-panel flex h-full max-h-full w-full max-w-2xl flex-col overflow-hidden p-4 [@media(max-height:500px)]:p-2.5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
+        <div className="mb-2 flex shrink-0 items-center justify-between gap-3 [@media(max-height:500px)]:mb-1">
           <h2 className="flex min-w-0 items-center gap-2 text-base font-extrabold text-amber-50">
             {tab === 'missions' ? (
               <>
@@ -421,7 +425,7 @@ export default function MissionsAchievementsModal({
             )}
           </h2>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1.5 text-sm font-extrabold text-amber-300 ring-1 ring-amber-300/60">
+            <span className="flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1 text-sm font-extrabold text-amber-300 ring-1 ring-amber-300/60">
               <Coins className="h-4 w-4" aria-hidden />
               {economy.coins} monedas
             </span>
@@ -429,19 +433,19 @@ export default function MissionsAchievementsModal({
               type="button"
               onClick={onClose}
               aria-label="Cerrar misiones y logros"
-              className="wood-chip grid h-10 w-10 shrink-0 touch-manipulation place-items-center rounded-lg transition-transform active:scale-95"
+              className="wood-chip grid h-9 w-9 shrink-0 touch-manipulation place-items-center rounded-lg transition-transform active:scale-95 [@media(max-height:500px)]:h-8 [@media(max-height:500px)]:w-8"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
-        <div className="mb-3 grid shrink-0 grid-cols-2 gap-2" role="tablist" aria-label="Apartados de progreso">
+        <div className="mb-2 grid shrink-0 grid-cols-2 gap-2 [@media(max-height:500px)]:mb-1" role="tablist" aria-label="Apartados de progreso">
           <button
             type="button"
             role="tab"
             aria-selected={tab === 'missions'}
             onClick={() => setTab('missions')}
-            className={`flex min-h-[40px] touch-manipulation items-center justify-center gap-2 rounded-lg px-3 text-sm font-extrabold transition-transform active:scale-[0.98] ${
+            className={`flex min-h-[36px] touch-manipulation items-center justify-center gap-2 rounded-lg px-3 text-sm font-extrabold transition-transform active:scale-[0.98] [@media(max-height:500px)]:min-h-[32px] ${
               tab === 'missions'
                 ? 'btn-gold'
                 : 'bg-black/30 text-amber-100/70 ring-1 ring-amber-100/15'
@@ -460,7 +464,7 @@ export default function MissionsAchievementsModal({
             role="tab"
             aria-selected={tab === 'achievements'}
             onClick={() => setTab('achievements')}
-            className={`flex min-h-[40px] touch-manipulation items-center justify-center gap-2 rounded-lg px-3 text-sm font-extrabold transition-transform active:scale-[0.98] ${
+            className={`flex min-h-[36px] touch-manipulation items-center justify-center gap-2 rounded-lg px-3 text-sm font-extrabold transition-transform active:scale-[0.98] [@media(max-height:500px)]:min-h-[32px] ${
               tab === 'achievements'
                 ? 'btn-gold'
                 : 'bg-black/30 text-amber-100/70 ring-1 ring-amber-100/15'

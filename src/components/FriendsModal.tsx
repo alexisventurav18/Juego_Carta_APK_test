@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Check, Clock, DoorOpen, Loader2, Search, Send, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import { GAMES } from '@/games';
+import type { GameId } from '@/games/shared';
 import {
   friendAccept,
   friendReject,
@@ -18,8 +20,12 @@ import Avatar from './avatar/Avatar';
 /**
  * Amigos: buscar por nombre o código, solicitudes entrantes y salientes,
  * lista de amigos (nivel, en línea, en partida) con invitación directa a una
- * sala privada, e invitaciones recibidas para unirse a la sala del amigo.
+ * sala privada eligiendo el modo de juego, e invitaciones recibidas para
+ * unirse a la sala del amigo.
  */
+
+/** Modos que se ofrecen al invitar a un amigo a jugar, en el orden del menú. */
+const INVITE_GAMES: GameId[] = ['casino', 'tresydos', 'cagao', 'robaito'];
 export default function FriendsModal({
   onClose,
   onJoinRoom,
@@ -36,6 +42,8 @@ export default function FriendsModal({
   const [searching, setSearching] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Amigo al que se le está eligiendo el modo para invitarlo a jugar.
+  const [inviteFor, setInviteFor] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -75,13 +83,13 @@ export default function FriendsModal({
       .finally(() => setSearching(false));
   };
 
-  const invite = (friend: FriendEntry) => {
+  const invite = (friend: FriendEntry, game: GameId) => {
     if (busy) return;
     setBusy(`invite:${friend.playerId}`);
     setError(null);
-    void inviteFriend(friend.playerId)
+    void inviteFriend(friend.playerId, game)
       .then((res) => {
-        // La sala privada ya está creada: entro a esperar y mi amigo se une con el mismo código.
+        // La sala privada ya está creada en ese modo: entro a esperar y mi amigo se une con el mismo código.
         onJoinRoom(res.code);
       })
       .catch((err) => {
@@ -162,55 +170,7 @@ export default function FriendsModal({
                 </p>
               )}
 
-              {data && data.invites.length > 0 && (
-                <section>
-                  <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-amber-50">
-                    Invitaciones a salas
-                  </h3>
-                  <ul className="space-y-1.5">
-                    {data.invites.map((invite) => (
-                      <li key={`${invite.from}:${invite.code}`} className="flex items-center gap-2 rounded-xl bg-amber-400/10 px-2.5 py-2 ring-1 ring-amber-300/40">
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-extrabold text-amber-50">
-                            {invite.fromName} te invita a jugar
-                          </span>
-                          <span className="block text-[11px] font-bold text-amber-100/60">
-                            Sala {invite.code}
-                          </span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => onJoinRoom(invite.code)}
-                          className="btn-gold flex shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-transform active:scale-95"
-                        >
-                          <DoorOpen className="h-3.5 w-3.5" aria-hidden />
-                          Unirse
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
-              {data && data.pendingIn.length > 0 && (
-                <section>
-                  <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-amber-50">
-                    Solicitudes entrantes
-                  </h3>
-                  <ul className="space-y-1.5">
-                    {data.pendingIn.map((request) => (
-                      <RequestRow
-                        key={request.playerId}
-                        request={request}
-                        busy={busy}
-                        onAccept={() => act(`accept:${request.playerId}`, () => friendAccept(request.playerId), `${request.name} ahora es tu amigo.`)}
-                        onReject={() => act(`reject:${request.playerId}`, () => friendReject(request.playerId))}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              )}
-
+              {/* La búsqueda va primera: es la forma de añadir amigos sin estar en una sala. */}
               <section>
                 <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-amber-50">
                   Buscar amigos
@@ -268,7 +228,7 @@ export default function FriendsModal({
                                   className="btn-wood flex shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-transform active:scale-95 disabled:opacity-60"
                                 >
                                   <UserPlus className="h-3.5 w-3.5" aria-hidden />
-                                  Añadir
+                                  Enviar solicitud
                                 </button>
                               )}
                             </li>
@@ -279,6 +239,55 @@ export default function FriendsModal({
                   </div>
                 )}
               </section>
+
+              {data && data.invites.length > 0 && (
+                <section>
+                  <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-amber-50">
+                    Invitaciones a salas
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {data.invites.map((invite) => (
+                      <li key={`${invite.from}:${invite.code}`} className="flex items-center gap-2 rounded-xl bg-amber-400/10 px-2.5 py-2 ring-1 ring-amber-300/40">
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-extrabold text-amber-50">
+                            {invite.fromName} te invita a jugar
+                          </span>
+                          <span className="block text-[11px] font-bold text-amber-100/60">
+                            Sala {invite.code}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onJoinRoom(invite.code)}
+                          className="btn-gold flex shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-transform active:scale-95"
+                        >
+                          <DoorOpen className="h-3.5 w-3.5" aria-hidden />
+                          Unirse
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {data && data.pendingIn.length > 0 && (
+                <section>
+                  <h3 className="mb-2 text-sm font-extrabold uppercase tracking-wide text-amber-50">
+                    Solicitudes entrantes
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {data.pendingIn.map((request) => (
+                      <RequestRow
+                        key={request.playerId}
+                        request={request}
+                        busy={busy}
+                        onAccept={() => act(`accept:${request.playerId}`, () => friendAccept(request.playerId), `${request.name} ahora es tu amigo.`)}
+                        onReject={() => act(`reject:${request.playerId}`, () => friendReject(request.playerId))}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              )}
 
               {data && data.pendingOut.length > 0 && (
                 <section>
@@ -311,40 +320,71 @@ export default function FriendsModal({
                 ) : (
                   <ul className="space-y-1.5">
                     {data.friends.map((friend) => (
-                      <li key={friend.playerId} className="flex items-center gap-2 rounded-xl bg-black/25 px-2.5 py-2 ring-1 ring-amber-100/10">
-                        <PlayerAvatar code={friend.avatar} name={friend.name} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-extrabold text-amber-50">{friend.name}</span>
-                          <span className="block text-[11px] font-bold text-amber-100/60">
-                            Nivel {friend.level ?? 1} ·{' '}
-                            {friend.inRoom ? (
-                              <span className="text-amber-300">en partida</span>
-                            ) : friend.online ? (
-                              <span className="text-emerald-300">en línea</span>
-                            ) : (
-                              'sin conexión'
-                            )}
+                      <li key={friend.playerId} className="rounded-xl bg-black/25 px-2.5 py-2 ring-1 ring-amber-100/10">
+                        <div className="flex items-center gap-2">
+                          <PlayerAvatar code={friend.avatar} name={friend.name} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-extrabold text-amber-50">{friend.name}</span>
+                            <span className="block text-[11px] font-bold text-amber-100/60">
+                              Nivel {friend.level ?? 1} ·{' '}
+                              {friend.inRoom ? (
+                                <span className="text-amber-300">en partida</span>
+                              ) : friend.online ? (
+                                <span className="text-emerald-300">en línea</span>
+                              ) : (
+                                'sin conexión'
+                              )}
+                            </span>
                           </span>
-                        </span>
-                        <button
-                          type="button"
-                          disabled={busy !== null}
-                          onClick={() => invite(friend)}
-                          className="btn-gold flex shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-transform active:scale-95 disabled:opacity-60"
-                        >
-                          <Send className="h-3.5 w-3.5" aria-hidden />
-                          Invitar
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy !== null}
-                          onClick={() => act(`remove:${friend.playerId}`, () => friendRemove(friend.playerId), `${friend.name} ya no está en tu lista.`)}
-                          aria-label={`Eliminar a ${friend.name}`}
-                          title={`Eliminar a ${friend.name}`}
-                          className="grid h-8 w-8 shrink-0 touch-manipulation place-items-center rounded-lg text-amber-100/50 transition hover:text-rose-300 active:scale-90 disabled:opacity-60"
-                        >
-                          <UserMinus className="h-4 w-4" aria-hidden />
-                        </button>
+                          <button
+                            type="button"
+                            disabled={busy !== null}
+                            aria-expanded={inviteFor === friend.playerId}
+                            onClick={() => setInviteFor(inviteFor === friend.playerId ? null : friend.playerId)}
+                            className="btn-gold flex shrink-0 touch-manipulation items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-transform active:scale-95 disabled:opacity-60"
+                          >
+                            <Send className="h-3.5 w-3.5" aria-hidden />
+                            Invitar
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy !== null}
+                            onClick={() => act(`remove:${friend.playerId}`, () => friendRemove(friend.playerId), `${friend.name} ya no está en tu lista.`)}
+                            aria-label={`Eliminar a ${friend.name}`}
+                            title={`Eliminar a ${friend.name}`}
+                            className="grid h-8 w-8 shrink-0 touch-manipulation place-items-center rounded-lg text-amber-100/50 transition hover:text-rose-300 active:scale-90 disabled:opacity-60"
+                          >
+                            <UserMinus className="h-4 w-4" aria-hidden />
+                          </button>
+                        </div>
+                        {inviteFor === friend.playerId && (
+                          <div className="mt-2 border-t border-amber-100/10 pt-2">
+                            <p className="mb-1.5 text-[11px] font-bold text-amber-100/70">
+                              ¿A qué quieres jugar con {friend.name}?
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {INVITE_GAMES.map((game) => (
+                                <button
+                                  key={game}
+                                  type="button"
+                                  disabled={busy !== null}
+                                  onClick={() => invite(friend, game)}
+                                  className="btn-gold touch-manipulation rounded-lg px-3 py-2 text-xs font-extrabold transition-transform active:scale-95 disabled:opacity-60"
+                                >
+                                  {GAMES[game].name}
+                                </button>
+                              ))}
+                              <button
+                                type="button"
+                                disabled={busy !== null}
+                                onClick={() => setInviteFor(null)}
+                                className="btn-wood touch-manipulation rounded-lg px-3 py-2 text-xs font-bold transition-transform active:scale-95 disabled:opacity-60"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>

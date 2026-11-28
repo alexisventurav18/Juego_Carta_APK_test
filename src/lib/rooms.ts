@@ -435,10 +435,15 @@ export function friendRemove(friendId: string): Promise<{ ok: boolean }> {
 /**
  * Invita a un amigo a una sala privada: el servidor crea la sala y devuelve
  * su código y el modo. Quien invita entra a esa sala y espera; el amigo
- * recibe la invitación y se une con el mismo código.
+ * recibe la invitación y se une con el mismo código. El modo se puede pedir
+ * (`game`); si no se pasa, el servidor crea la sala en Casino.
  */
-export function inviteFriend(friendId: string): Promise<{ ok: boolean; code: string; game: GameId }> {
-  return callRaw<{ ok: boolean; code: string; game: GameId }>({ action: 'invite_friend', friendId });
+export function inviteFriend(friendId: string, game?: GameId): Promise<{ ok: boolean; code: string; game: GameId }> {
+  return callRaw<{ ok: boolean; code: string; game: GameId }>({
+    action: 'invite_friend',
+    friendId,
+    ...(game ? { game } : {}),
+  });
 }
 
 export type TournamentStatus = 'upcoming' | 'active' | 'ended';
